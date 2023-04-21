@@ -14,7 +14,7 @@ from src.common.utils import cal_distance
 class CVRPEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 2}
 
-    def __init__(self, num_depots, num_nodes, step_reward=False, render_mode=None, training=True, seed=None, data_path='./data'):
+    def __init__(self, num_depots, num_nodes, step_reward=False, render_mode=None, training=True, seed=None, data_path='./data', **kwargs):
         super(CVRPEnv, self).__init__()
         self.action_size = num_nodes + num_depots
         self.num_depots = num_depots

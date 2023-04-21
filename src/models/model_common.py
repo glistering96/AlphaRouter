@@ -1,11 +1,65 @@
-import math
-
+import numpy as np
 import torch
 import torch.nn as nn
+
+from src.common.scaler import *
 import torch.nn.functional as F
 
 
-# Encoder model related
+def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+    torch.nn.init.orthogonal_(layer.weight, std)
+    torch.nn.init.constant_(layer.bias, bias_const)
+    return layer
+
+
+def get_encoding(encoded_nodes, node_index_to_pick, T=1):
+    # encoded_nodes.shape: (batch, problem, embedding)
+    # node_index_to_pick.shape: (batch, 1)
+
+    batch_size = node_index_to_pick.size(0)
+    embedding_dim = encoded_nodes.size(-1)
+
+    _to_pick = node_index_to_pick.view(batch_size, T, 1)
+    desired_shape = (batch_size, T, embedding_dim)
+    gathering_index = torch.broadcast_to(_to_pick, desired_shape).reshape(batch_size, -1, embedding_dim)
+    picked_node_embedding = encoded_nodes.gather(dim=1, index=gathering_index)
+
+    return picked_node_embedding
+
+
+def _to_tensor(obs, device):
+    if isinstance(list(obs.values())[0], torch.Tensor):
+        return obs
+
+    tensor_obs = {k: None for k in obs.keys()}
+
+    for k, v in obs.items():
+        if k != '_t':
+            if isinstance(v, np.ndarray):
+                tensor = torch.from_numpy(v).to(device)
+                tensor_obs[k] = tensor
+
+            elif isinstance(v, int):
+                tensor_obs[k] = torch.tensor([v], dtype=torch.long, device=device)
+
+    return tensor_obs
+
+
+def get_batch_tensor(obs: list):
+    if not obs:
+        return None
+
+    tensor_obs = {k: [] for k in obs[0].keys()}
+
+    for x in obs:
+        for k, v in x.items():
+            tensor_obs[k].append(v)
+
+    for k, v in tensor_obs.items():
+        cat = np.stack(v)
+        tensor_obs[k] = torch.tensor(cat)
+
+    return tensor_obs
 
 
 class EncoderLayer(nn.Module):
@@ -45,59 +99,6 @@ class EncoderLayer(nn.Module):
         out3 = self.add_n_normalization_2(out1, out2)
 
         return out3
-
-
-class DecoderCommon(nn.Module):
-    def __init__(self, **model_params):
-        super(DecoderCommon, self).__init__()
-        self.model_params = model_params
-        embedding_dim = self.model_params['embedding_dim']
-
-        self.head_num = self.model_params['head_num']
-        self.qkv_dim = self.model_params['qkv_dim']
-
-        # self.load_embedder = nn.Linear(1, embedding_dim)
-        self.embedding_mixer = nn.Linear(embedding_dim + embedding_dim//2, embedding_dim)
-        self.multi_head_combine = nn.Linear(self.head_num * self.qkv_dim, embedding_dim)
-
-        self.Wq_last = nn.Linear(embedding_dim + 1, self.head_num * self.qkv_dim, bias=False)
-        self.Wk = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
-        self.Wv = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
-
-        self.layer = AttentionLayer(**model_params)
-
-        self.k, self.v = None, None
-
-    def set_kv(self, encoding):
-        self.k = reshape_by_heads(self.Wk(encoding), head_num=self.head_num)
-        self.v = reshape_by_heads(self.Wv(encoding), head_num=self.head_num)
-
-        # shape: (batch, head_num, problem+1, qkv_dim)
-        self.single_head_key = encoding.transpose(1, 2)
-        # shape: (batch, embedding, problem+1)
-
-    def forward(self, cur_node_encoding, load, mask):
-        """
-        :param cur_node_encoding: (B, 1 or T, d)
-        :param load:   (B, 1 or T, 1)
-        :param encoding: (B, N, d)
-        :return:
-        """
-
-        load_embedding = load
-        _in = torch.cat([cur_node_encoding, load_embedding[..., None]], -1)
-        _in_tf = self.Wq_last(_in)
-
-        q = reshape_by_heads(_in_tf, head_num=self.head_num)
-        # (batch, N, embedding)
-
-        out_concat = multi_head_attention(q, self.k, self.v, mask)
-        # (batch, 1 or T, qkv*head_num)
-
-        mh_atten_out = self.multi_head_combine(out_concat)
-        # shape: (batch, 1 or T, embedding)
-
-        return mh_atten_out
 
 
 class AttentionLayer(nn.Module):

@@ -271,7 +271,6 @@ def get_param_dict(args, use_mcts=False, copy_src=True):
     qkv_dim = args.qkv_dim
     head_num = args.head_num
     C = args.C
-    one_layer_val = args.one_layer_val
 
     # trainer params
     mini_batch_size = args.mini_batch_size
@@ -317,7 +316,9 @@ def get_param_dict(args, use_mcts=False, copy_src=True):
         'num_nodes': num_demand_nodes,
         'num_depots': num_depots,
         'seed': seed,
-        'step_reward': step_reward
+        'step_reward': step_reward,
+        'env_type': env_type,
+
     }
 
     mcts_params = {
@@ -337,7 +338,6 @@ def get_param_dict(args, use_mcts=False, copy_src=True):
         'qkv_dim': qkv_dim,
         'head_num': head_num,
         'C': C,
-        'one_layer_val': one_layer_val,
     }
 
     h_params = {
@@ -410,9 +410,8 @@ def dict_product(dicts):
 
 def parse_saved_model_dir(args, result_dir, name_prefix, load_epoch=None, mcts_param=False,
                           return_checkpoint=False, ignore_debug=False):
-    val_layer_suffix = 1 if args.one_layer_val else 2
     env_param_nm = f"{args.env_type}/N_{args.num_nodes}"
-    model_param_nm = f"/nn-{args.nn}-{args.embedding_dim}-{args.encoder_layer_num}-{args.qkv_dim}-{args.head_num}-{args.C}-{val_layer_suffix}"
+    model_param_nm = f"/{args.nn}-{args.embedding_dim}-{args.encoder_layer_num}-{args.qkv_dim}-{args.head_num}-{args.C}"
 
     if mcts_param:
         mcts_param_nm = f"/ns_{args.num_simulations}-temp_{args.temp_threshold}-cpuct_{args.cpuct}-" \

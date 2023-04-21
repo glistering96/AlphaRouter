@@ -61,28 +61,24 @@ class TSPEnv(gym.Env):
         return xy
 
     def _load_problem(self):
-        file_path = f"{self.data_path}/N_{self.num_nodes}.npz"
+        file_path = f"{self.data_path}/tsp/N_{self.num_nodes}.npz"
 
         if os.path.isfile(file_path):
             loaded_data = np.load(file_path)
             xy = loaded_data['xy']
-            demands = loaded_data['demands']
 
         else:
             xy = make_cord(1, 0, self.num_nodes)
-            demands = make_demands(1, 0, self.num_nodes)
 
             if not os.path.exists(self.data_path):
                 os.makedirs(self.data_path, exist_ok=True)
 
-            np.savez_compressed(file_path, xy=xy, demands=demands)
+            np.savez_compressed(file_path, xy=xy, demands=None)
 
         if xy.ndim == 3:
             xy = xy.reshape(-1, 2)
 
-        demands = demands.reshape(-1,)
-
-        return xy, demands
+        return xy
 
     def _init_rendering(self):
         if self.render_mode is not None:
@@ -228,13 +224,9 @@ class TSPEnv(gym.Env):
             # Draw node
             pygame.draw.circle(canvas, node_color, (x, y), self.node_size)
 
-            # Draw demands text
-            # demands = i  # for debugging
-
-        # Show current load
-        load_text = self.display_font.render("Load: {:.3f}".format(float(self._load)), True, self.BLACK)
-        load_rect = load_text.get_rect(topright=(self.screen_width - self.screen_width*0.05, self.screen_height*0.05))
-        canvas.blit(load_text, load_rect)
+            text_surface = self.node_font.render(f"{i}", True, self.WHITE)
+            text_rect = text_surface.get_rect(center=(x, y))
+            canvas.blit(text_surface, text_rect)
 
         # Current distance cal
         self.step_reward = True

@@ -8,8 +8,9 @@ from stable_baselines3.common.vec_env import VecNormalize
 from src.common.dataclass import rollout_result
 from src.common.utils import TimeEstimator, deepcopy_state, get_result_folder
 from src.env.cvrp_gym import CVRPEnv as Env
-from src.models.mha.models import SharedMHA
+from src.models.cvrp_model.models import CVRPModel
 from src.mcts import MCTS
+from src.models.routing_model import RoutingModel
 
 
 class RolloutBase:
@@ -51,23 +52,13 @@ class RolloutBase:
 
         # Model
         self.model_params['device'] = device
-        self.model_params['action_size'] = env_params['num_depots'] + env_params['num_nodes']
 
-        self.model = self._get_model()
+        self.model = RoutingModel(self.model_params, self.env_params).create_model(self.env_params['env_type'])
 
         # etc.
         self.epochs = 1
         self.best_score = float('inf')
         self.time_estimator = TimeEstimator()
-
-    def _get_model(self):
-        nn = self.model_params['nn']
-
-        if nn == 'shared_mha':
-            return SharedMHA(**self.model_params)
-
-        else:
-            raise ValueError(f"Unsupported model: {nn}")
 
 
     def _save_checkpoints(self, epoch, is_best=False):
@@ -118,7 +109,7 @@ def get_model(model_params):
     nn = model_params['nn']
 
     if nn == 'shared_mha':
-        return SharedMHA(**model_params)
+        return CVRPModel(**model_params)
 
     else:
         raise ValueError(f"Unsupported model: {nn}")

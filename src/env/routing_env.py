@@ -4,7 +4,7 @@ from src.env.VecEnv import RoutingVecEnv
 from stable_baselines3.common.env_util import make_vec_env
 
 
-class EnvironmentFactory:
+class RoutingEnv:
     def __init__(self, env_params, run_params):
         self.env_params = env_params
         self.run_params = run_params

@@ -9,8 +9,10 @@ from torch.optim import Adam as Optimizer
 from torch.utils.tensorboard import SummaryWriter
 import torch.nn.functional as F
 
+from src.common.lr_scheduler import CosineWarmupScheduler
 from src.env.cvrp_gym import CVRPEnv
-from src.env.routing_env import EnvironmentFactory
+from src.env.routing_env import RoutingEnv
+from src.env.tsp_gym import TSPEnv
 from src.module_base import RolloutBase
 
 tb = None
@@ -34,10 +36,13 @@ class PreTrainerModule(RolloutBase):
         tb = SummaryWriter(tb_log_path)
 
         # override model
-        self.env = EnvironmentFactory(self.env_params, self.run_params).create_env(self.env_params['env_type'])
+        self.env = RoutingEnv(self.env_params, self.run_params).create_env(self.env_params['env_type'])
+        self.video_env = self.init_video_env()
 
         # policy_optimizer
         self.optimizer = Optimizer(self.model.parameters(), **optimizer_params)
+        warmup_epochs = run_params['epochs'] * 0.01
+        self.scheduler = CosineWarmupScheduler(self.optimizer, warmup_epochs, run_params['epochs'])
 
         self.start_epoch = 1
         self.best_score = float('inf')
@@ -71,20 +76,28 @@ class PreTrainerModule(RolloutBase):
         self.logger.info(
             f"Successfully loaded pre-trained policy_net {model_load['path']} with epoch: {model_load['epoch']}")
 
-    def _record_video(self, epoch):
-        mode = "rgb_array"
-        video_dir = self.run_params['logging']['result_folder_name'] + f'/videos/'
-        data_path = self.run_params['data_path']
-
+    def init_video_env(self, mode="rgb_array"):
         env_params = deepcopy(self.env_params)
         env_params['render_mode'] = mode
         env_params['training'] = False
         env_params['seed'] = 5
-        env_params['data_path'] = data_path
+        env_params['data_path'] = self.run_params['data_path']
 
-        env = CVRPEnv(**env_params)
+        if env_params['env_type'] == 'cvrp':
+            env = CVRPEnv(**env_params)
 
-        env = RecordVideo(env, video_dir, name_prefix=str(epoch))
+        elif env_params['env_type'] == 'tsp':
+            env = TSPEnv(**env_params)
+
+        else:
+            raise NotImplementedError
+
+        return env
+
+    def _record_video(self, epoch):
+        video_dir = self.run_params['logging']['result_folder_name'] + f'/videos/'
+
+        env = RecordVideo(self.video_env, video_dir, name_prefix=str(epoch))
 
         # render and interact with the environment as usual
         obs = env.reset()
@@ -204,15 +217,10 @@ class PreTrainerModule(RolloutBase):
                 tb.close()
                 self.logger.info(" *** Training Done *** ")
 
-    def _set_lr(self):
-        self.current_lr = max(self.current_lr*0.9999999, 2e-5)
-        self.optimizer.param_groups[0]["lr"] = self.current_lr
-
     def _train_one_epoch(self):
         # train for one epoch.
         # In one epoch, the policy_net trains over given number of scenarios from tester parameters
         # The scenarios are trained in batched.
-        self._set_lr()
         done = False
         self.model.encoding = None
 
@@ -256,5 +264,6 @@ class PreTrainerModule(RolloutBase):
         self.model.zero_grad()
         loss.backward()
         self.optimizer.step()
+        self.scheduler.step()
 
         return reward.mean().item(), loss, p_loss, val_loss, len(prob_lst), entropy

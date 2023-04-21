@@ -36,23 +36,35 @@ def make_demands(num_rollouts, num_depots, num_nodes):
     return depot_node_demands.astype(np.float32)
 
 
+def create_problem(env_type, num_depots, num_nodes, num_rollouts):
+    if env_type == "cvrp":
+        xy = make_cord(num_rollouts, num_depots, num_nodes)
+        demands = make_demands(num_rollouts, num_depots, num_nodes)
+        return xy, demands
+
+    elif env_type == "tsp":
+        xy = make_cord(num_rollouts, 0, num_nodes)
+        return xy, None
+
+    else:
+        raise NotImplementedError
+
 if __name__ == '__main__':
     # print(make_demands(1, 1, 20).shape)
     from pathlib import Path
+    for num_nodes in [20, 50, 100, 500, 1000]:
+        num_depots = 1
+        env_type = 'tsp'
 
-    num_depots = 1
-    num_nodes = 20
+        data_folder_path = f'../../data/{env_type}/'
+        filename = f'D_{num_depots}-N_{num_nodes}.npz' if env_type == 'cvrp' else f'N_{num_nodes}.npz'
 
-    data_folder_path = f'../../data'
-    filepath = data_folder_path + f'/D_{num_depots}-N_{num_nodes}.npz'
-    print("/".join(filepath.split("/")[:-1]))
-    if not os.path.exists(data_folder_path):
-        os.makedirs(data_folder_path, exist_ok=True)
+        filepath = data_folder_path + filename
 
-    xy = make_cord(1, num_depots, num_nodes)
-    demands = make_demands(1, num_depots, num_nodes)
+        if not os.path.exists(data_folder_path):
+            os.makedirs(data_folder_path, exist_ok=True)
 
-    np.savez_compressed(filepath, xy=xy, demands=demands)
+        xy, demands = create_problem(env_type, num_depots, num_nodes, 1)
+        np.savez_compressed(filepath, xy=xy, demands=demands)
 
-    loaded = np.load(filepath)
-    # print(loaded['xy'])
+        loaded = np.load(filepath)

@@ -74,15 +74,18 @@ if __name__ == '__main__':
     args = parse_args()
 
     args.result_dir = 'pretrained_result'
-    args.name_prefix = 'val_as_baseline'
+
+    # for env_type in ['tsp', 'cvrp']:
+    #     for num_nodes in [20, 50, 100]:
+    #         args.env_type = 'tsp'
+    #         args.num_nodes = num_nodes
+    #         args.epochs = 100
+    #         args.model_save_interval = 50
+    #         args.log_interval = 50
+    #         run_pretrain(args)
 
 
-    for head_num in [1, 2, 3, 4]:
-        args.num_nodes = 20
-        args.num_episode = 25
-        args.head_num = head_num
-        args.model_load = None
-        args.encoder_layer_num = 1
-        args.epochs = 500000
-
-        run_pretrain(args)
+    num_nodes = 20
+    args.env_type = 'tsp'
+    args.num_nodes = num_nodes
+    run_pretrain(args)

@@ -1,12 +1,12 @@
 from torch.distributions import Categorical
 
-from src.models.mha.modules import *
-from src.models.common_modules import get_encoding, _to_tensor, layer_init
+from src.models.cvrp_model.modules import *
+from src.models.model_common import get_encoding, _to_tensor, layer_init, EncoderLayer
 
 
-class SharedMHA(nn.Module):
+class CVRPModel(nn.Module):
     def __init__(self, **model_params):
-        super(SharedMHA, self).__init__()
+        super(CVRPModel, self).__init__()
 
         self.model_params = model_params
         self.device = model_params['device']
@@ -14,9 +14,7 @@ class SharedMHA(nn.Module):
         self.policy_net = Policy(**model_params)
         self.value_net = Value(**model_params)
         self.encoder = Encoder(**model_params)
-        self.decoder_common = DecoderCommon(**model_params)
-        # self.encoder.share_memory()
-        self.latent_dim_pi = model_params['action_size']
+        self.decoder = Decoder(**model_params)
 
         self.encoding = None
 
@@ -65,13 +63,13 @@ class SharedMHA(nn.Module):
         if self.encoding is None:
             self.encoding = self.encoder(xy, demands)
 
-        self.decoder_common.set_kv(self.encoding)
+        self.decoder.set_kv(self.encoding)
 
         last_node = get_encoding(self.encoding, cur_node.long(), T)
 
-        mh_atten_out = self.decoder_common(last_node, load, mask)
+        mh_atten_out = self.decoder(last_node, load, mask)
 
-        probs = self.policy_net(mh_atten_out, self.decoder_common.single_head_key, mask)
+        probs = self.policy_net(mh_atten_out, self.decoder.single_head_key, mask)
         probs = probs.reshape(-1, probs.size(-1))
 
         val = self.value_net(mh_atten_out)
@@ -144,18 +142,7 @@ class Value(nn.Module):
     def __init__(self, **model_params):
         super(Value, self).__init__()
         self.embedding_dim = model_params['embedding_dim']
-
-        one_layer_val = model_params['one_layer_val']
-
-        if one_layer_val:
-            self.val = layer_init(nn.Linear(self.embedding_dim, 1), std=0.1)
-
-        else:
-            self.val = nn.Sequential(
-                layer_init(nn.Linear(self.embedding_dim, self.embedding_dim*2), std=0.1),
-                nn.ReLU(),
-                layer_init(nn.Linear(self.embedding_dim*2, 1), std=0.1)
-            )
+        self.val = nn.Linear(self.embedding_dim, 1)
 
     def forward(self, mh_attn_out):
         val = self.val(mh_attn_out)
