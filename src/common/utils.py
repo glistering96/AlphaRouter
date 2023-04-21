@@ -253,6 +253,7 @@ def get_param_dict(args, use_mcts=False, copy_src=True):
     num_demand_nodes = args.num_nodes
     num_depots = args.num_depots
     step_reward = args.step_reward
+    env_type = args.env_type
 
     # mcts params
     num_simulations = args.num_simulations
@@ -410,7 +411,7 @@ def dict_product(dicts):
 def parse_saved_model_dir(args, result_dir, name_prefix, load_epoch=None, mcts_param=False,
                           return_checkpoint=False, ignore_debug=False):
     val_layer_suffix = 1 if args.one_layer_val else 2
-    env_param_nm = f"/N_{args.num_nodes}"
+    env_param_nm = f"{args.env_type}/N_{args.num_nodes}"
     model_param_nm = f"/nn-{args.nn}-{args.embedding_dim}-{args.encoder_layer_num}-{args.qkv_dim}-{args.head_num}-{args.C}-{val_layer_suffix}"
 
     if mcts_param:

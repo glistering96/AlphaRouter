@@ -7,11 +7,10 @@ import torch
 from gymnasium.wrappers import RecordVideo
 from torch.optim import Adam as Optimizer
 from torch.utils.tensorboard import SummaryWriter
-from stable_baselines3.common.env_util import make_vec_env
 import torch.nn.functional as F
 
-from src.env.VecEnv import CVRPVecEnv
 from src.env.cvrp_gym import CVRPEnv
+from src.env.routing_env import EnvironmentFactory
 from src.module_base import RolloutBase
 
 tb = None
@@ -35,7 +34,7 @@ class PreTrainerModule(RolloutBase):
         tb = SummaryWriter(tb_log_path)
 
         # override model
-        self.env = make_vec_env(CVRPEnv, n_envs=run_params['num_episode'], env_kwargs=env_params, vec_env_cls=CVRPVecEnv)
+        self.env = EnvironmentFactory(self.env_params, self.run_params).create_env(self.env_params['env_type'])
 
         # policy_optimizer
         self.optimizer = Optimizer(self.model.parameters(), **optimizer_params)

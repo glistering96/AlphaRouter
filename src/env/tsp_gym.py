@@ -11,13 +11,13 @@ from src.common.data_manipulator import make_cord, make_demands
 from src.common.utils import cal_distance
 
 
-class CVRPEnv(gym.Env):
+class TSPEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 2}
 
-    def __init__(self, num_depots, num_nodes, step_reward=False, render_mode=None, training=True, seed=None, data_path='./data'):
-        super(CVRPEnv, self).__init__()
-        self.action_size = num_nodes + num_depots
-        self.num_depots = num_depots
+    def __init__(self, num_nodes,
+                 step_reward=False, render_mode=None, training=True, seed=None, data_path='./data', **kwargs):
+        super(TSPEnv, self).__init__()
+        self.action_size = num_nodes
         self.num_nodes = num_nodes
         self.step_reward = step_reward
         self.training = training
@@ -27,12 +27,7 @@ class CVRPEnv(gym.Env):
         self.observation_space = Dict(
             {
                 "xy": Box(0.0, 1.0, (self.action_size, 2), dtype=np.float32),
-                "demands": Box(
-                    low=np.array([0.0 for _ in range(self.action_size)], dtype=np.float32),
-                    high=np.array([0.0] + [1.0 for _ in range(num_nodes)], dtype=np.float32),
-                    dtype=np.float32),
                 "pos": Discrete(self.action_size),
-                "load": Box(0, 1, (1, ), dtype=np.float32),
                 "available": MultiBinary(self.action_size)
              }
         )
@@ -45,9 +40,8 @@ class CVRPEnv(gym.Env):
         self.screen = None
 
         # observation fields
-        self._xy, self._demand, self._pos, self._visited = None, None, None, None
+        self._xy, self._pos, self._visited = None, None, None
         self._visiting_seq = None
-        self._load = None
         self._available = None
 
         self._t = 0
@@ -56,21 +50,18 @@ class CVRPEnv(gym.Env):
         self._np_random, self._seed = seeding.np_random(seed)
 
     def _get_obs(self):
-        return {"xy": self._xy, "demands": self._demand, "pos": self._pos, "load": self._load,
-                "available": self._available, "_t": self._t}
+        return {"xy": self._xy, "pos": self._pos, "available": self._available, "_t": self._t}
 
-    def _make_problems(self, num_rollouts, num_depots, num_nodes):
-        xy = make_cord(num_rollouts, num_depots, num_nodes)
-        demands = make_demands(num_rollouts, num_depots, num_nodes)
+    def _make_problems(self, num_rollouts, num_nodes):
+        xy = make_cord(num_rollouts, 0, num_nodes)
 
         if num_rollouts == 1:
             xy = xy.squeeze(0)
-            demands = demands.squeeze(0)
 
-        return xy, demands
+        return xy
 
     def _load_problem(self):
-        file_path = f"{self.data_path}/cvrp/D_{self.num_depots}-N_{self.num_nodes}.npz"
+        file_path = f"{self.data_path}/N_{self.num_nodes}.npz"
 
         if os.path.isfile(file_path):
             loaded_data = np.load(file_path)
@@ -78,8 +69,8 @@ class CVRPEnv(gym.Env):
             demands = loaded_data['demands']
 
         else:
-            xy = make_cord(1, self.num_depots, self.num_nodes)
-            demands = make_demands(1, self.num_depots, self.num_nodes)
+            xy = make_cord(1, 0, self.num_nodes)
+            demands = make_demands(1, 0, self.num_nodes)
 
             if not os.path.exists(self.data_path):
                 os.makedirs(self.data_path, exist_ok=True)
@@ -138,17 +129,16 @@ class CVRPEnv(gym.Env):
         super().reset(seed=seed)
 
         if self.training:
-            self._xy, self._demand = self._make_problems(1, self.num_depots, self.num_nodes)
+            self._xy = self._make_problems(1, self.num_nodes)
 
         else:
-            self._xy, self._demand = self._load_problem()
+            self._xy = self._load_problem()
 
         init_depot = 0
         self._pos = init_depot
         self._visited = np.zeros(self.action_size, dtype=bool)
         self._visited[self._pos] = True
         self._visiting_seq = []
-        self._load = np.ones(1, dtype=np.float32)
 
         self._visiting_seq.append(init_depot)
         self._available = np.ones(self.action_size, dtype=bool)
@@ -161,14 +151,10 @@ class CVRPEnv(gym.Env):
 
         return obs
 
-    def _is_on_depot(self):
-        return self._pos == 0
-
     def step(self, action):
         # action: (1, )
 
-        if action != 0:
-            assert action not in self._visiting_seq, f"visited nodes: {self._visiting_seq}, selected node: {action}"
+        assert action not in self._visiting_seq, f"visited nodes: {self._visiting_seq}, selected node: {action}"
 
         # update the current pos
         self._pos = action
@@ -176,24 +162,8 @@ class CVRPEnv(gym.Env):
         # append the visited node idx
         self._visiting_seq.append(action)
 
-        # check on depot
-        on_depot = self._is_on_depot()
-
-        # get the demands of the current node
-        demand = self._demand[action]
-
-        # update load
-        self._load -= demand
-
-        # if on depot, refill
-        if on_depot:
-            self._load = np.ones(1, dtype=np.float32)
-
         # update visited nodes
         self._visited[action] = True
-
-        if not on_depot:
-            self._visited[0] = False
 
         # assign avail to field
         self._available, done = self.get_avail_mask()
@@ -220,18 +190,7 @@ class CVRPEnv(gym.Env):
         # get a copy of avail
         avail = ~self._visited.copy()
 
-        # mark unavail for nodes that need more demands
-        unreachable = self._load < self._demand
-        avail[unreachable] = False
-
         done = self._is_done()
-
-        # depot is unavailable if finished
-        if done:
-            avail[0] = True
-
-        if not self._is_on_depot():
-            avail[0] = True
 
         return avail, done
 
@@ -266,22 +225,11 @@ class CVRPEnv(gym.Env):
             else:
                 node_color = self.BLACK
 
-            # Round up demands to 3 decimal points
-            demand = np.round(self._demand[i], 3)
-
             # Draw node
             pygame.draw.circle(canvas, node_color, (x, y), self.node_size)
 
             # Draw demands text
             # demands = i  # for debugging
-
-            if i == 0:  # DEPOT
-                i = "D"
-                demand = 1
-
-            text_surface = self.node_font.render(f"{i}:{demand:.3f}", True, self.WHITE)
-            text_rect = text_surface.get_rect(center=(x, y))
-            canvas.blit(text_surface, text_rect)
 
         # Show current load
         load_text = self.display_font.render("Load: {:.3f}".format(float(self._load)), True, self.BLACK)
@@ -295,7 +243,7 @@ class CVRPEnv(gym.Env):
 
         # current dist show
         dist_text = self.display_font.render("Distance: {:.3f}".format(float(reward)), True, self.BLACK)
-        dist_rect = load_text.get_rect(topright=(self.screen_width -  self.screen_width*0.1, self.screen_height*0.1))
+        dist_rect = dist_text.get_rect(topright=(self.screen_width -  self.screen_width*0.1, self.screen_height*0.1))
         canvas.blit(dist_text, dist_rect)
 
         if self.render_mode == 'human':
@@ -314,3 +262,21 @@ class CVRPEnv(gym.Env):
 
     def set_test_mode(self):
         self.training = False
+
+
+if __name__ == '__main__':
+    done = False
+    env = TSPEnv(10)
+    from src.env.VecEnv import RoutingVecEnv
+    from stable_baselines3.common.env_util import make_vec_env
+
+    env = make_vec_env(TSPEnv, n_envs=1, env_kwargs={'num_nodes': 10}, vec_env_cls=RoutingVecEnv)
+    obs = env.reset()
+    # mask = env.get_avail_mask()[0].astype(np.int8)
+
+    while not done:
+        action = np.array([env.action_space.sample()], dtype=int)
+        obs, reward, done, info = env.step(action)
+        # mask = env.get_avail_mask()[0].astype(np.int8)
+
+    print(reward)

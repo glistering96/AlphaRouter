@@ -3,16 +3,15 @@ from typing import List, Callable
 from collections import OrderedDict
 
 import gym
-import gymnasium
 import numpy as np
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.vec_env.base_vec_env import VecEnvStepReturn, VecEnvObs
 from stable_baselines3.common.vec_env.util import obs_space_info
 
 
-class CVRPVecEnv(DummyVecEnv):
+class RoutingVecEnv(DummyVecEnv):
     def __init__(self, env_fns: List[Callable[[], gym.Env]]):
-        super(CVRPVecEnv, self).__init__(env_fns)
+        super(RoutingVecEnv, self).__init__(env_fns)
 
     def step_wait(self) -> VecEnvStepReturn:
         for env_idx in range(self.num_envs):
