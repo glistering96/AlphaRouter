@@ -1,0 +1,6 @@
+/pretrained_result/
+/am_test_result/
+/am_mcts_test_result/
+/alpha_router_test_result/
+*.png
+.idea
