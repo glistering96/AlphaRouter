@@ -212,7 +212,7 @@ class MCTS():
             self.expand_root = False
 
         # select child node and action
-        while state_num in self.Ns:
+        while state_num in self.Ns and not done:
             a = self._select(obs)
             path.append((state_num, a))
 
