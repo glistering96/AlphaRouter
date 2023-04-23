@@ -17,21 +17,17 @@ class MCTS():
     def __init__(self, env, model, mcts_params, training=True):
 
         self.env = deepcopy(env)
+        self.env_type = env.env_type
         self.model = model
         self.mcts_params = mcts_params
-        self.action_space = mcts_params['action_space']
+        self.action_space = env.action_space.n
         self.expand_root = True
         self.cpuct = mcts_params['cpuct']
         self.normalize_q_value = mcts_params['normalize_value']
         self.noise_eta = mcts_params['noise_eta']
         self.rollout_game = mcts_params['rollout_game']
 
-        self._initial_visitng_seq = deepcopy(self.env._visiting_seq)
-        self._initial_visited = deepcopy(self.env._visited)
-        self._initial_load = deepcopy(self.env._load)
-        self._initial_pos = deepcopy(self.env._pos)
-        self._initial_available = deepcopy(self.env._available)
-        self._initial_t = deepcopy(self.env._t)
+        self._save_state_field()
 
         self.training = training
 
@@ -43,10 +39,19 @@ class MCTS():
 
         self.max_q_val = float('-inf')
         self.min_q_val = float('inf')
-        self.factor = (1, 0)
+
+    def _save_state_field(self):
+        self._initial_visiting_seq = deepcopy(self.env.visiting_seq)
+        self._initial_visited = deepcopy(self.env.visited)
+        self._initial_pos = deepcopy(self.env.pos)
+        self._initial_available = deepcopy(self.env.available)
+        self._initial_t = deepcopy(self.env.t)
+
+        if self.env_type == 'cvrp':
+            self._initial_load = deepcopy(self.env.load)
 
     def _cal_probs(self, target_state, temp):
-        s = target_state['_t']
+        s = target_state['t']
         counts = [self.N[(s, a)] if (s, a) in self.N else 0 for a in range(self.action_space)]
 
         if temp == 0:
@@ -77,8 +82,8 @@ class MCTS():
         # select the action
         # argmin (Q-U), since the reward concept becomes the loss in this MCTS
         # originally, argmax (Q+U) is true but to fit into minimization, argmin (-Q+U) is selected
-        s = state['_t']
-        avail_mask, _ = self.env.get_avail_mask()
+        s = state['t']
+        avail_mask = state['available']
         ucb_scores = {}
 
         # pick the action with the lowest upper confidence bound
@@ -94,7 +99,7 @@ class MCTS():
 
             diff = self.max_q_val - self.min_q_val
 
-            if Q_val != 0 and self.normalize_q_value :
+            if Q_val != 0 and self.normalize_q_value:
                 Q_val = (self.Q[(s,a)] - self.min_q_val) / (self.max_q_val - self.min_q_val + 1e-8)
 
             if diff < 1e-8:
@@ -108,7 +113,7 @@ class MCTS():
         return int(a)
 
     def _expand(self, state, add_noise=False, return_action=False):
-        s = state['_t']
+        s = state['t']
 
         prob_dist, val = self.model(state)
         probs = prob_dist.view(-1,).cpu().numpy()
@@ -120,7 +125,7 @@ class MCTS():
             noise = np.random.dirichlet([self.noise_eta for _ in range(self.action_space)])
 
         for a in range(self.action_space):
-            if add_noise:
+            if add_noise and avail[a]:
                 action_noise = float(noise[a] * avail[a])
                 prob = 0.75*probs[a] + 0.25*action_noise
 
@@ -131,8 +136,6 @@ class MCTS():
             self.W[(s, a)] = 0
             self.Q[(s, a)] = 0
             self.N[(s, a)] = 0
-
-        self.env._visiting_seq = []
 
         if return_action and self.training:
             action = np.random.choice(self.action_space, p=probs)
@@ -164,7 +167,7 @@ class MCTS():
         if isinstance(v, torch.Tensor):
             v = v.item()
 
-        for s, a in path:
+        for s, a in reversed(path):
             self.N[(s,a)] += 1
             self.Ns[s] += 1
             self.W[(s,a)] += v
@@ -175,22 +178,25 @@ class MCTS():
             if Q_val < self.min_q_val:
                 self.min_q_val = Q_val
 
-            if Q_val > self.max_q_val:
+            elif Q_val >= self.max_q_val:
                 self.max_q_val = Q_val
 
             self.Q[(s, a)] = Q_val
 
     def _reset_env_field(self):
-        self.env._visiting_seq = deepcopy(self._initial_visitng_seq)    # type is list
-        self.env._visited = self._initial_visited.copy()
-        self.env._load = self._initial_load.copy()
-        self.env._available = self._initial_available.copy()
-        self.env._t = deepcopy(self._initial_t)
+        self.env.visiting_seq = deepcopy(self._initial_visiting_seq)    # type is list
+        self.env.visited = deepcopy(self._initial_visited)
+        self.env.available = deepcopy(self._initial_available)
+        self.env.t = deepcopy(self._initial_t)
+        self.env.pos = deepcopy(self._initial_pos)
+
+        if self.env_type == 'cvrp':
+            self.env.load = self._initial_load.copy()
 
     def _run_simulation(self, root_state):
         obs = root_state
         self._reset_env_field()
-        state_num = obs['_t']
+        state_num = obs['t']
 
         path = []
         done = False
@@ -200,8 +206,8 @@ class MCTS():
         if self.expand_root:
             _add_noise = True if self.training else False
             # _add_noise = False
-            a, v = self._expand(root_state, add_noise=_add_noise, return_action=True)
-            path.append((state_num, a))
+            _ = self._expand(root_state, add_noise=_add_noise, return_action=False)
+            # path.append((state_num, a))
             # self._back_propagate(path, v)
             self.expand_root = False
 
@@ -216,13 +222,11 @@ class MCTS():
             else:
                 obs, reward, done, _, _ = self.env.step(a)
 
-            state_num = obs['_t']
+            state_num = obs['t']
 
             if self.training:
                 if len(path) > 30:
                     break
-
-        # v = self._rollout_until_end(obs)
 
         if self.rollout_game:
             v = self._rollout_until_end(obs)
@@ -234,7 +238,7 @@ class MCTS():
 
             else:
                 # terminal node reached
-                v = -self.env.get_reward()
+                v = -reward
 
         self._back_propagate(path, v)
 
