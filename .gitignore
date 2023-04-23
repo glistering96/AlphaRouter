@@ -4,3 +4,5 @@
 /alpha_router_test_result/
 *.png
 .idea
+/logs/
+/debug/

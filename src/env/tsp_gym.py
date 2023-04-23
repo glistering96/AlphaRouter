@@ -23,6 +23,7 @@ class TSPEnv(gym.Env):
         self.training = training
         self.seed = seed
         self.data_path = data_path
+        self.env_type = 'tsp'
 
         self.observation_space = Dict(
             {
@@ -40,17 +41,16 @@ class TSPEnv(gym.Env):
         self.screen = None
 
         # observation fields
-        self._xy, self._pos, self._visited = None, None, None
-        self._visiting_seq = None
-        self._available = None
-
-        self._t = 0
+        self.xy, self.pos, self.visited = None, None, None
+        self.visiting_seq = None
+        self.available = None
+        self.t = 0
 
     def seed(self, seed):
         self._np_random, self._seed = seeding.np_random(seed)
 
     def _get_obs(self):
-        return {"xy": self._xy, "pos": self._pos, "available": self._available, "_t": self._t}
+        return {"xy": self.xy, "pos": self.pos, "available": self.available, "t": self.t}
 
     def _make_problems(self, num_rollouts, num_nodes):
         xy = make_cord(num_rollouts, 0, num_nodes)
@@ -102,7 +102,7 @@ class TSPEnv(gym.Env):
             self.RED = (255, 0, 0)
             self.BLUE = (0, 0, 255)
 
-            self.scaled_xy = [(float(x * scaler) + left_margin, float(y * scaler) + top_margin) for x, y in self._xy]
+            self.scaled_xy = [(float(x * scaler) + left_margin, float(y * scaler) + top_margin) for x, y in self.xy]
 
             pygame.init()
             # Define font
@@ -114,8 +114,8 @@ class TSPEnv(gym.Env):
 
     def get_reward(self):
         if self._is_done() or self.step_reward:
-            visitng_idx = np.array(self._visiting_seq, dtype=int)[None, :]
-            dist = cal_distance(self._xy[None, :], visitng_idx)
+            visitng_idx = np.array(self.visiting_seq, dtype=int)[None, :]
+            dist = cal_distance(self.xy[None, :], visitng_idx)
             return -float(dist)
 
         else:
@@ -125,23 +125,23 @@ class TSPEnv(gym.Env):
         super().reset(seed=seed)
 
         if self.training:
-            self._xy = self._make_problems(1, self.num_nodes)
+            self.xy = self._make_problems(1, self.num_nodes)
 
         else:
-            self._xy = self._load_problem()
+            self.xy = self._load_problem()
 
         init_depot = 0
-        self._pos = init_depot
-        self._visited = np.zeros(self.action_size, dtype=bool)
-        self._visited[self._pos] = True
-        self._visiting_seq = []
+        self.pos = init_depot
+        self.visited = np.zeros(self.action_size, dtype=bool)
+        self.visited[self.pos] = True
+        self.visiting_seq = []
 
-        self._visiting_seq.append(init_depot)
-        self._available = np.ones(self.action_size, dtype=bool)
-        self._available[init_depot] = False  # for the initial depot
+        self.visiting_seq.append(init_depot)
+        self.available = np.ones(self.action_size, dtype=bool)
+        self.available[init_depot] = False  # for the initial depot
 
         self._init_rendering()
-        self._t = 0
+        self.t = 0
 
         obs = self._get_obs()
 
@@ -150,25 +150,25 @@ class TSPEnv(gym.Env):
     def step(self, action):
         # action: (1, )
 
-        assert action not in self._visiting_seq, f"visited nodes: {self._visiting_seq}, selected node: {action}"
+        assert action not in self.visiting_seq, f"visited nodes: {self.visiting_seq}, selected node: {action}"
 
         # update the current pos
-        self._pos = action
+        self.pos = action
 
         # append the visited node idx
-        self._visiting_seq.append(action)
+        self.visiting_seq.append(action)
 
         # update visited nodes
-        self._visited[action] = True
+        self.visited[action] = True
 
         # assign avail to field
-        self._available, done = self.get_avail_mask()
+        self.available, done = self.get_avail_mask()
 
         reward = self.get_reward()
 
         info = {}
 
-        self._t += 1
+        self.t += 1
 
         obs = self._get_obs()
 
@@ -179,12 +179,12 @@ class TSPEnv(gym.Env):
             return obs, reward, done, False, info
 
     def _is_done(self):
-        done_flag = (self._visited[:] == True).all()
+        done_flag = (self.visited[:] == True).all()
         return bool(done_flag)
 
     def get_avail_mask(self):
         # get a copy of avail
-        avail = ~self._visited.copy()
+        avail = ~self.visited.copy()
 
         done = self._is_done()
 
@@ -200,11 +200,11 @@ class TSPEnv(gym.Env):
         canvas.fill(self.WHITE)
 
         # Draw edge
-        if len(self._visiting_seq) > 1:
-            current_node = self._visiting_seq[0]
+        if len(self.visiting_seq) > 1:
+            current_node = self.visiting_seq[0]
             prev_xy = self.scaled_xy[current_node]
 
-            for next_node in self._visiting_seq[1:]:
+            for next_node in self.visiting_seq[1:]:
                 next_xy = self.scaled_xy[next_node]
 
                 # if current_node != next_node:
@@ -214,7 +214,7 @@ class TSPEnv(gym.Env):
 
         # Draw nodes and edges
         for i, (x, y) in enumerate(self.scaled_xy):
-            if i == self._pos:
+            if i == self.pos:
                 node_color = self.BLUE
             elif i == 0:
                 node_color = self.RED

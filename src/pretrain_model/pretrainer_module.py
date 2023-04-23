@@ -35,9 +35,8 @@ class PreTrainerModule(RolloutBase):
 
         tb = SummaryWriter(tb_log_path)
 
-        # override model
-        self.env = RoutingEnv(self.env_params, self.run_params).create_env(self.env_params['env_type'])
-        self.video_env = self.init_video_env()
+        # env
+        self.env = self.env_setup.create_env(test=False)
 
         # policy_optimizer
         self.optimizer = Optimizer(self.model.parameters(), **optimizer_params)
@@ -75,24 +74,6 @@ class PreTrainerModule(RolloutBase):
 
         self.logger.info(
             f"Successfully loaded pre-trained policy_net {model_load['path']} with epoch: {model_load['epoch']}")
-
-    def init_video_env(self, mode="rgb_array"):
-        env_params = deepcopy(self.env_params)
-        env_params['render_mode'] = mode
-        env_params['training'] = False
-        env_params['seed'] = 5
-        env_params['data_path'] = self.run_params['data_path']
-
-        if env_params['env_type'] == 'cvrp':
-            env = CVRPEnv(**env_params)
-
-        elif env_params['env_type'] == 'tsp':
-            env = TSPEnv(**env_params)
-
-        else:
-            raise NotImplementedError
-
-        return env
 
     def _record_video(self, epoch):
         video_dir = self.run_params['logging']['result_folder_name'] + f'/videos/'
@@ -245,10 +226,9 @@ class PreTrainerModule(RolloutBase):
 
         reward = -torch.as_tensor(reward, device=self.device)
         val_tensor = torch.cat(val_lst, dim=-1)
+        # val_tensor: (batch, time)
         baseline = val_tensor
         adv = torch.broadcast_to(reward[:, None], val_tensor.shape) - baseline
-
-        # adv = (adv - adv.mean(dim=-1, keepdims=True)) / (adv.std(dim=-1, keepdims=True) + 1e-8)
 
         log_prob = torch.cat(prob_lst, dim=-1)
         p_loss = (adv.detach() * log_prob).sum(dim=-1).mean()

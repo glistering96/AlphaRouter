@@ -1,3 +1,4 @@
+from copy import deepcopy
 from logging import getLogger
 from pathlib import Path
 
@@ -7,7 +8,9 @@ from stable_baselines3.common.vec_env import VecNormalize
 
 from src.common.dataclass import rollout_result
 from src.common.utils import TimeEstimator, deepcopy_state, get_result_folder
-from src.env.cvrp_gym import CVRPEnv as Env
+from src.env.cvrp_gym import CVRPEnv as Env, CVRPEnv
+from src.env.routing_env import RoutingEnv
+from src.env.tsp_gym import TSPEnv
 from src.models.cvrp_model.models import CVRPModel
 from src.mcts import MCTS
 from src.models.routing_model import RoutingModel
@@ -47,8 +50,8 @@ class RolloutBase:
         self.device = device
 
         # Env
-        self.env = Env(**env_params)
-        # self.env = VecNormalize(self.env, norm_obs=False )
+        self.env_setup = RoutingEnv(self.env_params, self.run_params)
+        self.video_env = self.init_video_env()
 
         # Model
         self.model_params['device'] = device
@@ -59,7 +62,6 @@ class RolloutBase:
         self.epochs = 1
         self.best_score = float('inf')
         self.time_estimator = TimeEstimator()
-
 
     def _save_checkpoints(self, epoch, is_best=False):
         file_name = 'best' if is_best else epoch
@@ -101,9 +103,28 @@ class RolloutBase:
             epoch, self.run_params['epochs'], elapsed_time_str, remain_time_str))
         self.logger.info('=================================================================')
 
+    def init_video_env(self, mode="rgb_array"):
+        env_params = deepcopy(self.env_params)
+        env_params['render_mode'] = mode
+        env_params['training'] = False
+        env_params['seed'] = 5
+        env_params['data_path'] = self.run_params['data_path']
+
+        if env_params['env_type'] == 'cvrp':
+            env = CVRPEnv(**env_params)
+
+        elif env_params['env_type'] == 'tsp':
+            env = TSPEnv(**env_params)
+
+        else:
+            raise NotImplementedError
+
+        return env
+
     def run(self):
         # abstract method
         raise NotImplementedError
+
 
 def get_model(model_params):
     nn = model_params['nn']
@@ -124,6 +145,7 @@ def load_model(model_load, agent_params, device):
         model.load_state_dict(loaded_state_dict)
 
     return model
+
 
 def rollout_episode(env, agent_load_dir, agent_params, device, mcts_params):
     obs = env.reset()

@@ -20,7 +20,7 @@ def parse_args():
     # model params
     parser.add_argument("--nn", type=str, default='shared_mha', help="type of policy network to use")
     parser.add_argument("--embedding_dim", type=int, default=128, help="embedding dim of network")
-    parser.add_argument("--encoder_layer_num", type=int, default=2, help="encoder layer of network.")
+    parser.add_argument("--encoder_layer_num", type=int, default=4, help="encoder layer of network.")
     parser.add_argument("--qkv_dim", type=int, default=32, help="attention dim")
     parser.add_argument("--head_num", type=int, default=4, help="attention head dim")
     parser.add_argument("--C", type=int, default=10, help="C parameter that is applied to the tanh activation on the"
@@ -103,9 +103,9 @@ def run_pretrain(args):
 def run_am_test(args):
     env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args)
 
-    trainer = AMTesterModule(env_params=env_params,
+    tester = AMTesterModule(env_params=env_params,
                             model_params=model_params,
                             logger_params=logger_params,
                             run_params=run_params)
 
-    return trainer.run()
+    return tester.run()

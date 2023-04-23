@@ -85,7 +85,7 @@ if __name__ == '__main__':
     #         run_pretrain(args)
 
 
-    num_nodes = 20
+    num_nodes = 50
     args.env_type = 'tsp'
     args.num_nodes = num_nodes
     run_pretrain(args)

@@ -34,7 +34,7 @@ def _to_tensor(obs, device):
     tensor_obs = {k: None for k in obs.keys()}
 
     for k, v in obs.items():
-        if k != '_t':
+        if k != 't':
             if isinstance(v, np.ndarray):
                 tensor = torch.from_numpy(v).to(device)
                 tensor_obs[k] = tensor
