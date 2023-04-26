@@ -126,7 +126,8 @@ if __name__ == '__main__':
         "cpuct": [1.1, 2],
         'epochs': [495000, 500000],
         'env_type': ['tsp'],
-        'encoder_layer_num': [2]
+        'encoder_layer_num': [2],
+        'render_mode': [None]
     }
 
     run_parallel_test(param_dict, num_proc=1)

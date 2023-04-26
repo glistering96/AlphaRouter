@@ -27,7 +27,8 @@ def search_params(num_proc):
     hyper_param_dict = {
         'env_type':  ['tsp', 'cvrp'],
         'num_nodes': [20, 50, 100],
-        'result_dir' : ['pretrained_result']
+        'result_dir' : ['pretrained_result'],
+        'render_mode' : [None]
     }
     save_path = None
 
@@ -72,6 +73,4 @@ def search_params(num_proc):
 
 
 if __name__ == '__main__':
-    # search_params(2)
-    args = parse_args()
-    run_pretrain(args)
+    search_params(2)
