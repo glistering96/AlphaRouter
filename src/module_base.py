@@ -51,7 +51,7 @@ class RolloutBase:
 
         # Env
         self.env_setup = RoutingEnv(self.env_params, self.run_params)
-        self.video_env = self.init_video_env()
+        self.video_env = self.init_test_env()
 
         # Model
         self.model_params['device'] = device
@@ -103,9 +103,8 @@ class RolloutBase:
             epoch, self.run_params['epochs'], elapsed_time_str, remain_time_str))
         self.logger.info('=================================================================')
 
-    def init_video_env(self, mode="rgb_array"):
+    def init_test_env(self):
         env_params = deepcopy(self.env_params)
-        env_params['render_mode'] = mode
         env_params['training'] = False
         env_params['seed'] = 5
         env_params['data_path'] = self.run_params['data_path']

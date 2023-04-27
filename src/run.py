@@ -14,6 +14,7 @@ def parse_args():
     parser.add_argument("--env_type", type=str, default='cvrp', help="Type of environment to use")
     parser.add_argument("--num_nodes", type=int, default=20, help="Number of nodes in the test data generation")
     parser.add_argument("--num_depots", type=int, default=1, help="Number of depots in the test data generation")
+    parser.add_argument("--render_mode", type=str, default='rgb_array', help="Type of render for the environment")
     parser.add_argument("--step_reward", type=bool, default=False, help="whether to have step reward. If false, only the "
                                                                        "reward in the last transition will be returned")
 
