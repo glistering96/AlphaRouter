@@ -1,4 +1,5 @@
 import os.path
+import pickle
 import time
 
 import gymnasium as gym
@@ -70,13 +71,30 @@ class CVRPEnv(gym.Env):
 
         return xy, demands
 
+    def _load_data(self, filepath):
+        # data format: ([depot xy, node_xy, node_demand, capacity])
+        ext = filepath.split('.')[-1]
+
+        if ext == 'npz':
+            loaded_data = np.load(filepath)
+            xy = loaded_data['xy']
+            demands = loaded_data['demands']
+
+        elif ext == 'pkl':
+            with open(filepath, 'rb') as f:
+                depot_xy, node_xy, node_demand, capacity = pickle.load(f)
+                xy = np.array([depot_xy, node_xy], dtype=np.float32)
+                demands = np.array([[0, 1], node_demand], dtype=np.float32) / capacity
+
+        else:
+            raise ValueError(f"Invalid file extension for loading data: {ext}")
+        return xy, demands
+
     def _load_problem(self):
         file_path = f"{self.data_path}/cvrp/D_{self.num_depots}-N_{self.num_nodes}.npz"
 
         if os.path.isfile(file_path):
-            loaded_data = np.load(file_path)
-            xy = loaded_data['xy']
-            demands = loaded_data['demands']
+            xy, demands = self._load_data(file_path)
 
         else:
             xy = make_cord(1, self.num_depots, self.num_nodes)

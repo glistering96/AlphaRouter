@@ -1,4 +1,5 @@
 import os.path
+import pickle
 import time
 
 import gymnasium as gym
@@ -60,12 +61,29 @@ class TSPEnv(gym.Env):
 
         return xy
 
+    def _load_data(self, filepath):
+        # data format: (xy)
+        ext = filepath.split('.')[-1]
+
+        if ext == 'npz':
+            loaded_data = np.load(filepath)
+            xy = loaded_data['xy']
+
+        elif ext == 'pkl':
+            with open(filepath, 'rb') as f:
+                xy = pickle.load(f)
+
+            xy = np.array(xy, dtype=np.float32)
+
+        else:
+            raise ValueError(f"Invalid file extension for loading data: {ext}")
+        return xy
+
     def _load_problem(self):
         file_path = f"{self.data_path}/tsp/N_{self.num_nodes}.npz"
 
         if os.path.isfile(file_path):
-            loaded_data = np.load(file_path)
-            xy = loaded_data['xy']
+            xy = self._load_data(file_path)
 
         else:
             xy = make_cord(1, 0, self.num_nodes)
