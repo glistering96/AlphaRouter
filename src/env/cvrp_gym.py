@@ -54,6 +54,9 @@ class CVRPEnv(gym.Env):
 
         self.t = 0
 
+        self.test_data_type = kwargs.get('test_data_type')
+        self._load_data_idx = 0
+
     def seed(self, seed):
         self._np_random, self._seed = seeding.np_random(seed)
 
@@ -83,15 +86,22 @@ class CVRPEnv(gym.Env):
         elif ext == 'pkl':
             with open(filepath, 'rb') as f:
                 depot_xy, node_xy, node_demand, capacity = pickle.load(f)
-                xy = np.array([depot_xy, node_xy], dtype=np.float32)
+                xy = np.array([depot_xy, node_xy], dtype=np.float32)[self._load_data_idx, :]
                 demands = np.array([[0, 1], node_demand], dtype=np.float32) / capacity
+                demands = demands[self._load_data_idx, :]
+
+            self._load_data_idx += 1
 
         else:
             raise ValueError(f"Invalid file extension for loading data: {ext}")
         return xy, demands
 
     def _load_problem(self):
-        file_path = f"{self.data_path}/cvrp/D_{self.num_depots}-N_{self.num_nodes}.npz"
+        if self.test_data_type == 'npz':
+            file_path = f"{self.data_path}/cvrp/N_{self.num_nodes}.npz"
+
+        else:
+            file_path = f"{self.data_path}/cvrp/cvrp{self.num_nodes}_test_seed1234.pkl"
 
         if os.path.isfile(file_path):
             xy, demands = self._load_data(file_path)

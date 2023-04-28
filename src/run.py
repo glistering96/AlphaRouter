@@ -2,8 +2,8 @@ from argparse import ArgumentParser
 
 from src.common.utils import get_param_dict
 from src.pretrain_model.pretrainer_module import PreTrainerModule
-from src.tester import TesterModule
-from src.trainer import TrainerModule
+from src.mcts_tester import TesterModule
+from src.mcts_trainer import TrainerModule
 from src.pretrain_model.pretrain_tester import AMTesterModule
 
 
@@ -17,6 +17,7 @@ def parse_args():
     parser.add_argument("--render_mode", type=str, default='rgb_array', help="Type of render for the environment")
     parser.add_argument("--step_reward", type=bool, default=False, help="whether to have step reward. If false, only the "
                                                                        "reward in the last transition will be returned")
+    parser.add_argument("--test_data_type", type=str, default='npz', help="extension for test data file")
 
     # model params
     parser.add_argument("--nn", type=str, default='shared_mha', help="type of policy network to use")

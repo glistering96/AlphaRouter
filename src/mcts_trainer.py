@@ -17,7 +17,7 @@ from src.env.VecEnv import RoutingVecEnv
 from src.env.cvrp_gym import CVRPEnv
 from src.models.model_common import get_batch_tensor
 from src.module_base import RolloutBase, rollout_episode
-from src.tester import test_one_episode
+from src.mcts_tester import test_one_episode
 
 tb = None
 hparam_writer = None

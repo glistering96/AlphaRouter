@@ -255,6 +255,7 @@ def get_param_dict(args, use_mcts=False, copy_src=True):
     step_reward = args.step_reward
     env_type = args.env_type
     render_mode = args.render_mode
+    test_data_type = args.test_data_type
 
     # mcts params
     num_simulations = args.num_simulations
@@ -319,7 +320,8 @@ def get_param_dict(args, use_mcts=False, copy_src=True):
         'seed': seed,
         'step_reward': step_reward,
         'env_type': env_type,
-        'render_mode': render_mode
+        'render_mode': render_mode,
+        'test_data_type': test_data_type
 
     }
 

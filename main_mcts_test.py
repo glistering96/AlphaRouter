@@ -3,7 +3,7 @@ from pathlib import Path
 
 from src.common.utils import get_param_dict, parse_saved_model_dir, dict_product, check_debug
 from src.run import parse_args
-from src.tester import TesterModule
+from src.mcts_tester import TesterModule
 import torch.multiprocessing as mp
 
 
@@ -129,5 +129,5 @@ if __name__ == '__main__':
         'encoder_layer_num': [2],
         'render_mode': [None]
     }
-
-    run_parallel_test(param_dict, num_proc=1)
+    run_test(**{'epochs': 40000, 'test_data_type': 'pkl' })
+    # run_parallel_test(param_dict, num_proc=1)

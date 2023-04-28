@@ -49,9 +49,6 @@ class PreTrainerModule(RolloutBase):
         self.ent_coef = run_params['ent_coef']
         self.current_lr = optimizer_params['lr']
 
-        if Path('../data/mcts_train_data.pt').exists():
-            self.trainExamplesHistory = torch.load('../data/mcts_train_data.pt')
-
         if run_params['model_load']['enable'] is True:
             self._load_model(run_params['model_load'])
 

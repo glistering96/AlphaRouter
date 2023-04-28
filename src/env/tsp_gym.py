@@ -47,6 +47,9 @@ class TSPEnv(gym.Env):
         self.available = None
         self.t = 0
 
+        self.test_data_type = kwargs.get('test_data_type')
+        self._load_data_idx = 0
+
     def seed(self, seed):
         self._np_random, self._seed = seeding.np_random(seed)
 
@@ -73,14 +76,19 @@ class TSPEnv(gym.Env):
             with open(filepath, 'rb') as f:
                 xy = pickle.load(f)
 
-            xy = np.array(xy, dtype=np.float32)
+            xy = np.array(xy, dtype=np.float32)[self._load_data_idx, :]
+            self._load_data_idx += 1
 
         else:
             raise ValueError(f"Invalid file extension for loading data: {ext}")
         return xy
 
     def _load_problem(self):
-        file_path = f"{self.data_path}/tsp/N_{self.num_nodes}.npz"
+        if self.test_data_type == 'npz':
+            file_path = f"{self.data_path}/tsp/N_{self.num_nodes}.npz"
+
+        else:
+            file_path = f"{self.data_path}/tsp/tsp{self.num_nodes}_test_seed1234.pkl"
 
         if os.path.isfile(file_path):
             xy = self._load_data(file_path)
