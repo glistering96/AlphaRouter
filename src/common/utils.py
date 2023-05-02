@@ -279,8 +279,8 @@ def get_param_dict(args, use_mcts=False, copy_src=True):
     epochs = args.epochs
     num_episode = args.num_episode
     train_epochs = args.train_epochs
-    model_load = args.model_load
-    load_model = True if model_load is not None else False
+    epoch = args.load_epoch
+    load_model = True if epoch is not None else False
     cuda_device_num = args.gpu_id
     num_proc = args.num_proc
     lr = args.lr
@@ -381,7 +381,7 @@ def get_param_dict(args, use_mcts=False, copy_src=True):
 
         'model_load': {
             'enable': load_model,
-            'path': model_load
+            'epoch': epoch
         }
     }
 

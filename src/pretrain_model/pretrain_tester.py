@@ -16,36 +16,22 @@ class AMTesterModule(RolloutBase):
         self.debug_epoch = 0
 
         self._load_model(run_params['model_load']['path'])
-
-    def _load_model(self, path):
-        loaded = torch.load(path, map_location=self.device)
-
-        self.model.load_state_dict(loaded['model_state_dict'])
-        self.best_score = loaded['best_score']
-        self.logger.info(f"Successfully loaded pre-trained policy_net from {path}")
+        self.env = self.env_setup.create_env(test=False)
 
     def _record_video(self, epoch):
-        mode = "rgb_array"
-        video_dir = self.run_params['logging']['result_folder_name'] + f'/videos/'
-        data_path = self.run_params['data_path']
+        video_dir = self.result_folder + f'/videos/'
 
-        env_params = deepcopy(self.env_params)
-        env_params['render_mode'] = mode
-        env_params['training'] = False
-        env_params['seed'] = 5
-        env_params['data_path'] = data_path
-
-        env = CVRPEnv(**env_params)
-        env = RecordVideo(env, video_dir, name_prefix=str(epoch))
+        env = RecordVideo(self.video_env, video_dir, name_prefix=str(epoch))
 
         # render and interact with the environment as usual
         obs = env.reset()
         done = False
+        self.model.encoding = None
 
         with torch.no_grad():
             while not done:
-                action_probs = self.model(obs)
-                action = action_probs.argmax(-1)
+                # env.render()
+                action, _ = self.model.predict(obs)
                 obs, reward, done, truncated, info = env.step(int(action))
 
         # close the environment and the video recorder

@@ -50,30 +50,15 @@ class PreTrainerModule(RolloutBase):
         self.current_lr = optimizer_params['lr']
 
         if run_params['model_load']['enable'] is True:
-            self._load_model(run_params['model_load'])
+            self._load_model(run_params['model_load']['epoch'])
 
         self.debug_epoch = 0
 
         self.min_reward = float('inf')
         self.max_reward = float('-inf')
 
-    def _load_model(self, model_load):
-        checkpoint_fullname = '{path}/saved_models/checkpoint-{epoch}.pt'.format(**model_load)
-        checkpoint = torch.load(checkpoint_fullname, map_location=self.device)
-
-        self.start_epoch = checkpoint['epoch'] + 1
-        self.best_score = checkpoint['best_score']
-
-        loaded_state_dict = checkpoint['model_state_dict']
-        self.model.load_state_dict(loaded_state_dict)
-
-        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-
-        self.logger.info(
-            f"Successfully loaded pre-trained policy_net {model_load['path']} with epoch: {model_load['epoch']}")
-
     def _record_video(self, epoch):
-        video_dir = self.run_params['logging']['result_folder_name'] + f'/videos/'
+        video_dir = self.result_folder + f'/videos/'
 
         env = RecordVideo(self.video_env, video_dir, name_prefix=str(epoch))
 
