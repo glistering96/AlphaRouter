@@ -23,7 +23,7 @@ logger.addHandler(stream_handler)
 
 class AsyncVecEnv:
     def __init__(self,
-                 env_fns: Callable[[gym.Env], TSPEnv],
+                 env_fns: Callable[[], gym.Env],
                  num_envs: int = 256,
                  env_kwargs=None,
                  num_processes:int = None,
