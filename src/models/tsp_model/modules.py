@@ -1,7 +1,7 @@
 import torch.nn as nn
 
 # Encoder model related
-from src.models.model_common import AttentionLayer, reshape_by_heads, multi_head_attention
+from src.models.model_common import AttentionLayer, multi_head_attention
 
 
 class Decoder(nn.Module):
@@ -24,8 +24,8 @@ class Decoder(nn.Module):
         self.k, self.v = None, None
 
     def set_kv(self, encoding):
-        self.k = reshape_by_heads(self.Wk(encoding), head_num=self.head_num)
-        self.v = reshape_by_heads(self.Wv(encoding), head_num=self.head_num)
+        self.k = self.Wk(encoding)
+        self.v = self.Wv(encoding)
 
         # shape: (batch, head_num, problem+1, qkv_dim)
         self.single_head_key = encoding.transpose(1, 2)
@@ -39,9 +39,7 @@ class Decoder(nn.Module):
         :return:
         """
         B, N = cur_node_encoding.shape[:2]
-        _in_tf = self.Wq_last(cur_node_encoding)
-
-        q = reshape_by_heads(_in_tf, head_num=self.head_num)
+        q = self.Wq_last(cur_node_encoding)
         # (batch, N, embedding)
 
         out_concat = multi_head_attention(q, self.k, self.v, mask)

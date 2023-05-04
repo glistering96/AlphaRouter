@@ -265,6 +265,7 @@ class CVRPEnv(gym.Env):
         if self.render_mode is None:
             return
 
+        import pygame
         assert self.screen is not None, "render mode setting is wrong"
 
         canvas = pygame.Surface((self.screen_width, self.screen_height))
@@ -337,6 +338,7 @@ class CVRPEnv(gym.Env):
 
     def close(self):
         if self.screen is not None:
+            import pygame
             pygame.quit()
 
     def set_test_mode(self):

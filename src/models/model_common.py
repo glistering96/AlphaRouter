@@ -82,9 +82,9 @@ class EncoderLayer(nn.Module):
         B, N, E = input1.size()
         head_num = self.model_params['head_num']
 
-        q = reshape_by_heads(self.Wq(input1), head_num=head_num)
-        k = reshape_by_heads(self.Wk(input1), head_num=head_num)
-        v = reshape_by_heads(self.Wv(input1), head_num=head_num)
+        q = self.Wq(input1)
+        k = self.Wk(input1)
+        v = self.Wv(input1)
         # qkv shape: (batch, head_num, problem, qkv_dim)
 
         out_concat = multi_head_attention(q, k, v)
@@ -120,10 +120,11 @@ class AttentionLayer(nn.Module):
     def forward(self, input1):
         # input1.shape: (batch, problem+1, embedding)
         head_num = self.model_params['head_num']
+        B, N, E = input1.size()
 
-        q = reshape_by_heads(self.Wq(input1), head_num=head_num)
-        k = reshape_by_heads(self.Wk(input1), head_num=head_num)
-        v = reshape_by_heads(self.Wv(input1), head_num=head_num)
+        q = self.Wq(input1)
+        k = self.Wk(input1)
+        v = self.Wv(input1)
         # qkv shape: (batch, head_num, problem, qkv_dim)
 
         # out_concat = multi_head_attention(q, k, v)
@@ -180,19 +181,19 @@ class FeedForward(nn.Module):
         return self.W2(F.relu(self.W1(input1)))
 
 
-def reshape_by_heads(qkv, head_num):
-    # q.shape: (batch, n, head_num*key_dim)   : n can be either 1 or PROBLEM_SIZE
-
-    batch_s = qkv.size(0)
-    n = qkv.size(1)
-
-    q_reshaped = qkv.reshape(batch_s, n, head_num, -1)
-    # shape: (batch, n, head_num, key_dim)
-
-    q_transposed = q_reshaped.transpose(1, 2)
-    # shape: (batch, head_num, n, key_dim)
-
-    return q_transposed
+# def reshape_by_heads(qkv, head_num):
+#     # q.shape: (batch, n, head_num*key_dim)   : n can be either 1 or PROBLEM_SIZE
+#
+#     batch_s = qkv.size(0)
+#     n = qkv.size(1)
+#
+#     q_reshaped = qkv.reshape(batch_s, n, head_num, -1)
+#     # shape: (batch, n, head_num, key_dim)
+#
+#     q_transposed = q_reshaped.transpose(1, 2)
+#     # shape: (batch, head_num, n, key_dim)
+#
+#     return q_transposed
 
 
 def multi_head_attention(q, k, v, mask=None):

@@ -1,3 +1,5 @@
+import math
+
 from torch.distributions import Categorical
 
 from src.models.cvrp_model.modules import *
