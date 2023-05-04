@@ -88,11 +88,14 @@ def search_params(num_proc):
 if __name__ == '__main__':
     # search_params(3)
     env_type = 'tsp'
-    num_nodes = 20
+    num_nodes = 100
     result_dir = 'pretrained_result'
+    name_prefix = 'torch_attn'
     render_mode = None
-    epochs = 10000
+    epochs = 500
+    num_episode = 512
 
     start = time.time()
-    _work(env_type=env_type, num_nodes=num_nodes, result_dir=result_dir, render_mode=render_mode, epochs=epochs)
+    _work(env_type=env_type, num_nodes=num_nodes, result_dir=result_dir, name_prefix=name_prefix,
+          render_mode=render_mode, epochs=epochs, num_episode=num_episode)
     print(f"Time taken: {time.time() - start}")
