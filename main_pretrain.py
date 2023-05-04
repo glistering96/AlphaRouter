@@ -93,8 +93,8 @@ if __name__ == '__main__':
     'result_dir' : 'pretrained_result',
     'name_prefix' : 'torch_attn',
     'render_mode' : None,
-    'epochs' : 500,
-    'num_episode' : 512,
+    'epochs' : 250,
+    'num_episode' : 256,
     'qkv_dim' :  64
     }
     start = time.time()
