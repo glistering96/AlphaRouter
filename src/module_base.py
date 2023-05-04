@@ -4,15 +4,13 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from stable_baselines3.common.vec_env import VecNormalize
 
-from src.common.dataclass import rollout_result
-from src.common.utils import TimeEstimator, deepcopy_state, get_result_folder
-from src.env.cvrp_gym import CVRPEnv as Env, CVRPEnv
+from src.common.utils import TimeEstimator
+from src.env.cvrp_gymnasium import CVRPEnv
 from src.env.routing_env import RoutingEnv
-from src.env.tsp_gym import TSPEnv
-from src.models.cvrp_model.models import CVRPModel
+from src.env.tsp_gymnasium import TSPEnv
 from src.mcts import MCTS
+from src.models.cvrp_model.models import CVRPModel
 from src.models.routing_model import RoutingModel
 
 
@@ -58,6 +56,9 @@ class RolloutBase:
 
         self.model = RoutingModel(self.model_params, self.env_params).create_model(self.env_params['env_type'])
 
+        # optimizer
+        self.optimizer = None
+
         # etc.
         self.epochs = 1
         self.best_score = float('inf')
@@ -81,16 +82,20 @@ class RolloutBase:
 
         torch.save(checkpoint_dict, '{}/saved_models/checkpoint-{}.pt'.format(self.result_folder, file_name))
 
-    def _load_model(self, model_load):
-        checkpoint = torch.load(model_load, map_location=self.device)
-        self.start_epoch = checkpoint['epoch'] + 1
+    def _load_model(self, epoch):
+        checkpoint_fullname = f'{self.result_folder}/saved_models/checkpoint-{epoch}.pt'
+        checkpoint = torch.load(checkpoint_fullname, map_location=self.device)
 
+        self.start_epoch = checkpoint['epoch'] + 1
         self.best_score = checkpoint['best_score']
 
         loaded_state_dict = checkpoint['model_state_dict']
         self.model.load_state_dict(loaded_state_dict)
 
-        self.logger.info(f"Successfully loaded pre-trained policy_net from {model_load}")
+        if self.optimizer is not None:
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+
+        self.logger.info(f"Successfully loaded pre-trained policy_net from {checkpoint_fullname}")
 
     def _log_info(self, epoch, train_score, total_loss, p_loss, val_loss, elapsed_time_str,
                   remain_time_str):

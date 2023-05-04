@@ -1,10 +1,10 @@
 from argparse import ArgumentParser
 
 from src.common.utils import get_param_dict
-from src.pretrain_model.pretrainer_module import PreTrainerModule
 from src.mcts_tester import TesterModule
 from src.mcts_trainer import TrainerModule
 from src.pretrain_model.pretrain_tester import AMTesterModule
+from src.pretrain_model.pretrainer_module import PreTrainerModule
 
 
 def parse_args():
@@ -41,7 +41,7 @@ def parse_args():
     parser.add_argument("--epochs", type=int, default=500000, help="number of training epochs")
     parser.add_argument("--train_epochs", type=int, default=10, help="train epochs")
     parser.add_argument("--num_episode", type=int, default=128, help="number of parallel episodes to run or collect")
-    parser.add_argument("--model_load", type=str, default=None, help="If value is greater than 0, it will load the model")
+    parser.add_argument("--load_epoch", type=int, default=None, help="If value is not None, it will load the model")
     parser.add_argument("--lr", type=float, default=0.0003, help="Learning rate of ADAM optimizer")
     parser.add_argument("--ent_coef", type=float, default=0.01, help="Coefficient for entropy regularizer")
     parser.add_argument("--gpu_id", type=int, default=0, help="Id of gpu to use")

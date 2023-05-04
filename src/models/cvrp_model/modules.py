@@ -1,10 +1,8 @@
-import math
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.models.model_common import AttentionLayer, reshape_by_heads, multi_head_attention
+from src.models.model_common import reshape_by_heads
 
 
 class Decoder(nn.Module):
@@ -23,8 +21,6 @@ class Decoder(nn.Module):
         self.Wq_last = nn.Linear(embedding_dim + 1, self.head_num * self.qkv_dim, bias=False)
         self.Wk = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
         self.Wv = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
-
-        self.layer = AttentionLayer(**model_params)
 
         self.k, self.v = None, None
 
@@ -51,7 +47,7 @@ class Decoder(nn.Module):
         q = reshape_by_heads(_in_tf, head_num=self.head_num)
         # (batch, N, embedding)
 
-        out_concat = multi_head_attention(q, self.k, self.v, mask)
+        out_concat = F.scaled_dot_product_attention(q, self.k, self.v, mask)
         # (batch, 1 or T, qkv*head_num)
 
         mh_atten_out = self.multi_head_combine(out_concat)

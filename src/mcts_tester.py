@@ -1,11 +1,11 @@
 import time
-from copy import  deepcopy
+
 import numpy as np
 import torch
 from gymnasium.wrappers import RecordVideo
-from src.env.cvrp_gym import CVRPEnv
+
 from src.mcts import MCTS
-from src.module_base import RolloutBase, rollout_episode
+from src.module_base import RolloutBase
 
 
 class TesterModule(RolloutBase):
@@ -25,17 +25,10 @@ class TesterModule(RolloutBase):
         self.min_reward = float('inf')
         self.max_reward = float('-inf')
 
-        self._load_model(run_params['model_load']['path'])
+        self._load_model(run_params['model_load']['epoch'])
 
         video_dir = self.run_params['logging']['result_folder_name'] + f'/videos/'
         self.test_env_with_vide = RecordVideo(self.env_setup.create_env(test=True), video_dir, name_prefix='test')
-
-    def _load_model(self, path):
-        loaded = torch.load(path, map_location=self.device)
-
-        self.model.load_state_dict(loaded['model_state_dict'])
-        self.best_score = loaded['best_score']
-        self.logger.info(f"Successfully loaded pre-trained policy_net from {path}")
 
     def run(self):
         self.time_estimator.reset(self.epochs)
