@@ -81,6 +81,7 @@ class EncoderLayer(nn.Module):
 
     def forward(self, input1):
         # input1.shape: (batch, problem+1, embedding)
+        B, N, E = input1.size()
         head_num = self.model_params['head_num']
 
         q = reshape_by_heads(self.Wq(input1), head_num=head_num)
@@ -91,7 +92,7 @@ class EncoderLayer(nn.Module):
         out_concat = F.scaled_dot_product_attention(q, k, v)
         # shape: (batch, problem, head_num*qkv_dim)
 
-        multi_head_out = self.multi_head_combine(out_concat)
+        multi_head_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
         # shape: (batch, problem, embedding)
 
         out1 = self.add_n_normalization_1(input1, multi_head_out)
@@ -131,7 +132,7 @@ class AttentionLayer(nn.Module):
         out_concat = F.scaled_dot_product_attention(q, k, v)
         # shape: (batch, problem, head_num*qkv_dim)
 
-        multi_head_out = self.multi_head_combine(out_concat)
+        multi_head_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
         # shape: (batch, problem, embedding)
 
         out1 = self.add_n_normalization_1(input1, multi_head_out)

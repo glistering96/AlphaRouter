@@ -43,7 +43,7 @@ class Decoder(nn.Module):
         :param encoding: (B, N, d)
         :return:
         """
-
+        B, N = cur_node_encoding.shape[:2]
         _in_tf = self.Wq_last(cur_node_encoding)
 
         q = reshape_by_heads(_in_tf, head_num=self.head_num)
@@ -52,7 +52,7 @@ class Decoder(nn.Module):
         out_concat = multi_head_attention(q, self.k, self.v, mask)
         # (batch, 1 or T, qkv*head_num)
 
-        mh_atten_out = self.multi_head_combine(out_concat)
+        mh_atten_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
         # shape: (batch, 1 or T, embedding)
 
         return mh_atten_out

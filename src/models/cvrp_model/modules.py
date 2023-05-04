@@ -41,18 +41,20 @@ class Decoder(nn.Module):
         :param encoding: (B, N, d)
         :return:
         """
-
+        B, N = cur_node_encoding.shape[:2]
         load_embedding = load
         _in = torch.cat([cur_node_encoding, load_embedding[..., None]], -1)
         _in_tf = self.Wq_last(_in)
 
         q = reshape_by_heads(_in_tf, head_num=self.head_num)
         # (batch, N, embedding)
+        if mask.dim() == 2:
+            mask = mask[:, None, None, :]
 
-        out_concat = F.scaled_dot_product_attention(q, self.k, self.v, mask)
+        out_concat = F.scaled_dot_product_attention(q, self.k, self.v, attn_mask=mask)
         # (batch, 1 or T, qkv*head_num)
 
-        mh_atten_out = self.multi_head_combine(out_concat)
+        mh_atten_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
         # shape: (batch, 1 or T, embedding)
 
         return mh_atten_out

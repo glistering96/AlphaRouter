@@ -4,7 +4,7 @@ import time
 
 import gymnasium as gym
 import numpy as np
-import pygame as pygame
+
 from gym.spaces import Discrete, Dict, Box, MultiBinary
 from gymnasium.utils import seeding
 
@@ -124,6 +124,8 @@ class CVRPEnv(gym.Env):
 
     def _init_rendering(self):
         if self.render_mode is not None:
+            import pygame as pygame
+
             # Set screen dimensions
             self.screen_width = 900
             self.screen_height = 600
@@ -339,7 +341,8 @@ class CVRPEnv(gym.Env):
             )
 
     def close(self):
-        pygame.quit()
+        if self.screen is not None:
+            pygame.quit()
 
     def set_test_mode(self):
         self.training = False
