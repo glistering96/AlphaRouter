@@ -6,7 +6,7 @@ import numpy as np
 from src.env.tsp_gymnasium import TSPEnv
 import gymnasium as gym
 import multiprocessing as mp
-import multiprocessing.dummy as mpd
+from multiprocessing.pool import ThreadPool
 
 import logging
 import time
@@ -59,24 +59,11 @@ class AsyncVecEnv:
         else:
             to_do = [(i, None) for i in range(self.num_envs)]
 
-        if self.mp_type == 'p':
-            logger.debug(f"multiprocessing reset start")
-            st = time.time()
-
-            pool = mp.Pool(processes=self.num_processes)
-
-            results = pool.starmap(self._reset, to_do)
-
-            pool.close()
-            pool.join()
-
-            logger.debug(f"multiprocessing reset end, time: {time.time()-st}")
-
-        elif self.mp_type == 't':
+        if self.mp_type == 't':
             logger.debug(f"threading reset start")
             st = time.time()
 
-            pool = mpd.Pool(processes=self.num_processes)
+            pool = ThreadPool(processes=self.num_processes)
 
             results = pool.starmap(self._reset, to_do)
 
@@ -102,24 +89,11 @@ class AsyncVecEnv:
 
     def step(self, action: np.ndarray):
         # action: (num_envs, )
-        if self.mp_type == 'p':
-            logger.debug(f"multiprocessing step start")
-            st = time.time()
-
-            pool = mp.Pool(processes=self.num_processes)
-
-            results = pool.starmap(self._step, [(i, action[i]) for i in range(self.num_envs)])
-
-            pool.close()
-            pool.join()
-
-            logger.debug(f"multiprocessing step end, time: {time.time()-st}")
-
-        elif self.mp_type == 't':
+        if self.mp_type == 't':
             logger.debug(f"threading step start")
             st = time.time()
 
-            pool = mpd.Pool(processes=self.num_processes)
+            pool = ThreadPool(processes=self.num_processes)
 
             results = pool.starmap(self._step, [(i, action[i]) for i in range(self.num_envs)])
 
@@ -148,9 +122,8 @@ class AsyncVecEnv:
         return obs, rewards, dones, {}
 
 
-def run_exp(mp_type, env_params):
-    n_env = 2048
-    env = AsyncVecEnv(TSPEnv, env_kwargs=env_params, num_envs=n_env, num_processes=32)
+def run_exp(mp_type, env_params, n_env):
+    env = AsyncVecEnv(TSPEnv, env_kwargs=env_params, num_envs=n_env, num_processes=4)
     env.mp_type = mp_type
 
     logger.info(f"Exp using {mp_type}")
@@ -176,7 +149,7 @@ def run_exp(mp_type, env_params):
 
 if __name__ == '__main__':
     env_params = {
-        'num_nodes': 10,
+        'num_nodes': 100,
         'num_depots': 1,
         'seed': 1,
         'step_reward': False,
@@ -184,13 +157,14 @@ if __name__ == '__main__':
         'render_mode': None,
 
     }
+    n_env = 512
 
     for mp_type in ['t', 's']:
-        run_exp(mp_type, env_params)
+        run_exp(mp_type, env_params, n_env)
 
     from gymnasium.vector import SyncVectorEnv
 
-    env = SyncVectorEnv([lambda: TSPEnv(**env_params) for _ in range(2048)])
+    env = SyncVectorEnv([lambda: TSPEnv(**env_params) for _ in range(n_env)])
 
     logger.info(f"Exp using SyncVectorEnv")
 
@@ -202,7 +176,7 @@ if __name__ == '__main__':
     debug_action = 1
 
     while not done:
-        action = np.array([debug_action for _ in range(2048)])
+        action = np.array([debug_action for _ in range(n_env)])
         obs, rewards, dones, _, debugs = env.step(action)
 
         done = (dones == True).all()
@@ -210,5 +184,31 @@ if __name__ == '__main__':
         debug_action += 1
 
     logger.info(f"SyncVectorEnv time: {time.time() - st}")
+
+    from src.env.VecEnv import RoutingVecEnv
+    from src.env.tsp_gym import TSPEnv as TSPGymEnv
+
+    env = RoutingVecEnv([lambda: TSPGymEnv(**env_params) for _ in range(n_env)])
+
+    logger.info(f"Exp using VecEnv")
+
+    st = time.time()
+
+    env.reset()
+
+    done = False
+
+    debug_action = 1
+
+    while not done:
+        action = np.array([debug_action for _ in range(n_env)])
+        obs, rewards, dones, debugs = env.step(action)
+
+        done = (dones == True).all()
+
+        debug_action += 1
+
+    logger.info(f"VecEnv time: {time.time() - st}")
+
 
 
