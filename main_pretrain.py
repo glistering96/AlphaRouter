@@ -1,5 +1,7 @@
 import itertools
 import json
+import os
+import time
 from pathlib import Path
 
 from src.common.utils import dict_product
@@ -14,8 +16,21 @@ def _work(**kwargs):
     for k, v in kwargs.items():
         setattr(args, k, v)
 
-    save_path = f"./{args.result_dir}/{args.env_type}/{args.name_prefix}/N_{args.num_nodes}/nn-{args.nn}-{args.embedding_dim}-" \
+    save_path = f"./{args.result_dir}/{args.env_type}/{args.name_prefix}/N_{args.num_nodes}/{args.nn}-{args.embedding_dim}-" \
                 f"{args.encoder_layer_num}-{args.qkv_dim}-{args.head_num}-{args.C}"
+
+    saved_model_path = save_path + "/saved_models/"
+
+    # latest_epoch = max(
+    #     map(lambda x: int(x), list(
+    #         filter(lambda x: x.isdigit(), list(
+    #             map(lambda x: x.split('-')[1].split('.')[0], os.listdir(saved_model_path)))
+    #                )
+    #     )
+    #         )
+    # )
+
+    # args.model_load = latest_epoch
 
     score = run_pretrain(args)
     str_vals = [f"{name}_{val}" for name, val in zip(kwargs.keys(), kwargs.values())]
@@ -25,7 +40,7 @@ def _work(**kwargs):
 
 def search_params(num_proc):
     hyper_param_dict = {
-        'env_type':  ['tsp', 'cvrp'],
+        'env_type':  ['cvrp'],
         'num_nodes': [20, 50, 100],
         'result_dir' : ['pretrained_result'],
         'render_mode' : [None]
@@ -40,8 +55,6 @@ def search_params(num_proc):
     pool = mp.Pool(num_proc)
 
     for params in dict_product(hyper_param_dict):
-        if params['env_type'] == 'tsp' and params['num_nodes'] == 20:
-            continue
         pool.apply_async(_work, kwds=params, callback=__callback)
 
     pool.close()
@@ -73,4 +86,13 @@ def search_params(num_proc):
 
 
 if __name__ == '__main__':
-    search_params(2)
+    # search_params(3)
+    env_type = 'tsp'
+    num_nodes = 20
+    result_dir = 'pretrained_result'
+    render_mode = None
+    epochs = 10000
+
+    start = time.time()
+    _work(env_type=env_type, num_nodes=num_nodes, result_dir=result_dir, render_mode=render_mode, epochs=epochs)
+    print(f"Time taken: {time.time() - start}")
