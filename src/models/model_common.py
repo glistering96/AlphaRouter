@@ -65,13 +65,13 @@ class EncoderLayer(nn.Module):
         super().__init__()
         self.model_params = model_params
         embedding_dim = self.model_params['embedding_dim']
-        head_num = self.model_params['head_num']
-        qkv_dim = self.model_params['qkv_dim']
+        self.head_num = self.model_params['head_num']
+        self.qkv_dim = self.model_params['qkv_dim']
 
-        self.Wq = nn.Linear(embedding_dim, head_num * qkv_dim, bias=False)
-        self.Wk = nn.Linear(embedding_dim, head_num * qkv_dim, bias=False)
-        self.Wv = nn.Linear(embedding_dim, head_num * qkv_dim, bias=False)
-        self.multi_head_combine = nn.Linear(head_num * qkv_dim, embedding_dim)
+        self.Wq = nn.Linear(embedding_dim, self.head_num  * self.qkv_dim, bias=False)
+        self.Wk = nn.Linear(embedding_dim, self.head_num  * self.qkv_dim, bias=False)
+        self.Wv = nn.Linear(embedding_dim, self.head_num  * self.qkv_dim, bias=False)
+        self.multi_head_combine = nn.Linear(self.head_num  * self.qkv_dim, embedding_dim)
 
         self.add_n_normalization_1 = AddAndInstanceNormalization(**model_params)
         self.feed_forward = FeedForward(**model_params)
