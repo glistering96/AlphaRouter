@@ -1,7 +1,6 @@
 import torch.nn as nn
 
 # Encoder model related
-from src.models.model_common import AttentionLayer
 import torch.nn.functional as F
 
 
