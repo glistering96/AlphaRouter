@@ -1,6 +1,5 @@
 import os.path
 import pickle
-import time
 
 import gymnasium as gym
 import numpy as np
@@ -188,7 +187,7 @@ class CVRPEnv(gym.Env):
 
         obs = self._get_obs()
 
-        return obs
+        return obs, {}
 
     def _is_on_depot(self):
         return self.pos == 0
@@ -235,11 +234,7 @@ class CVRPEnv(gym.Env):
 
         obs = self._get_obs()
 
-        if self.training:
-            return obs, reward, done, info
-
-        else:
-            return obs, reward, done, False, info
+        return obs, reward, done, False, info
 
     def _is_done(self):
         done_flag = (self.visited[:] == True).all()

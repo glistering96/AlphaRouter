@@ -51,7 +51,6 @@ def create_problem(env_type, num_depots, num_nodes, num_rollouts):
 
 if __name__ == '__main__':
     # print(make_demands(1, 1, 20).shape)
-    from pathlib import Path
     for num_nodes in [20, 50, 100, 500, 1000]:
         num_depots = 1
         env_type = 'tsp'

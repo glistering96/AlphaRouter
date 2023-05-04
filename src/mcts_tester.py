@@ -1,11 +1,11 @@
 import time
-from copy import  deepcopy
+
 import numpy as np
 import torch
 from gymnasium.wrappers import RecordVideo
-from src.env.cvrp_gym import CVRPEnv
+
 from src.mcts import MCTS
-from src.module_base import RolloutBase, rollout_episode
+from src.module_base import RolloutBase
 
 
 class TesterModule(RolloutBase):

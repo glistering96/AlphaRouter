@@ -1,10 +1,10 @@
 from argparse import ArgumentParser
 
 from src.common.utils import get_param_dict
-from src.pretrain_model.pretrainer_module import PreTrainerModule
 from src.mcts_tester import TesterModule
 from src.mcts_trainer import TrainerModule
 from src.pretrain_model.pretrain_tester import AMTesterModule
+from src.pretrain_model.pretrainer_module import PreTrainerModule
 
 
 def parse_args():

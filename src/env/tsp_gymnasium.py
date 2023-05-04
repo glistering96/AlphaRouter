@@ -1,6 +1,5 @@
 import os.path
 import pickle
-import time
 
 import gymnasium as gym
 import numpy as np
@@ -8,7 +7,7 @@ import pygame as pygame
 from gymnasium.spaces import Discrete, Dict, Box, MultiBinary
 from gymnasium.utils import seeding
 
-from src.common.data_manipulator import make_cord, make_demands
+from src.common.data_manipulator import make_cord
 from src.common.utils import cal_distance
 
 
@@ -276,21 +275,3 @@ class TSPEnv(gym.Env):
 
     def set_test_mode(self):
         self.training = False
-
-
-if __name__ == '__main__':
-    done = False
-    env = TSPEnv(10)
-    from src.env.VecEnv import RoutingVecEnv
-    from stable_baselines3.common.env_util import make_vec_env
-
-    env = make_vec_env(TSPEnv, n_envs=1, env_kwargs={'num_nodes': 10}, vec_env_cls=RoutingVecEnv)
-    obs = env.reset()
-    # mask = env.get_avail_mask()[0].astype(np.int8)
-
-    while not done:
-        action = np.array([env.action_space.sample()], dtype=int)
-        obs, reward, done, info = env.step(action)
-        # mask = env.get_avail_mask()[0].astype(np.int8)
-
-    print(reward)
