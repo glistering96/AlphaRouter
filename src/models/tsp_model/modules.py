@@ -20,13 +20,12 @@ class Decoder(nn.Module):
         self.Wk = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
         self.Wv = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
 
-        self.layer = AttentionLayer(**model_params)
-
         self.k, self.v = None, None
 
     def set_kv(self, encoding):
-        self.k = self.Wk(encoding)
-        self.v = self.Wv(encoding)
+        B, N, _ = encoding.shape
+        self.k = self.Wk(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        self.v = self.Wv(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
 
         # shape: (batch, head_num, problem+1, qkv_dim)
         self.single_head_key = encoding.transpose(1, 2)
@@ -40,7 +39,7 @@ class Decoder(nn.Module):
         :return:
         """
         B, N = cur_node_encoding.shape[:2]
-        q = self.Wq_last(cur_node_encoding)
+        q = self.Wq_last(cur_node_encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
         # (batch, N, embedding)
 
         if mask.dim() == 2:

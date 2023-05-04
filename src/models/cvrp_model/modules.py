@@ -23,10 +23,12 @@ class Decoder(nn.Module):
         self.k, self.v = None, None
 
     def set_kv(self, encoding):
-        self.k = self.Wk(encoding)
-        self.v = self.Wv(encoding)
+        B, N, _ = encoding.shape
 
+        self.k = self.Wk(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        self.v = self.Wv(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
         # shape: (batch, head_num, problem+1, qkv_dim)
+
         self.single_head_key = encoding.transpose(1, 2)
         # shape: (batch, embedding, problem+1)
 
@@ -40,7 +42,7 @@ class Decoder(nn.Module):
         B, N = cur_node_encoding.shape[:2]
         load_embedding = load
         _in = torch.cat([cur_node_encoding, load_embedding[..., None]], -1)
-        q = self.Wq_last(_in)
+        q = self.Wq_last(_in).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
         # (batch, N, embedding)
 
         if mask.dim() == 2:

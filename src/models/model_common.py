@@ -82,9 +82,9 @@ class EncoderLayer(nn.Module):
         B, N, E = input1.size()
         head_num = self.model_params['head_num']
 
-        q = self.Wq(input1)
-        k = self.Wk(input1)
-        v = self.Wv(input1)
+        q = self.Wq(input1).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        k = self.Wk(input1).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        v = self.Wv(input1).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
         # qkv shape: (batch, head_num, problem, qkv_dim)
 
         out_concat = F.scaled_dot_product_attention(q, k, v)
@@ -98,48 +98,6 @@ class EncoderLayer(nn.Module):
         out3 = self.add_n_normalization_2(out1, out2)
 
         return out3
-
-
-class AttentionLayer(nn.Module):
-    def __init__(self, **model_params):
-        super().__init__()
-        self.model_params = model_params
-        embedding_dim = self.model_params['embedding_dim']
-        head_num = self.model_params['head_num']
-        qkv_dim = self.model_params['qkv_dim']
-
-        self.Wq = nn.Linear(embedding_dim, head_num * qkv_dim, bias=False)
-        self.Wk = nn.Linear(embedding_dim, head_num * qkv_dim, bias=False)
-        self.Wv = nn.Linear(embedding_dim, head_num * qkv_dim, bias=False)
-        self.multi_head_combine = nn.Linear(head_num * qkv_dim, embedding_dim)
-
-        self.add_n_normalization_1 = AddAndInstanceNormalization(**model_params)
-        self.feed_forward = FeedForward(**model_params)
-        self.add_n_normalization_2 = AddAndInstanceNormalization(**model_params)
-
-    def forward(self, input1):
-        # input1.shape: (batch, problem+1, embedding)
-        head_num = self.model_params['head_num']
-        B, N, E = input1.size()
-
-        q = self.Wq(input1)
-        k = self.Wk(input1)
-        v = self.Wv(input1)
-        # qkv shape: (batch, head_num, problem, qkv_dim)
-
-        # out_concat = multi_head_attention(q, k, v)
-        out_concat = F.scaled_dot_product_attention(q, k, v)
-        # shape: (batch, problem, head_num*qkv_dim)
-
-        multi_head_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
-        # shape: (batch, problem, embedding)
-
-        out1 = self.add_n_normalization_1(input1, multi_head_out)
-        out2 = self.feed_forward(out1)
-        out3 = self.add_n_normalization_2(out1, out2)
-
-        return out3
-        # shape: (batch, problem, embedding)
 
 
 class AddAndInstanceNormalization(nn.Module):
