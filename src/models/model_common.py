@@ -87,7 +87,7 @@ class EncoderLayer(nn.Module):
         v = self.Wv(input1)
         # qkv shape: (batch, head_num, problem, qkv_dim)
 
-        out_concat = multi_head_attention(q, k, v)
+        out_concat = F.scaled_dot_product_attention(q, k, v)
         # shape: (batch, problem, head_num*qkv_dim)
 
         multi_head_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
@@ -196,39 +196,39 @@ class FeedForward(nn.Module):
 #     return q_transposed
 
 
-def multi_head_attention(q, k, v, mask=None):
-    # q shape: (batch, head_num, N, key_dim)
-    # k,v shape: (batch, head_num, N, key_dim)
-    # mask.shape: (batch, N)
-
-    batch_s = q.size(0)
-    head_num = q.size(1)
-    n = q.size(2)
-    key_dim = q.size(3)
-    input_s = k.size(2)
-
-    score = torch.matmul(q, k.transpose(2, 3))
-    # shape: (batch, head_num, n, problem)
-
-    score_scaled = score / torch.sqrt(torch.tensor(key_dim, dtype=torch.float))
-
-    if mask is not None:
-        if mask.dim() == 2:
-            score_scaled = score_scaled + mask[:, None, None, :].expand(batch_s, head_num, n, input_s)
-
-        elif mask.dim() == 3:
-            score_scaled = score_scaled + mask[:, None, :, :].expand(batch_s, head_num, n, input_s)
-
-    weights = nn.Softmax(dim=-1)(score_scaled)
-    # shape: (batch, head_num, n, problem)
-
-    out = torch.matmul(weights, v)
-    # shape: (batch, head_num, n, key_dim)
-
-    out_transposed = out.transpose(1, 2)
-    # shape: (batch, n, head_num, key_dim)
-
-    out_concat = out_transposed.reshape(batch_s, n, head_num * key_dim)
-    # shape: (batch, n, head_num*key_dim)
-
-    return out_concat
+# def multi_head_attention(q, k, v, mask=None):
+#     # q shape: (batch, head_num, N, key_dim)
+#     # k,v shape: (batch, head_num, N, key_dim)
+#     # mask.shape: (batch, N)
+#
+#     batch_s = q.size(0)
+#     head_num = q.size(1)
+#     n = q.size(2)
+#     key_dim = q.size(3)
+#     input_s = k.size(2)
+#
+#     score = torch.matmul(q, k.transpose(2, 3))
+#     # shape: (batch, head_num, n, problem)
+#
+#     score_scaled = score / torch.sqrt(torch.tensor(key_dim, dtype=torch.float))
+#
+#     if mask is not None:
+#         if mask.dim() == 2:
+#             score_scaled = score_scaled + mask[:, None, None, :].expand(batch_s, head_num, n, input_s)
+#
+#         elif mask.dim() == 3:
+#             score_scaled = score_scaled + mask[:, None, :, :].expand(batch_s, head_num, n, input_s)
+#
+#     weights = nn.Softmax(dim=-1)(score_scaled)
+#     # shape: (batch, head_num, n, problem)
+#
+#     out = torch.matmul(weights, v)
+#     # shape: (batch, head_num, n, key_dim)
+#
+#     out_transposed = out.transpose(1, 2)
+#     # shape: (batch, n, head_num, key_dim)
+#
+#     out_concat = out_transposed.reshape(batch_s, n, head_num * key_dim)
+#     # shape: (batch, n, head_num*key_dim)
+#
+#     return out_concat
