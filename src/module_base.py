@@ -6,9 +6,9 @@ import numpy as np
 import torch
 
 from src.common.utils import TimeEstimator
-from src.env.cvrp_gymnasium import CVRPEnv
+from src.env.gymnasium.cvrp_gymnasium import CVRPEnv
 from src.env.routing_env import RoutingEnv
-from src.env.tsp_gymnasium import TSPEnv
+from src.env.gymnasium.tsp_gymnasium import TSPEnv
 from src.mcts import MCTS
 from src.models.cvrp_model.models import CVRPModel
 from src.models.routing_model import RoutingModel

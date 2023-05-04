@@ -1,7 +1,7 @@
 from gymnasium.vector import SyncVectorEnv
 
-from src.env.cvrp_gymnasium import CVRPEnv
-from src.env.tsp_gymnasium import TSPEnv
+from src.env.gymnasium.cvrp_gymnasium import CVRPEnv
+from src.env.gymnasium.tsp_gymnasium import TSPEnv
 
 
 class RoutingEnv:
