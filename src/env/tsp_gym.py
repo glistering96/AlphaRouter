@@ -4,6 +4,7 @@ import time
 
 import gymnasium as gym
 import numpy as np
+import pygame as pygame
 from gym.spaces import Discrete, Dict, Box, MultiBinary
 from gymnasium.utils import seeding
 
@@ -107,7 +108,6 @@ class TSPEnv(gym.Env):
 
     def _init_rendering(self):
         if self.render_mode is not None:
-            import pygame
             # Set screen dimensions
             self.screen_width = 900
             self.screen_height = 600
@@ -276,8 +276,7 @@ class TSPEnv(gym.Env):
             )
 
     def close(self):
-        if self.screen is not None:
-            pygame.quit()
+        pygame.quit()
 
     def set_test_mode(self):
         self.training = False
