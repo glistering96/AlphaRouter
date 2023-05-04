@@ -1,6 +1,5 @@
 import os.path
 import pickle
-import time
 
 import gymnasium as gym
 import numpy as np
@@ -12,24 +11,29 @@ from src.common.data_manipulator import make_cord, make_demands
 from src.common.utils import cal_distance
 
 
-class TSPEnv(gym.Env):
+class CVRPEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 2}
 
-    def __init__(self, num_nodes,
-                 step_reward=False, render_mode=None, training=True, seed=None, data_path='./data', **kwargs):
-        super(TSPEnv, self).__init__()
-        self.action_size = num_nodes
+    def __init__(self, num_depots, num_nodes, step_reward=False, render_mode=None, training=True, seed=None, data_path='./data', **kwargs):
+        super(CVRPEnv, self).__init__()
+        self.action_size = num_nodes + num_depots
+        self.num_depots = num_depots
         self.num_nodes = num_nodes
         self.step_reward = step_reward
         self.training = training
         self.seed = seed
         self.data_path = data_path
-        self.env_type = 'tsp'
+        self.env_type = 'cvrp'
 
         self.observation_space = Dict(
             {
                 "xy": Box(0.0, 1.0, (self.action_size, 2), dtype=np.float32),
+                "demands": Box(
+                    low=np.array([0.0 for _ in range(self.action_size)], dtype=np.float32),
+                    high=np.array([0.0] + [1.0 for _ in range(num_nodes)], dtype=np.float32),
+                    dtype=np.float32),
                 "pos": Discrete(self.action_size),
+                "load": Box(0, 1, (1, ), dtype=np.float32),
                 "available": MultiBinary(self.action_size)
              }
         )
@@ -42,9 +46,11 @@ class TSPEnv(gym.Env):
         self.screen = None
 
         # observation fields
-        self.xy, self.pos, self.visited = None, None, None
+        self.xy, self.demand, self.pos, self.visited = None, None, None, None
         self.visiting_seq = None
+        self.load = None
         self.available = None
+
         self.t = 0
 
         self.test_data_type = kwargs.get('test_data_type')
@@ -54,61 +60,71 @@ class TSPEnv(gym.Env):
         self._np_random, self._seed = seeding.np_random(seed)
 
     def _get_obs(self):
-        return {"xy": self.xy, "pos": self.pos, "available": self.available, "t": self.t}
+        return {"xy": self.xy, "demands": self.demand, "pos": self.pos, "load": self.load,
+                "available": self.available, "t": self.t}
 
-    def _make_problems(self, num_rollouts, num_nodes):
-        xy = make_cord(num_rollouts, 0, num_nodes)
+    def _make_problems(self, num_rollouts, num_depots, num_nodes):
+        xy = make_cord(num_rollouts, num_depots, num_nodes)
+        demands = make_demands(num_rollouts, num_depots, num_nodes)
 
         if num_rollouts == 1:
             xy = xy.squeeze(0)
+            demands = demands.squeeze(0)
 
-        return xy
+        return xy, demands
 
     def _load_data(self, filepath):
-        # data format: (xy)
+        # data format: ([depot xy, node_xy, node_demand, capacity])
         ext = filepath.split('.')[-1]
 
         if ext == 'npz':
             loaded_data = np.load(filepath)
             xy = loaded_data['xy']
+            demands = loaded_data['demands']
 
         elif ext == 'pkl':
             with open(filepath, 'rb') as f:
-                xy = pickle.load(f)
+                depot_xy, node_xy, node_demand, capacity = pickle.load(f)
+                xy = np.array([depot_xy, node_xy], dtype=np.float32)[self._load_data_idx, :]
+                demands = np.array([[0, 1], node_demand], dtype=np.float32) / capacity
+                demands = demands[self._load_data_idx, :]
 
-            xy = np.array(xy, dtype=np.float32)[self._load_data_idx, :]
             self._load_data_idx += 1
 
         else:
             raise ValueError(f"Invalid file extension for loading data: {ext}")
-        return xy
+        return xy, demands
 
     def _load_problem(self):
         if self.test_data_type == 'npz':
-            file_path = f"{self.data_path}/tsp/N_{self.num_nodes}.npz"
+            file_path = f"{self.data_path}/cvrp/N_{self.num_nodes}.npz"
 
         else:
-            file_path = f"{self.data_path}/tsp/tsp{self.num_nodes}_test_seed1234.pkl"
+            file_path = f"{self.data_path}/cvrp/cvrp{self.num_nodes}_test_seed1234.pkl"
 
         if os.path.isfile(file_path):
-            xy = self._load_data(file_path)
+            xy, demands = self._load_data(file_path)
 
         else:
-            xy = make_cord(1, 0, self.num_nodes)
+            xy = make_cord(1, self.num_depots, self.num_nodes)
+            demands = make_demands(1, self.num_depots, self.num_nodes)
 
             if not os.path.exists(self.data_path):
                 os.makedirs(self.data_path, exist_ok=True)
 
-            np.savez_compressed(file_path, xy=xy, demands=None)
+            np.savez_compressed(file_path, xy=xy, demands=demands)
 
         if xy.ndim == 3:
             xy = xy.reshape(-1, 2)
 
-        return xy
+        demands = demands.reshape(-1,)
+
+        return xy, demands
 
     def _init_rendering(self):
         if self.render_mode is not None:
             import pygame as pygame
+
             # Set screen dimensions
             self.screen_width = 900
             self.screen_height = 600
@@ -152,16 +168,17 @@ class TSPEnv(gym.Env):
         super().reset(seed=seed)
 
         if self.training:
-            self.xy = self._make_problems(1, self.num_nodes)
+            self.xy, self.demand = self._make_problems(1, self.num_depots, self.num_nodes)
 
         else:
-            self.xy = self._load_problem()
+            self.xy, self.demand = self._load_problem()
 
         init_depot = 0
         self.pos = init_depot
         self.visited = np.zeros(self.action_size, dtype=bool)
         self.visited[self.pos] = True
         self.visiting_seq = []
+        self.load = np.ones(1, dtype=np.float32)
 
         self.visiting_seq.append(init_depot)
         self.available = np.ones(self.action_size, dtype=bool)
@@ -172,12 +189,16 @@ class TSPEnv(gym.Env):
 
         obs = self._get_obs()
 
-        return obs
+        return obs, {}
+
+    def _is_on_depot(self):
+        return self.pos == 0
 
     def step(self, action):
         # action: (1, )
 
-        assert action not in self.visiting_seq, f"visited nodes: {self.visiting_seq}, selected node: {action}"
+        if action != 0:
+            assert action not in self.visiting_seq, f"visited nodes: {self.visiting_seq}, selected node: {action}"
 
         # update the current pos
         self.pos = action
@@ -185,8 +206,24 @@ class TSPEnv(gym.Env):
         # append the visited node idx
         self.visiting_seq.append(action)
 
+        # check on depot
+        on_depot = self._is_on_depot()
+
+        # get the demands of the current node
+        demand = self.demand[action]
+
+        # update load
+        self.load -= demand
+
+        # if on depot, refill
+        if on_depot:
+            self.load = np.ones(1, dtype=np.float32)
+
         # update visited nodes
         self.visited[action] = True
+
+        if not on_depot:
+            self.visited[0] = False
 
         # assign avail to field
         self.available, done = self.get_avail_mask()
@@ -199,11 +236,7 @@ class TSPEnv(gym.Env):
 
         obs = self._get_obs()
 
-        if self.training:
-            return obs, reward, done, info
-
-        else:
-            return obs, reward, done, False, info
+        return obs, reward, done, False, info
 
     def _is_done(self):
         done_flag = (self.visited[:] == True).all()
@@ -213,7 +246,18 @@ class TSPEnv(gym.Env):
         # get a copy of avail
         avail = ~self.visited.copy()
 
+        # mark unavail for nodes that need more demands
+        unreachable = self.load < self.demand
+        avail[unreachable] = False
+
         done = self._is_done()
+
+        # depot is unavailable if finished
+        if done:
+            avail[0] = True
+
+        if not self._is_on_depot():
+            avail[0] = True
 
         return avail, done
 
@@ -248,12 +292,27 @@ class TSPEnv(gym.Env):
             else:
                 node_color = self.BLACK
 
+            # Round up demands to 3 decimal points
+            demand = np.round(self.demand[i], 3)
+
             # Draw node
             pygame.draw.circle(canvas, node_color, (x, y), self.node_size)
 
-            text_surface = self.node_font.render(f"{i}", True, self.WHITE)
+            # Draw demands text
+            # demands = i  # for debugging
+
+            if i == 0:  # DEPOT
+                i = "D"
+                demand = 1
+
+            text_surface = self.node_font.render(f"{i}:{demand:.3f}", True, self.WHITE)
             text_rect = text_surface.get_rect(center=(x, y))
             canvas.blit(text_surface, text_rect)
+
+        # Show current load
+        load_text = self.display_font.render("Load: {:.3f}".format(float(self.load)), True, self.BLACK)
+        load_rect = load_text.get_rect(topright=(self.screen_width - self.screen_width*0.05, self.screen_height*0.05))
+        canvas.blit(load_text, load_rect)
 
         # Current distance cal
         self.step_reward = True
@@ -262,7 +321,7 @@ class TSPEnv(gym.Env):
 
         # current dist show
         dist_text = self.display_font.render("Distance: {:.3f}".format(float(reward)), True, self.BLACK)
-        dist_rect = dist_text.get_rect(topright=(self.screen_width -  self.screen_width*0.1, self.screen_height*0.1))
+        dist_rect = load_text.get_rect(topright=(self.screen_width -  self.screen_width*0.1, self.screen_height*0.1))
         canvas.blit(dist_text, dist_rect)
 
         if self.render_mode == 'human':
@@ -282,21 +341,3 @@ class TSPEnv(gym.Env):
 
     def set_test_mode(self):
         self.training = False
-
-
-if __name__ == '__main__':
-    done = False
-    env = TSPEnv(10)
-    from src.env.VecEnv import RoutingVecEnv
-    from stable_baselines3.common.env_util import make_vec_env
-
-    env = make_vec_env(TSPEnv, n_envs=1, env_kwargs={'num_nodes': 10}, vec_env_cls=RoutingVecEnv)
-    obs = env.reset()
-    # mask = env.get_avail_mask()[0].astype(np.int8)
-
-    while not done:
-        action = np.array([env.action_space.sample()], dtype=int)
-        obs, reward, done, info = env.step(action)
-        # mask = env.get_avail_mask()[0].astype(np.int8)
-
-    print(reward)

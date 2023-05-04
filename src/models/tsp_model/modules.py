@@ -1,9 +1,4 @@
-import math
-
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
 
 # Encoder model related
 from src.models.model_common import AttentionLayer, reshape_by_heads, multi_head_attention

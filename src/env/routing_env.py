@@ -1,7 +1,7 @@
-from src.env.cvrp_gym import CVRPEnv
-from src.env.tsp_gym import TSPEnv
-from src.env.VecEnv import RoutingVecEnv
-from stable_baselines3.common.env_util import make_vec_env
+from gymnasium.vector import SyncVectorEnv
+
+from src.env.cvrp_gymnasium import CVRPEnv
+from src.env.tsp_gymnasium import TSPEnv
 
 
 class RoutingEnv:
@@ -23,11 +23,10 @@ class RoutingEnv:
 
         else:
             if env_type == 'tsp':
-                env = make_vec_env(TSPEnv, n_envs=num_episode, env_kwargs=self.env_params,
-                                   vec_env_cls=RoutingVecEnv)
+                env = SyncVectorEnv([lambda: TSPEnv(**self.env_params) for _ in range(num_episode)])
+
             elif env_type == 'cvrp':
-                env = make_vec_env(CVRPEnv, n_envs=num_episode, env_kwargs=self.env_params,
-                                   vec_env_cls=RoutingVecEnv)
+                env = SyncVectorEnv([lambda: TSPEnv(**self.env_params) for _ in range(num_episode)])
             else:
                 raise NotImplementedError
 

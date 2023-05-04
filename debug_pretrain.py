@@ -1,7 +1,6 @@
 import itertools
 import json
 import os
-import time
 from pathlib import Path
 
 from src.common.utils import dict_product
@@ -9,6 +8,7 @@ from src.run import parse_args, run_pretrain
 
 import torch.multiprocessing as mp
 
+from torch.nn.functional import scaled_dot_product_attention
 
 def _work(**kwargs):
     args = parse_args()
@@ -86,17 +86,15 @@ def search_params(num_proc):
 
 
 if __name__ == '__main__':
-    # search_params(3)
     params = {
     'env_type' : 'tsp',
-    'num_nodes' : 100,
+    'num_nodes' : 20,
     'result_dir' : 'pretrained_result',
     'name_prefix' : 'torch_attn',
     'render_mode' : None,
-    'epochs' : 500,
-    'num_episode' : 512,
-    'qkv_dim' :  64
+    'epochs' : 10,
+    'num_episode' : 10,
+    'qkv_dim' :  32
     }
-    start = time.time()
+
     _work(**params)
-    print(f"Time taken: {time.time() - start}")

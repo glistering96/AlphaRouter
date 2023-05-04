@@ -1,9 +1,7 @@
-import numpy as np
-import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from src.common.scaler import *
-import torch.nn.functional as F
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
@@ -89,7 +87,7 @@ class EncoderLayer(nn.Module):
         v = reshape_by_heads(self.Wv(input1), head_num=head_num)
         # qkv shape: (batch, head_num, problem, qkv_dim)
 
-        out_concat = F.scaled_dot_product_attention(q, k, v)
+        out_concat = multi_head_attention(q, k, v)
         # shape: (batch, problem, head_num*qkv_dim)
 
         multi_head_out = self.multi_head_combine(out_concat.reshape(B, N, -1))

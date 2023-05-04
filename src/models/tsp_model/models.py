@@ -1,8 +1,11 @@
+import math
+
+import torch
 from torch.distributions import Categorical
 
+from src.models.model_common import get_encoding, _to_tensor, EncoderLayer
 from src.models.tsp_model.modules import *
-from src.models.model_common import get_encoding, _to_tensor, layer_init, EncoderLayer
-
+import torch.nn.functional as F
 
 class TSPModel(nn.Module):
     def __init__(self, **model_params):

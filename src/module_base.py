@@ -4,15 +4,13 @@ from pathlib import Path
 
 import numpy as np
 import torch
-from stable_baselines3.common.vec_env import VecNormalize
 
-from src.common.dataclass import rollout_result
-from src.common.utils import TimeEstimator, deepcopy_state, get_result_folder
-from src.env.cvrp_gym import CVRPEnv as Env, CVRPEnv
+from src.common.utils import TimeEstimator
+from src.env.cvrp_gymnasium import CVRPEnv
 from src.env.routing_env import RoutingEnv
-from src.env.tsp_gym import TSPEnv
-from src.models.cvrp_model.models import CVRPModel
+from src.env.tsp_gymnasium import TSPEnv
 from src.mcts import MCTS
+from src.models.cvrp_model.models import CVRPModel
 from src.models.routing_model import RoutingModel
 
 

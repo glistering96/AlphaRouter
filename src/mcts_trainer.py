@@ -1,23 +1,21 @@
 import random
 from collections import deque
-from copy import copy, deepcopy
+from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
 import torch
-from torch.multiprocessing import Pool
 import torch.nn.functional as F
 from gymnasium.wrappers import RecordVideo
-from stable_baselines3.common.env_util import make_vec_env
+from torch.multiprocessing import Pool
 from torch.optim import Adam as Optimizer
 from torch.utils.tensorboard import SummaryWriter
 
 from src.common.utils import add_hparams, check_debug, explained_variance, parse_saved_model_dir
-from src.env.VecEnv import RoutingVecEnv
-from src.env.cvrp_gym import CVRPEnv
+from src.env.cvrp_gymnasium import CVRPEnv
+from src.mcts_tester import test_one_episode
 from src.models.model_common import get_batch_tensor
 from src.module_base import RolloutBase, rollout_episode
-from src.mcts_tester import test_one_episode
 
 tb = None
 hparam_writer = None
