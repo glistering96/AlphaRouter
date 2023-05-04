@@ -89,13 +89,13 @@ if __name__ == '__main__':
     # search_params(3)
     params = {
     'env_type' : 'tsp',
-    'num_nodes' : 100,
+    'num_nodes' : 20,
     'result_dir' : 'pretrained_result',
-    'name_prefix' : 'torch_attn',
+    'name_prefix' : 'torch_attn/',
     'render_mode' : None,
-    'epochs' : 250,
+    'epochs' : 5000,
     'num_episode' : 256,
-    'qkv_dim' :  64
+    'qkv_dim' :  32
     }
     start = time.time()
     _work(**params)
