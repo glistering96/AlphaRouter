@@ -1,18 +1,13 @@
 import json
-from copy import deepcopy
-from pathlib import Path
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from gymnasium.wrappers import RecordVideo
 from torch.optim import Adam as Optimizer
 from torch.utils.tensorboard import SummaryWriter
-import torch.nn.functional as F
 
 from src.common.lr_scheduler import CosineWarmupScheduler
-from src.env.cvrp_gym import CVRPEnv
-from src.env.routing_env import RoutingEnv
-from src.env.tsp_gym import TSPEnv
 from src.module_base import RolloutBase
 
 tb = None
@@ -63,7 +58,7 @@ class PreTrainerModule(RolloutBase):
         env = RecordVideo(self.video_env, video_dir, name_prefix=str(epoch))
 
         # render and interact with the environment as usual
-        obs = env.reset()
+        obs, _ = env.reset()
         done = False
         self.model.encoding = None
 
@@ -187,7 +182,7 @@ class PreTrainerModule(RolloutBase):
         done = False
         self.model.encoding = None
 
-        obs = self.env.reset()
+        obs, _ = self.env.reset()
         prob_lst = []
         entropy_lst = []
         val_lst = []
@@ -198,7 +193,7 @@ class PreTrainerModule(RolloutBase):
             probs = torch.distributions.Categorical(probs=action_probs)
             action = probs.sample()
 
-            obs, reward, dones, _ = self.env.step(action.detach().cpu().numpy())
+            obs, reward, dones, _, _ = self.env.step(action.detach().cpu().numpy())
 
             done = bool(np.all(dones == True))
 
@@ -206,7 +201,7 @@ class PreTrainerModule(RolloutBase):
             entropy_lst.append(probs.entropy()[:, None])
             val_lst.append(val[:, None])
 
-        reward = -torch.as_tensor(reward, device=self.device)
+        reward = -torch.as_tensor(reward, device=self.device, dtype=torch.float32)
         val_tensor = torch.cat(val_lst, dim=-1)
         # val_tensor: (batch, time)
         baseline = val_tensor

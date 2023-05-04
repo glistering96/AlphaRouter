@@ -1,7 +1,9 @@
+import math
+
 from torch.distributions import Categorical
 
 from src.models.cvrp_model.modules import *
-from src.models.model_common import get_encoding, _to_tensor, layer_init, EncoderLayer
+from src.models.model_common import get_encoding, _to_tensor, EncoderLayer
 
 
 class CVRPModel(nn.Module):

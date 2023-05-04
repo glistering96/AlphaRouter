@@ -1,10 +1,6 @@
-import math
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from src.models.model_common import reshape_by_heads
 
 
 class Decoder(nn.Module):
@@ -27,10 +23,12 @@ class Decoder(nn.Module):
         self.k, self.v = None, None
 
     def set_kv(self, encoding):
-        self.k = reshape_by_heads(self.Wk(encoding), head_num=self.head_num)
-        self.v = reshape_by_heads(self.Wv(encoding), head_num=self.head_num)
+        B, N, _ = encoding.shape
 
+        self.k = self.Wk(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        self.v = self.Wv(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
         # shape: (batch, head_num, problem+1, qkv_dim)
+
         self.single_head_key = encoding.transpose(1, 2)
         # shape: (batch, embedding, problem+1)
 
@@ -44,10 +42,9 @@ class Decoder(nn.Module):
         B, N = cur_node_encoding.shape[:2]
         load_embedding = load
         _in = torch.cat([cur_node_encoding, load_embedding[..., None]], -1)
-        _in_tf = self.Wq_last(_in)
-
-        q = reshape_by_heads(_in_tf, head_num=self.head_num)
+        q = self.Wq_last(_in).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
         # (batch, N, embedding)
+
         if mask.dim() == 2:
             mask = mask[:, None, None, :]
 

@@ -1,12 +1,7 @@
-import math
-
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
-
 
 # Encoder model related
-from src.models.model_common import AttentionLayer, reshape_by_heads, multi_head_attention
+import torch.nn.functional as F
 
 
 class Decoder(nn.Module):
@@ -24,13 +19,12 @@ class Decoder(nn.Module):
         self.Wk = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
         self.Wv = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
 
-        self.layer = AttentionLayer(**model_params)
-
         self.k, self.v = None, None
 
     def set_kv(self, encoding):
-        self.k = reshape_by_heads(self.Wk(encoding), head_num=self.head_num)
-        self.v = reshape_by_heads(self.Wv(encoding), head_num=self.head_num)
+        B, N, _ = encoding.shape
+        self.k = self.Wk(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        self.v = self.Wv(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
 
         # shape: (batch, head_num, problem+1, qkv_dim)
         self.single_head_key = encoding.transpose(1, 2)
@@ -44,12 +38,13 @@ class Decoder(nn.Module):
         :return:
         """
         B, N = cur_node_encoding.shape[:2]
-        _in_tf = self.Wq_last(cur_node_encoding)
-
-        q = reshape_by_heads(_in_tf, head_num=self.head_num)
+        q = self.Wq_last(cur_node_encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
         # (batch, N, embedding)
 
-        out_concat = multi_head_attention(q, self.k, self.v, mask)
+        if mask.dim() == 2:
+            mask = mask[:, None, None, :]
+
+        out_concat = F.scaled_dot_product_attention(q, self.k, self.v, mask)
         # (batch, 1 or T, qkv*head_num)
 
         mh_atten_out = self.multi_head_combine(out_concat.reshape(B, N, -1))

@@ -1,9 +1,7 @@
-import numpy as np
-import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from src.common.scaler import *
-import torch.nn.functional as F
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
@@ -67,13 +65,13 @@ class EncoderLayer(nn.Module):
         super().__init__()
         self.model_params = model_params
         embedding_dim = self.model_params['embedding_dim']
-        head_num = self.model_params['head_num']
-        qkv_dim = self.model_params['qkv_dim']
+        self.head_num = self.model_params['head_num']
+        self.qkv_dim = self.model_params['qkv_dim']
 
-        self.Wq = nn.Linear(embedding_dim, head_num * qkv_dim, bias=False)
-        self.Wk = nn.Linear(embedding_dim, head_num * qkv_dim, bias=False)
-        self.Wv = nn.Linear(embedding_dim, head_num * qkv_dim, bias=False)
-        self.multi_head_combine = nn.Linear(head_num * qkv_dim, embedding_dim)
+        self.Wq = nn.Linear(embedding_dim, self.head_num  * self.qkv_dim, bias=False)
+        self.Wk = nn.Linear(embedding_dim, self.head_num  * self.qkv_dim, bias=False)
+        self.Wv = nn.Linear(embedding_dim, self.head_num  * self.qkv_dim, bias=False)
+        self.multi_head_combine = nn.Linear(self.head_num  * self.qkv_dim, embedding_dim)
 
         self.add_n_normalization_1 = AddAndInstanceNormalization(**model_params)
         self.feed_forward = FeedForward(**model_params)
@@ -84,9 +82,9 @@ class EncoderLayer(nn.Module):
         B, N, E = input1.size()
         head_num = self.model_params['head_num']
 
-        q = reshape_by_heads(self.Wq(input1), head_num=head_num)
-        k = reshape_by_heads(self.Wk(input1), head_num=head_num)
-        v = reshape_by_heads(self.Wv(input1), head_num=head_num)
+        q = self.Wq(input1).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        k = self.Wk(input1).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        v = self.Wv(input1).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
         # qkv shape: (batch, head_num, problem, qkv_dim)
 
         out_concat = F.scaled_dot_product_attention(q, k, v)
@@ -100,47 +98,6 @@ class EncoderLayer(nn.Module):
         out3 = self.add_n_normalization_2(out1, out2)
 
         return out3
-
-
-class AttentionLayer(nn.Module):
-    def __init__(self, **model_params):
-        super().__init__()
-        self.model_params = model_params
-        embedding_dim = self.model_params['embedding_dim']
-        head_num = self.model_params['head_num']
-        qkv_dim = self.model_params['qkv_dim']
-
-        self.Wq = nn.Linear(embedding_dim, head_num * qkv_dim, bias=False)
-        self.Wk = nn.Linear(embedding_dim, head_num * qkv_dim, bias=False)
-        self.Wv = nn.Linear(embedding_dim, head_num * qkv_dim, bias=False)
-        self.multi_head_combine = nn.Linear(head_num * qkv_dim, embedding_dim)
-
-        self.add_n_normalization_1 = AddAndInstanceNormalization(**model_params)
-        self.feed_forward = FeedForward(**model_params)
-        self.add_n_normalization_2 = AddAndInstanceNormalization(**model_params)
-
-    def forward(self, input1):
-        # input1.shape: (batch, problem+1, embedding)
-        head_num = self.model_params['head_num']
-
-        q = reshape_by_heads(self.Wq(input1), head_num=head_num)
-        k = reshape_by_heads(self.Wk(input1), head_num=head_num)
-        v = reshape_by_heads(self.Wv(input1), head_num=head_num)
-        # qkv shape: (batch, head_num, problem, qkv_dim)
-
-        # out_concat = multi_head_attention(q, k, v)
-        out_concat = F.scaled_dot_product_attention(q, k, v)
-        # shape: (batch, problem, head_num*qkv_dim)
-
-        multi_head_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
-        # shape: (batch, problem, embedding)
-
-        out1 = self.add_n_normalization_1(input1, multi_head_out)
-        out2 = self.feed_forward(out1)
-        out3 = self.add_n_normalization_2(out1, out2)
-
-        return out3
-        # shape: (batch, problem, embedding)
 
 
 class AddAndInstanceNormalization(nn.Module):
@@ -182,54 +139,54 @@ class FeedForward(nn.Module):
         return self.W2(F.relu(self.W1(input1)))
 
 
-def reshape_by_heads(qkv, head_num):
-    # q.shape: (batch, n, head_num*key_dim)   : n can be either 1 or PROBLEM_SIZE
+# def reshape_by_heads(qkv, head_num):
+#     # q.shape: (batch, n, head_num*key_dim)   : n can be either 1 or PROBLEM_SIZE
+#
+#     batch_s = qkv.size(0)
+#     n = qkv.size(1)
+#
+#     q_reshaped = qkv.reshape(batch_s, n, head_num, -1)
+#     # shape: (batch, n, head_num, key_dim)
+#
+#     q_transposed = q_reshaped.transpose(1, 2)
+#     # shape: (batch, head_num, n, key_dim)
+#
+#     return q_transposed
 
-    batch_s = qkv.size(0)
-    n = qkv.size(1)
 
-    q_reshaped = qkv.reshape(batch_s, n, head_num, -1)
-    # shape: (batch, n, head_num, key_dim)
-
-    q_transposed = q_reshaped.transpose(1, 2)
-    # shape: (batch, head_num, n, key_dim)
-
-    return q_transposed
-
-
-def multi_head_attention(q, k, v, mask=None):
-    # q shape: (batch, head_num, N, key_dim)
-    # k,v shape: (batch, head_num, N, key_dim)
-    # mask.shape: (batch, N)
-
-    batch_s = q.size(0)
-    head_num = q.size(1)
-    n = q.size(2)
-    key_dim = q.size(3)
-    input_s = k.size(2)
-
-    score = torch.matmul(q, k.transpose(2, 3))
-    # shape: (batch, head_num, n, problem)
-
-    score_scaled = score / torch.sqrt(torch.tensor(key_dim, dtype=torch.float))
-
-    if mask is not None:
-        if mask.dim() == 2:
-            score_scaled = score_scaled + mask[:, None, None, :].expand(batch_s, head_num, n, input_s)
-
-        elif mask.dim() == 3:
-            score_scaled = score_scaled + mask[:, None, :, :].expand(batch_s, head_num, n, input_s)
-
-    weights = nn.Softmax(dim=-1)(score_scaled)
-    # shape: (batch, head_num, n, problem)
-
-    out = torch.matmul(weights, v)
-    # shape: (batch, head_num, n, key_dim)
-
-    out_transposed = out.transpose(1, 2)
-    # shape: (batch, n, head_num, key_dim)
-
-    out_concat = out_transposed.reshape(batch_s, n, head_num * key_dim)
-    # shape: (batch, n, head_num*key_dim)
-
-    return out_concat
+# def multi_head_attention(q, k, v, mask=None):
+#     # q shape: (batch, head_num, N, key_dim)
+#     # k,v shape: (batch, head_num, N, key_dim)
+#     # mask.shape: (batch, N)
+#
+#     batch_s = q.size(0)
+#     head_num = q.size(1)
+#     n = q.size(2)
+#     key_dim = q.size(3)
+#     input_s = k.size(2)
+#
+#     score = torch.matmul(q, k.transpose(2, 3))
+#     # shape: (batch, head_num, n, problem)
+#
+#     score_scaled = score / torch.sqrt(torch.tensor(key_dim, dtype=torch.float))
+#
+#     if mask is not None:
+#         if mask.dim() == 2:
+#             score_scaled = score_scaled + mask[:, None, None, :].expand(batch_s, head_num, n, input_s)
+#
+#         elif mask.dim() == 3:
+#             score_scaled = score_scaled + mask[:, None, :, :].expand(batch_s, head_num, n, input_s)
+#
+#     weights = nn.Softmax(dim=-1)(score_scaled)
+#     # shape: (batch, head_num, n, problem)
+#
+#     out = torch.matmul(weights, v)
+#     # shape: (batch, head_num, n, key_dim)
+#
+#     out_transposed = out.transpose(1, 2)
+#     # shape: (batch, n, head_num, key_dim)
+#
+#     out_concat = out_transposed.reshape(batch_s, n, head_num * key_dim)
+#     # shape: (batch, n, head_num*key_dim)
+#
+#     return out_concat
