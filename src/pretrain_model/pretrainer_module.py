@@ -38,6 +38,8 @@ class PreTrainerModule(RolloutBase):
         warmup_epochs = run_params['epochs'] * 0.01
         self.scheduler = CosineWarmupScheduler(self.optimizer, warmup_epochs, run_params['epochs'])
 
+        self.scaler = torch.cuda.amp.GradScaler()
+
         self.start_epoch = 1
         self.best_score = float('inf')
         self.best_loss = float('inf')
@@ -62,7 +64,7 @@ class PreTrainerModule(RolloutBase):
         done = False
         self.model.encoding = None
 
-        with torch.no_grad():
+        with torch.no_grad(), torch.autocast(device_type=self.device.type, dtype=torch.float16):
             while not done:
                 # env.render()
                 action, _ = self.model.predict(obs)
@@ -189,7 +191,9 @@ class PreTrainerModule(RolloutBase):
         reward = 0
 
         while not done:
-            action_probs, val = self.model(obs)
+            with torch.autocast(device_type=self.device.type, dtype=torch.float16):
+                action_probs, val = self.model(obs)
+
             probs = torch.distributions.Categorical(probs=action_probs)
             action = probs.sample()
 
@@ -201,7 +205,7 @@ class PreTrainerModule(RolloutBase):
             entropy_lst.append(probs.entropy()[:, None])
             val_lst.append(val[:, None])
 
-        reward = -torch.as_tensor(reward, device=self.device, dtype=torch.float32)
+        reward = -torch.as_tensor(reward, device=self.device, dtype=torch.float16)
         val_tensor = torch.cat(val_lst, dim=-1)
         # val_tensor: (batch, time)
         baseline = val_tensor
@@ -218,9 +222,16 @@ class PreTrainerModule(RolloutBase):
 
         loss = p_loss + val_loss + self.ent_coef * entropy
 
-        self.model.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        self.scaler.scale(loss).backward()  # scaled loss backward call first to create scaled gradients
+        self.scaler.step(self.optimizer)  # scaler step call
+        self.scaler.update()  # scaler update call
+
+        self.optimizer.zero_grad()
         self.scheduler.step()
+
+            # self.model.zero_grad()
+            # loss.backward()
+            # self.optimizer.step()
+            # self.scheduler.step()
 
         return reward.mean().item(), loss, p_loss, val_loss, len(prob_lst), entropy

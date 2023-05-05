@@ -129,7 +129,7 @@ def cal_distance(xy, visiting_seq):
     rolled_seq = np.roll(original_seq, -1, 1)
 
     segments = np.sqrt(((original_seq - rolled_seq) ** 2).sum(-1))
-    distance = segments.sum(1)
+    distance = segments.sum(1).astype(np.float16)
     return distance
 
 
