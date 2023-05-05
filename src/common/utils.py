@@ -412,7 +412,7 @@ def dict_product(dicts):
 
 def parse_saved_model_dir(args, result_dir, name_prefix, load_epoch=None, mcts_param=False,
                           return_checkpoint=False, ignore_debug=False):
-    env_param_nm = f"{args.env_type}/N_{args.num_nodes}"
+    env_param_nm = f"{args.env_type}/N_{args.num_nodes}-B_{args.num_episode}"
     model_param_nm = f"/{args.nn}-{args.embedding_dim}-{args.encoder_layer_num}-{args.qkv_dim}-{args.head_num}-{args.C}"
 
     if mcts_param:
@@ -422,7 +422,7 @@ def parse_saved_model_dir(args, result_dir, name_prefix, load_epoch=None, mcts_p
     else:
         mcts_param_nm = ""
 
-    result_folder_name = f"./{result_dir}/{name_prefix}{env_param_nm}{model_param_nm}{mcts_param_nm}"
+    result_folder_name = f"./{result_dir}/{name_prefix}/{env_param_nm}{model_param_nm}{mcts_param_nm}"
 
     if not ignore_debug and check_debug():
         result_folder_name = "./debug" + result_folder_name[1:]
