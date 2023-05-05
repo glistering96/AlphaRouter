@@ -139,14 +139,4 @@ class CVRPNpVec:
         # for done episodes, set the depot as available
         avail[done, 0] = True
 
-        # if (avail == False).all(-1).all():
-        #     print(avail)
-
-        # for available nodes, if the node is already visited, raise an error
-        for env_id, a in enumerate(avail):
-            for idx, availability in enumerate(a):
-                if idx != 0 and self.visited[env_id, idx] is True and availability is True:
-                    raise ValueError(f'The available node {idx} is already visited in env {env_id}.'
-                                     f' Visit seq for env {env_id}: {self.visiting_seq[env_id]}')
-
         return avail, done
