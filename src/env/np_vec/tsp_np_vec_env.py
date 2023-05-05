@@ -14,7 +14,7 @@ from src.common.utils import cal_distance
 
 class TSPNpVec:
     def __init__(self, num_nodes,
-                 step_reward=False, num_en=128, seed=None, data_path='./data', **kwargs):
+                 step_reward=False, num_env=128, seed=None, data_path='./data', **kwargs):
         self.action_size = num_nodes
         self.num_nodes = num_nodes
         self.step_reward = step_reward
@@ -22,7 +22,7 @@ class TSPNpVec:
         self.seed = seed
         self.data_path = data_path
         self.env_type = 'tsp'
-        self.num_env = num_en
+        self.num_env = num_env
 
         # observation fields
         self.xy, self.pos, self.visited = None, None, None
