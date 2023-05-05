@@ -1,5 +1,6 @@
 from gymnasium.vector import SyncVectorEnv
-
+from src.env.np_vec.cvrp_np_vec_env import CVRPNpVec
+from src.env.np_vec.tsp_np_vec_env import TSPNpVec
 from src.env.gymnasium.cvrp_gymnasium import CVRPEnv
 from src.env.gymnasium.tsp_gymnasium import TSPEnv
 
@@ -23,10 +24,10 @@ class RoutingEnv:
 
         else:
             if env_type == 'tsp':
-                env = SyncVectorEnv([lambda: TSPEnv(**self.env_params) for _ in range(num_episode)])
+                env = TSPNpVec(**self.env_params)
 
             elif env_type == 'cvrp':
-                env = SyncVectorEnv([lambda: TSPEnv(**self.env_params) for _ in range(num_episode)])
+                env = CVRPNpVec(**self.env_params)
             else:
                 raise NotImplementedError
 
