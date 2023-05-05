@@ -12,7 +12,7 @@ from src.common.data_manipulator import make_cord
 from src.common.utils import cal_distance
 
 
-class TSPNPVec:
+class TSPNpVec:
     def __init__(self, num_nodes,
                  step_reward=False, num_en=128, seed=None, data_path='./data', **kwargs):
         self.action_size = num_nodes
