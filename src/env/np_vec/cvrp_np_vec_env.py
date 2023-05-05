@@ -1,19 +1,10 @@
-import os.path
-import pickle
-
-import gymnasium as gym
 import numpy as np
-import pygame as pygame
-from gym.spaces import Discrete, Dict, Box, MultiBinary
-from gymnasium.utils import seeding
 
 from src.common.data_manipulator import make_cord, make_demands
 from src.common.utils import cal_distance
 
 
 class CVRPNpVec:
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 2}
-
     def __init__(self,
                  num_depots,
                  num_nodes,
@@ -31,7 +22,6 @@ class CVRPNpVec:
         self.data_path = data_path
         self.env_type = 'cvrp'
         self.num_env = num_env
-        self.action_space = Discrete(self.action_size, seed=seed)
 
         # observation fields
         self.xy, self.demand, self.pos, self.visited = None, None, None, None
