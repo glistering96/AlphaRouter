@@ -24,10 +24,12 @@ class RoutingEnv:
 
         else:
             if env_type == 'tsp':
-                env = TSPNpVec(**self.env_params)
+                # env = TSPNpVec(num_env=num_episode, **self.env_params)
+                env = SyncVectorEnv([lambda: TSPEnv(**self.env_params) for _ in range(num_episode)])
 
             elif env_type == 'cvrp':
-                env = CVRPNpVec(**self.env_params)
+                # env = CVRPNpVec(num_env=num_episode, **self.env_params)
+                env = SyncVectorEnv([lambda: CVRPEnv(**self.env_params) for _ in range(num_episode)])
             else:
                 raise NotImplementedError
 
