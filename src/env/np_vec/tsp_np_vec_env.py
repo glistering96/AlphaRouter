@@ -70,13 +70,15 @@ class TSPNpVec:
 
     def step(self, action):
         # action: (num_env, 1)
+        if action.shape != (self.num_env, 1):
+            action = action.reshape(self.num_env, 1)
 
         # check if the action is already visited
-        for env_id, a in enumerate(action.squeeze(1)):
-            # if the action is already in visit_seq from the env_id, raise an error
-            if int(a) != 0 and self.visited[env_id, a] == True:
-                raise ValueError(f'The selected action {a} is already visited in env {env_id}.'
-                                 f' Visit seq for env {env_id}: {self.visited[env_id]}')
+        # for env_id, a in enumerate(action.squeeze(1)):
+        #     # if the action is already in visit_seq from the env_id, raise an error
+        #     if int(a) != 0 and self.visited[env_id, a] == True:
+        #         raise ValueError(f'The selected action {a} is already visited in env {env_id}.'
+        #                          f' Visit seq for env {env_id}: {self.visited[env_id]}')
 
         # update the current pos
         self.pos = action

@@ -89,6 +89,8 @@ class CVRPNpVec:
 
     def step(self, action):
         # action: (num_env, 1)
+        if action.shape != (self.num_env, 1):
+            action = action.reshape(self.num_env, 1)
 
         for env_id, a in enumerate(action):
             # if the action is already in visit_seq from the env_id, raise an error
