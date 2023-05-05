@@ -4,7 +4,7 @@ import pickle
 import gymnasium as gym
 import numpy as np
 
-from gym.spaces import Discrete, Dict, Box, MultiBinary
+from gymnasium.spaces import Discrete, Dict, Box, MultiBinary
 from gymnasium.utils import seeding
 
 from src.common.data_manipulator import make_cord, make_demands

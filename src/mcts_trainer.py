@@ -12,7 +12,7 @@ from torch.optim import Adam as Optimizer
 from torch.utils.tensorboard import SummaryWriter
 
 from src.common.utils import add_hparams, check_debug, explained_variance, parse_saved_model_dir
-from src.env.cvrp_gymnasium import CVRPEnv
+from src.env.gymnasium.cvrp_gymnasium import CVRPEnv
 from src.mcts_tester import test_one_episode
 from src.models.model_common import get_batch_tensor
 from src.module_base import RolloutBase, rollout_episode
