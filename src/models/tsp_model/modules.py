@@ -3,6 +3,8 @@ import torch.nn as nn
 # Encoder model related
 import torch.nn.functional as F
 
+from src.models.model_common import ScaledDotProductAttention
+
 
 class Decoder(nn.Module):
     def __init__(self, **model_params):
@@ -18,6 +20,8 @@ class Decoder(nn.Module):
         self.Wq_last = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
         self.Wk = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
         self.Wv = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
+
+        self.scaled_dot_product_attention = ScaledDotProductAttention(**model_params)
 
         self.k, self.v = None, None
 
@@ -44,7 +48,7 @@ class Decoder(nn.Module):
         if mask.dim() == 2:
             mask = mask[:, None, None, :]
 
-        out_concat = F.scaled_dot_product_attention(q, self.k, self.v, mask)
+        out_concat = self.scaled_dot_product_attention(q, self.k, self.v, mask)
         # (batch, 1 or T, qkv*head_num)
 
         mh_atten_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
