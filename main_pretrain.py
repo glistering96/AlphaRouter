@@ -86,17 +86,21 @@ def search_params(num_proc):
 
 
 if __name__ == '__main__':
-    # search_params(3)
     params = {
-    'env_type' : 'tsp',
     'num_nodes' : 20,
     'result_dir' : 'pretrained_result',
-    'name_prefix' : 'torch_attn/',
+    'name_prefix' : '',
     'render_mode' : None,
-    'epochs' : 5000,
-    'num_episode' : 256,
-    'qkv_dim' :  32
+    'num_episode' : 1024,
+    'qkv_dim' : 32,
     }
-    start = time.time()
-    _work(**params)
-    print(f"Time taken: {time.time() - start}")
+
+    for env_type in [
+        'cvrp'
+    ]:
+        for num_node in [100]:
+            params['env_type'] = env_type
+            params['num_nodes'] = num_node
+            _work(**params)
+
+

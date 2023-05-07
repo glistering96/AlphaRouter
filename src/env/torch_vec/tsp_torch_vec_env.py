@@ -1,12 +1,12 @@
 import torch
 
-from src.env.gpu_vec.torch_vec_base_ import TorchVecEnvBase
+from src.env.torch_vec.torch_vec_base_ import TorchVecEnvBase
 
 
-class TSPTorchVecEnv(TorchVecEnvBase):
+class TSPTorchVec(TorchVecEnvBase):
     def __init__(self, num_nodes,
                  step_reward=False, num_env=128, seed=None, **kwargs):
-        super(TSPTorchVecEnv, self).__init__(num_env, 0, num_nodes, step_reward, seed)
+        super(TSPTorchVec, self).__init__(num_env, 0, num_nodes, step_reward, seed)
         # There are no depots for TSP
         self.action_size = num_nodes
         self.num_nodes = num_nodes

@@ -1,6 +1,6 @@
 import torch
 
-from src.env.gpu_vec.torch_vec_base_ import TorchVecEnvBase
+from src.env.torch_vec.torch_vec_base_ import TorchVecEnvBase
 
 
 class CVRPTorchVec(TorchVecEnvBase):

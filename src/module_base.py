@@ -114,10 +114,10 @@ class RolloutBase:
         env_params['seed'] = 5
         env_params['data_path'] = self.run_params['data_path']
 
-        if env_params['env_type'] == 'cvrp':
+        if env_params['env_type'] == 'cvrp' or env_params['env_type'] == 'cvrp_torch':
             env = CVRPEnv(**env_params)
 
-        elif env_params['env_type'] == 'tsp':
+        elif env_params['env_type'] == 'tsp' or env_params['env_type'] == 'tsp_torch':
             env = TSPEnv(**env_params)
 
         else:

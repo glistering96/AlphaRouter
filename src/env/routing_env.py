@@ -2,7 +2,16 @@ from src.env.np_vec.cvrp_np_vec_env import CVRPNpVec
 from src.env.np_vec.tsp_np_vec_env import TSPNpVec
 from src.env.gymnasium.cvrp_gymnasium import CVRPEnv
 from src.env.gymnasium.tsp_gymnasium import TSPEnv
+from src.env.torch_vec.cvrp_torch_vec_env import CVRPTorchVec
+from src.env.torch_vec.tsp_torch_vec_env import TSPTorchVec
 
+from enum import Enum
+
+class EnvType(Enum):
+    TSP = 'tsp'
+    CVRP = 'cvrp'
+    TSP_torch = 'tsp_torch'
+    CVRP_torch = 'cvrp_torch'
 
 class RoutingEnv:
     def __init__(self, env_params, run_params):
@@ -27,6 +36,13 @@ class RoutingEnv:
 
             elif env_type == 'cvrp':
                 env = CVRPNpVec(num_env=num_episode, **self.env_params)
+
+            elif env_type == 'tsp_torch':
+                env = TSPTorchVec(num_env=num_episode, **self.env_params)
+
+            elif env_type == 'cvrp_torch':
+                env = CVRPTorchVec(num_env=num_episode, **self.env_params)
+
             else:
                 raise NotImplementedError
 

@@ -16,10 +16,10 @@ class RoutingModel:
     def create_model(self, env_type):
         model_params = deepcopy(self.model_params)
 
-        if env_type == 'cvrp':
+        if 'cvrp' in env_type:
             model_params['action_size'] = self.env_params['num_depots'] + self.env_params['num_nodes']
             return CVRPModel(**self.model_params)
-        elif env_type == 'tsp':
+        elif 'tsp' in env_type:
             model_params['action_size'] = self.env_params['num_nodes']
             return TSPModel(**self.model_params)
         else:

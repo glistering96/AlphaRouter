@@ -116,12 +116,12 @@ class PreTrainerModule(RolloutBase):
             to_compare_score = train_score
             logged = False
 
-            if val_loss < self.best_loss:
-                self.logger.info(f"Saving the best loss network. Prev: {self.best_loss: .4f}, Current: {val_loss: .4f}")
-                self.best_loss = val_loss
-                self._save_checkpoints("best_val_loss")
+            # if val_loss < self.best_loss:
+            #     self.logger.info(f"Saving the best loss network. Prev: {self.best_loss: .4f}, Current: {val_loss: .4f}")
+            #     self.best_loss = val_loss
+            #     self._save_checkpoints("best_val_loss")
 
-            if to_compare_score < self.best_score:
+            if to_compare_score < self.best_score and epoch > 10000:
                 # normal logging interval
                 self.logger.info("Saving the best policy_net")
                 self.best_score = to_compare_score
@@ -137,7 +137,7 @@ class PreTrainerModule(RolloutBase):
                     self._log_info(epoch, train_score, loss, p_loss, val_loss, elapsed_time_str, remain_time_str)
                     logged = True
 
-            if all_done or (epoch % model_save_interval) == 0:
+            if all_done or (epoch % model_save_interval) == 0 :
                 # when the best score is collected
                 self.logger.info(f"Saving the trained policy_net. Current lr: {self.current_lr: .5f}")
                 self._save_checkpoints(epoch, is_best=False)
@@ -190,6 +190,8 @@ class PreTrainerModule(RolloutBase):
         val_lst = []
         reward = 0
 
+        env_np = False if 'torch' in self.env_params['env_type'] else True
+
         while not done:
             with torch.autocast(device_type=self.device.type, dtype=torch.float16):
                 action_probs, val = self.model(obs)
@@ -197,9 +199,14 @@ class PreTrainerModule(RolloutBase):
             probs = torch.distributions.Categorical(probs=action_probs)
             action = probs.sample()
 
-            obs, reward, dones, _, _ = self.env.step(action.detach().cpu().numpy())
+            if env_np:
+                obs, reward, dones, _, _ = self.env.step(action.cpu().numpy())
+                done = bool(np.all(dones == True))
 
-            done = bool(np.all(dones == True))
+            else:
+                obs, reward, dones, _, _ = self.env.step(action)
+
+                done = (dones == True).all()
 
             prob_lst.append(probs.log_prob(action)[:, None])
             entropy_lst.append(probs.entropy()[:, None])
