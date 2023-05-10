@@ -1,8 +1,8 @@
 from argparse import ArgumentParser
 
+from src.common.dir_parser import DirParser
 from src.common.utils import get_param_dict
-from src.mcts_tester import TesterModule
-from src.mcts_trainer import TrainerModule
+from src.mcts_tester import MCTSTesterModule
 from src.pretrain_model.pretrain_tester import AMTesterModule
 from src.pretrain_model.pretrainer_module import PreTrainerModule
 
@@ -64,29 +64,16 @@ def parse_args():
     return args
 
 
-def run_mcts_train(args):
-    env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args, use_mcts=True)
-
-    trainer = TrainerModule(env_params=env_params,
-                            model_params=model_params,
-                            logger_params=logger_params,
-                            mcts_params=mcts_params,
-                            run_params=run_params,
-                            optimizer_params=optimizer_params,
-                            h_params=h_params,
-                            args=args)
-
-    trainer.run()
-
-
 def run_mcts_test(args):
-    env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args, use_mcts=True, copy_src=False)
+    env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args)
 
-    tester = TesterModule(env_params=env_params,
-                            model_params=model_params,
-                            logger_params=logger_params,
-                            mcts_params=mcts_params,
-                            run_params=run_params)
+    tester = MCTSTesterModule(env_params=env_params,
+                              model_params=model_params,
+                              logger_params=logger_params,
+                              mcts_params=mcts_params,
+                              run_params=run_params,
+                              dir_parser=DirParser(args),
+                              )
 
     return tester.run()
 
@@ -98,9 +85,11 @@ def run_pretrain(args):
                             model_params=model_params,
                             logger_params=logger_params,
                             run_params=run_params,
-                            optimizer_params=optimizer_params)
+                            optimizer_params=optimizer_params,
+                            dir_parser=DirParser(args))
 
     trainer.run()
+
 
 def run_am_test(args):
     env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args)
@@ -108,6 +97,8 @@ def run_am_test(args):
     tester = AMTesterModule(env_params=env_params,
                             model_params=model_params,
                             logger_params=logger_params,
-                            run_params=run_params)
+                            run_params=run_params,
+                            dir_parser=DirParser(args)
+                            )
 
     return tester.run()

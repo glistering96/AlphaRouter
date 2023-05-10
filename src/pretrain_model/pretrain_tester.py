@@ -7,9 +7,9 @@ from src.module_base import RolloutBase
 
 
 class AMTesterModule(RolloutBase):
-    def __init__(self, env_params, model_params, logger_params, run_params):
+    def __init__(self, env_params, model_params, logger_params, run_params, dir_parser):
         # save arguments
-        super().__init__(env_params, model_params, None, logger_params, run_params)
+        super().__init__(env_params, model_params, None, logger_params, run_params, dir_parser)
 
         self.start_epoch = 1
         self.debug_epoch = 0

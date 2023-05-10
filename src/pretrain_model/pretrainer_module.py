@@ -16,15 +16,14 @@ import warnings
 
 
 class PreTrainerModule(RolloutBase):
-    def __init__(self, env_params, model_params, logger_params, optimizer_params, run_params):
-        super(PreTrainerModule, self).__init__(env_params, model_params, None, logger_params, run_params)
+    def __init__(self, env_params, model_params, logger_params, optimizer_params, run_params, dir_parser):
+        super(PreTrainerModule, self).__init__(env_params, model_params, None, logger_params, run_params, dir_parser)
         # save arguments
         global tb
 
         self.optimizer_params = optimizer_params
-        logging_params = logger_params["log_file"]
-        filename = logging_params['result_dir']
-        tb_log_dir = logger_params['tb_log_dir']
+        filename = self.dir_parser.get_result_dir(mcts=False)
+        tb_log_dir = self.dir_parser.get_tensorboard_logging_dir()
 
         tb_log_path = f'{tb_log_dir}/{filename}/'
 
@@ -35,8 +34,8 @@ class PreTrainerModule(RolloutBase):
 
         # policy_optimizer
         self.optimizer = Optimizer(self.model.parameters(), **optimizer_params)
-        warmup_epochs = run_params['epochs'] * 0.01
-        self.scheduler = CosineWarmupScheduler(self.optimizer, warmup_epochs, run_params['epochs'])
+        warmup_epochs = run_params['nn_train_epochs'] * 0.01
+        self.scheduler = CosineWarmupScheduler(self.optimizer, warmup_epochs, run_params['nn_train_epochs'])
 
         self.scaler = torch.cuda.amp.GradScaler()
 
@@ -96,7 +95,7 @@ class PreTrainerModule(RolloutBase):
         log_interval = self.run_params['logging']['log_interval']
 
         global tb
-        total_epochs = self.run_params['epochs']
+        total_epochs = self.run_params['nn_train_epochs']
         valid_scores = self.get_valid_score()
 
         self._record_video(0)

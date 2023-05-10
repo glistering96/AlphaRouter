@@ -8,10 +8,10 @@ from src.mcts import MCTS
 from src.module_base import RolloutBase
 
 
-class TesterModule(RolloutBase):
-    def __init__(self, env_params, model_params, mcts_params, logger_params, run_params):
+class MCTSTesterModule(RolloutBase):
+    def __init__(self, env_params, model_params, mcts_params, logger_params, run_params, dir_parser):
         # save arguments
-        super().__init__(env_params, model_params, mcts_params, logger_params, run_params)
+        super().__init__(env_params, model_params, mcts_params, logger_params, run_params, dir_parser)
         global hparam_writer
 
         self.env = self.env_setup.create_env(test=True)
@@ -27,7 +27,7 @@ class TesterModule(RolloutBase):
 
         self._load_model(run_params['model_load']['epoch'])
 
-        video_dir = self.run_params['logging']['result_folder_name'] + f'/videos/'
+        video_dir = self.result_folder + f'/videos/'
         self.test_env_with_vide = RecordVideo(self.env_setup.create_env(test=True), video_dir, name_prefix='test')
 
     def run(self):
@@ -46,7 +46,7 @@ class TesterModule(RolloutBase):
 
 def test_one_episode(env, agent, mcts_params, temp):
     env.set_test_mode()
-    obs = env.reset()
+    obs, _ = env.reset()
     done = False
     agent.eval()
     debug = 0

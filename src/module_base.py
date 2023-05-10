@@ -5,13 +5,13 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from src.common.utils import TimeEstimator
+from src.common.utils import TimeEstimator, create_logger
 from src.env.gymnasium.cvrp_gymnasium import CVRPEnv
 from src.env.routing_env import RoutingEnv
 from src.env.gymnasium.tsp_gymnasium import TSPEnv
 from src.mcts import MCTS
-from src.models.cvrp_model.models import CVRPModel
 from src.models.routing_model import RoutingModel
+from src.common.dir_parser import DirParser
 
 
 class RolloutBase:
@@ -20,19 +20,22 @@ class RolloutBase:
                  model_params,
                  mcts_params,
                  logger_params,
-                 run_params):
+                 run_params,
+                 dir_parser: DirParser):
         # save arguments
         self.env_params = env_params
         self.model_params = model_params
         self.run_params = run_params
         self.logger_params = logger_params
         self.mcts_params = mcts_params
+        self.dir_parser = dir_parser
 
         # cuda
         USE_CUDA = self.run_params['use_cuda']
+        self.result_folder = self.dir_parser.get_result_dir(mcts=True if mcts_params is not None else False)
 
+        create_logger(self.result_folder)
         self.logger = getLogger(name='trainer')
-        self.result_folder = self.run_params['logging']['result_folder_name']
 
         Path(self.result_folder).mkdir(parents=True, exist_ok=True)
 
@@ -75,15 +78,17 @@ class RolloutBase:
             'optimizer_state_dict': self.optimizer.state_dict()
         }
 
-        path = f"{self.result_folder}/saved_models"
+        path = self.dir_parser.get_model_checkpoint(target_epoch=None)
 
         if not Path(path).exists():
             Path(path).mkdir(parents=True, exist_ok=False)
 
-        torch.save(checkpoint_dict, '{}/saved_models/checkpoint-{}.pt'.format(self.result_folder, file_name))
+        model_checkpoint = self.dir_parser.get_model_checkpoint(target_epoch=file_name)
+        torch.save(checkpoint_dict, model_checkpoint)
 
     def _load_model(self, epoch):
-        checkpoint_fullname = f'{self.result_folder}/saved_models/checkpoint-{epoch}.pt'
+        # if on debug mode, remove the debug prefix on the self.result_folder
+        checkpoint_fullname = self.dir_parser.get_model_checkpoint(target_epoch=epoch)
         checkpoint = torch.load(checkpoint_fullname, map_location=self.device)
 
         self.start_epoch = checkpoint['epoch'] + 1
@@ -130,54 +135,35 @@ class RolloutBase:
         raise NotImplementedError
 
 
-def get_model(model_params):
-    nn = model_params['nn']
-
-    if nn == 'shared_mha':
-        return CVRPModel(**model_params)
-
-    else:
-        raise ValueError(f"Unsupported model: {nn}")
 
 
-def load_model(model_load, agent_params, device):
-    model = get_model(agent_params).to(device)
-
-    if model_load is not None:
-        checkpoint = torch.load(model_load, map_location=device)
-        loaded_state_dict = checkpoint['model_state_dict']
-        model.load_state_dict(loaded_state_dict)
-
-    return model
-
-
-def rollout_episode(env, agent_load_dir, agent_params, device, mcts_params):
-    obs = env.reset()
-
-    agent = load_model(agent_load_dir, agent_params, device)
-    buffer = []
-    done = False
-
-    # episode rollout
-    # gather probability of the action and value estimates for the state
-    debug = 0
-    agent.eval()
-
-    with torch.no_grad():
-        while not done:
-            mcts = MCTS(env, agent, mcts_params)
-            temp = 1 if debug < mcts_params['temp_threshold'] else 0
-            action_probs = mcts.get_action_prob(obs, temp=temp)
-            action = np.random.choice(len(action_probs), p=action_probs)
-
-            buffer.append((obs, action_probs))
-
-            next_state, reward, done, _ = env.step(action)
-
-            obs = next_state
-
-            debug += 1
-
-            if done:
-                result = [(x[0], x[1], float(reward), debug) for x in buffer]
-                return result
+# def rollout_episode(env, agent_load_dir, agent_params, device, mcts_params):
+#     obs = env.reset()
+#
+#     agent = load_model(agent_load_dir, agent_params, device)
+#     buffer = []
+#     done = False
+#
+#     # episode rollout
+#     # gather probability of the action and value estimates for the state
+#     debug = 0
+#     agent.eval()
+#
+#     with torch.no_grad():
+#         while not done:
+#             mcts = MCTS(env, agent, mcts_params)
+#             temp = 1 if debug < mcts_params['temp_threshold'] else 0
+#             action_probs = mcts.get_action_prob(obs, temp=temp)
+#             action = np.random.choice(len(action_probs), p=action_probs)
+#
+#             buffer.append((obs, action_probs))
+#
+#             next_state, reward, done, _ = env.step(action)
+#
+#             obs = next_state
+#
+#             debug += 1
+#
+#             if done:
+#                 result = [(x[0], x[1], float(reward), debug) for x in buffer]
+#                 return result

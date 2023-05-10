@@ -36,23 +36,11 @@ def set_result_folder(folder):
     result_folder = folder
 
 
-def create_logger(log_file=None):
-    # print(log_file)
-    if 'filepath' not in log_file:
-        log_file['filepath'] = log_file['result_dir']
+def create_logger(filepath):
+    filename = filepath + '/log.txt'
 
-    if 'desc' in log_file:
-        log_file['filepath'] = log_file['filepath'].format(desc='_' + log_file['desc'])
-    else:
-        log_file['filepath'] = log_file['filepath'].format(desc='')
-
-    if 'filename' in log_file:
-        filename = log_file['filepath'] + '/' + log_file['filename']
-    else:
-        filename = log_file['filepath'] + '/' + 'log.txt'
-
-    if not os.path.exists(log_file['filepath']):
-        os.makedirs(log_file['filepath'])
+    if not os.path.exists(filepath):
+        os.makedirs(filepath)
 
     file_mode = 'a' if os.path.isfile(filename) else 'w'
 
@@ -246,7 +234,7 @@ class NpEncoder(json.JSONEncoder):
             return super(NpEncoder, self).default(obj)
 
 
-def get_param_dict(args, use_mcts=False, copy_src=True):
+def get_param_dict(args, copy_src=True):
     # env_params
     num_demand_nodes = args.num_nodes
     num_depots = args.num_depots
@@ -274,26 +262,23 @@ def get_param_dict(args, use_mcts=False, copy_src=True):
 
     # trainer params
     mini_batch_size = args.mini_batch_size
-    epochs = args.epochs
     num_episode = args.num_episode
     train_epochs = args.train_epochs
-    epoch = args.load_epoch
-    load_model = True if epoch is not None else False
+    epochs = args.epochs    # epochs for training the neural network
+    load_epoch = args.load_epoch
+    load_model = True if load_epoch is not None else False
     cuda_device_num = args.gpu_id
     num_proc = args.num_proc
     lr = args.lr
     ent_coef = args.ent_coef
 
     # logging params
-    result_dir = args.result_dir
-    tb_log_dir = args.tb_log_dir
     model_save_interval = args.model_save_interval
     log_interval = args.log_interval
 
     # etc
     data_path = args.data_path
     seed = args.seed
-    name_prefix = args.name_prefix
 
     if check_debug():
         seed = 2
@@ -303,13 +288,7 @@ def get_param_dict(args, use_mcts=False, copy_src=True):
         torch.cuda.manual_seed(seed)
         torch.backends.cudnn.deterministic = True  # type: ignore
         torch.backends.cudnn.benchmark = True  # type: ignore
-        args.num_episode = 2
-
-    if use_mcts:
-        result_folder_name = parse_saved_model_dir(args, result_dir, name_prefix, mcts_param=True)
-
-    else:
-        result_folder_name = parse_saved_model_dir(args, result_dir, name_prefix, mcts_param=False)
+        # args.num_episode = 2
 
     # allocating hyper-parameters
     env_params = {
@@ -364,7 +343,7 @@ def get_param_dict(args, use_mcts=False, copy_src=True):
         'use_cuda': True,
         'cuda_device_num': cuda_device_num,
         'train_epochs': train_epochs,
-        'epochs': epochs,
+        'nn_train_epochs': epochs,
         'num_episode': num_episode,
         'mini_batch_size': mini_batch_size,
         'num_proc': num_proc,
@@ -374,22 +353,19 @@ def get_param_dict(args, use_mcts=False, copy_src=True):
         'logging': {
             'model_save_interval': model_save_interval,
             'log_interval': log_interval,
-            'result_folder_name': result_folder_name
         },
 
         'model_load': {
             'enable': load_model,
-            'epoch': epoch
+            'epoch': load_epoch
         }
     }
 
     logger_params = {
         'log_file': {
-            'result_dir': result_folder_name,
             'filename': 'log.txt',
             'date_prefix': False
         },
-        'tb_log_dir': tb_log_dir
     }
 
     optimizer_params = {
@@ -398,41 +374,12 @@ def get_param_dict(args, use_mcts=False, copy_src=True):
         'betas': (0.9, 0.9)
     }
 
-    create_logger(logger_params['log_file'])
-
-    if copy_src:
-        copy_all_src(result_folder_name)
+    # TODO: result folder src copy needs to be managed
+    # if copy_src:
+    #     copy_all_src(result_folder_name)
 
     return env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params
 
 
 def dict_product(dicts):
     return list(dict(zip(dicts, x)) for x in itertools.product(*dicts.values()))
-
-
-def parse_saved_model_dir(args, result_dir, name_prefix, load_epoch=None, mcts_param=False,
-                          return_checkpoint=False, ignore_debug=False):
-    env_param_nm = f"{args.env_type}/N_{args.num_nodes}-B_{args.num_episode}"
-    model_param_nm = f"/{args.nn}-{args.embedding_dim}-{args.encoder_layer_num}-{args.qkv_dim}-{args.head_num}-{args.C}"
-
-    if mcts_param:
-        mcts_param_nm = f"/ns_{args.num_simulations}-temp_{args.temp_threshold}-cpuct_{args.cpuct}-" \
-                        f"norm_{args.normalize_value}-rollout_{args.rollout_game}-ec_{args.ent_coef:.4f}"
-
-    else:
-        mcts_param_nm = ""
-
-    result_folder_name = f"./{result_dir}/{name_prefix}/{env_param_nm}{model_param_nm}{mcts_param_nm}"
-
-    if not ignore_debug and check_debug():
-        result_folder_name = "./debug" + result_folder_name[1:]
-
-    if return_checkpoint:
-        if load_epoch is not None:
-            return f"{result_folder_name}/saved_models/checkpoint-{load_epoch}.pt"
-
-        else:
-            return None
-
-    else:
-        return result_folder_name

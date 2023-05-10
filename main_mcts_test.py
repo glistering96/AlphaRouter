@@ -1,37 +1,23 @@
 import json
 from pathlib import Path
 
-from src.common.utils import get_param_dict, parse_saved_model_dir, dict_product, check_debug
+from src.common.utils import dict_product, check_debug
 from src.run import parse_args
-from src.mcts_tester import TesterModule
 import torch.multiprocessing as mp
+from src.run import run_mcts_test
 
 
-def run_test( **kwargs):
-    epochs = kwargs['epochs']
+def run_test(**kwargs):
     args = parse_args()
 
     for k, v in kwargs.items():
         setattr(args, k, v)
 
-    args.model_load = parse_saved_model_dir(args, "pretrained_result", args.name_prefix, epochs, mcts_param=False,
-                                        ignore_debug=True, return_checkpoint=True)
-
-    env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args)
-
-    tester = TesterModule(env_params=env_params,
-                            model_params=model_params,
-                            mcts_params=mcts_params,
-                            logger_params=logger_params,
-                            run_params=run_params)
-
-    score, runtime = tester.run()
-
-    save_path = parse_saved_model_dir(args, args.result_dir, args.name_prefix, mcts_param=False,
-                                      return_checkpoint=False)
-
+    # = parse_saved_model_dir(args, "pretrained_result", args.name_prefix, epochs, mcts_param=False,
+    #                                     ignore_debug=True, return_checkpoint=True)
+    score, runtime = run_mcts_test(args)
     # the result json folder is the same as the model folder
-    return score, runtime, epochs, save_path, mcts_params
+    return score, runtime
 
 
 def run_parallel_test(param_ranges, num_proc=4):
@@ -129,5 +115,5 @@ if __name__ == '__main__':
         'encoder_layer_num': [2],
         'render_mode': [None]
     }
-    run_test(**{'epochs': 40000, 'test_data_type': 'pkl' })
+    run_test(**{'load_epoch': 40000, 'test_data_type': 'pkl' , 'env_type': 'tsp', 'num_episode': 1024})
     # run_parallel_test(param_dict, num_proc=1)
