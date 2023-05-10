@@ -4,6 +4,7 @@ from torch.distributions import Categorical
 
 from src.models.cvrp_model.modules import *
 from src.models.model_common import get_encoding, _to_tensor, EncoderLayer
+import torch.nn.functional as F
 
 
 class CVRPModel(nn.Module):
