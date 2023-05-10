@@ -108,7 +108,7 @@ class RolloutBase:
             f'val_loss: {val_loss:.4f}, Best: {self.best_score:.4f}')
 
         self.logger.info("Epoch {:3d}/{:3d}: Time Est.: Elapsed[{}], Remain[{}]".format(
-            epoch, self.run_params['epochs'], elapsed_time_str, remain_time_str))
+            epoch, self.run_params['nn_train_epochs'], elapsed_time_str, remain_time_str))
         self.logger.info('=================================================================')
 
     def init_test_env(self):
