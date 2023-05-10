@@ -131,11 +131,7 @@ class TSPEnv(gym.Env):
 
             pygame.init()
             # Define font
-            self.display_font = pygame.font.Font(None, 30)
-            self.node_font = pygame.font.Font(None, 20)
 
-            # Create screen
-            self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), flags=pygame.HIDDEN)
 
     def get_reward(self):
         if self._is_done() or self.step_reward:
@@ -216,6 +212,11 @@ class TSPEnv(gym.Env):
             return
 
         assert self.screen is not None, "render mode setting is wrong"
+        display_font = pygame.font.Font(None, 30)
+        node_font = pygame.font.Font(None, 20)
+
+        # Create screen
+        screen = pygame.display.set_mode((self.screen_width, self.screen_height), flags=pygame.HIDDEN)
 
         canvas = pygame.Surface((self.screen_width, self.screen_height))
         canvas.fill(self.WHITE)
@@ -245,7 +246,7 @@ class TSPEnv(gym.Env):
             # Draw node
             pygame.draw.circle(canvas, node_color, (x, y), self.node_size)
 
-            text_surface = self.node_font.render(f"{i}", True, self.WHITE)
+            text_surface = node_font.render(f"{i}", True, self.WHITE)
             text_rect = text_surface.get_rect(center=(x, y))
             canvas.blit(text_surface, text_rect)
 
@@ -255,13 +256,13 @@ class TSPEnv(gym.Env):
         self.step_reward = False
 
         # current dist show
-        dist_text = self.display_font.render("Distance: {:.3f}".format(float(reward)), True, self.BLACK)
-        dist_rect = dist_text.get_rect(topright=(self.screen_width -  self.screen_width*0.1, self.screen_height*0.1))
+        dist_text = display_font.render("Distance: {:.3f}".format(float(reward)), True, self.BLACK)
+        dist_rect = dist_text.get_rect(topright=(self.screen_width - self.screen_width*0.1, self.screen_height*0.1))
         canvas.blit(dist_text, dist_rect)
 
         if self.render_mode == 'human':
             # Update screen
-            self.screen.blit(canvas, canvas.get_rect())
+            screen.blit(canvas, canvas.get_rect())
             pygame.event.pump()
             pygame.display.update()
 
