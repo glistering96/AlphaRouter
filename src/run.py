@@ -15,8 +15,9 @@ def parse_args():
     parser.add_argument("--num_nodes", type=int, default=20, help="Number of nodes in the test data generation")
     parser.add_argument("--num_depots", type=int, default=1, help="Number of depots in the test data generation")
     parser.add_argument("--render_mode", type=str, default='rgb_array', help="Type of render for the environment")
-    parser.add_argument("--step_reward", type=bool, default=False, help="whether to have step reward. If false, only the "
-                                                                       "reward in the last transition will be returned")
+    parser.add_argument("--step_reward", type=bool, default=False,
+                        help="whether to have step reward. If false, only the "
+                             "reward in the last transition will be returned")
     parser.add_argument("--test_data_type", type=str, default='npz', help="extension for test data file")
 
     # model params
@@ -82,11 +83,11 @@ def run_pretrain(args):
     env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args)
 
     trainer = PreTrainerModule(env_params=env_params,
-                            model_params=model_params,
-                            logger_params=logger_params,
-                            run_params=run_params,
-                            optimizer_params=optimizer_params,
-                            dir_parser=DirParser(args))
+                               model_params=model_params,
+                               logger_params=logger_params,
+                               run_params=run_params,
+                               optimizer_params=optimizer_params,
+                               dir_parser=DirParser(args))
 
     trainer.run()
 

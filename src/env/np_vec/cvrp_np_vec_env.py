@@ -49,7 +49,7 @@ class CVRPNpVec:
 
     def get_reward(self):
         if self._is_done().all() or self.step_reward:
-            visitng_idx = np.hstack(self.visiting_seq, dtype=int)   # (num_env, num_nodes)
+            visitng_idx = np.hstack(self.visiting_seq, dtype=int)  # (num_env, num_nodes)
             dist = cal_distance(self.xy, visitng_idx)
             return -dist
 
@@ -61,13 +61,14 @@ class CVRPNpVec:
 
         self.pos = np.zeros((self.num_env, 1), dtype=int)
         self.visited = np.zeros((self.num_env, self.action_size), dtype=bool)
-        np.put_along_axis(self.visited, self.pos, True, axis=1) # set the current pos as visited
+        np.put_along_axis(self.visited, self.pos, True, axis=1)  # set the current pos as visited
 
         self.visiting_seq = []
-        self.load = np.ones((self.num_env, 1), dtype=np.float32) # all vehicles start with full load
+        self.load = np.ones((self.num_env, 1), dtype=np.float32)  # all vehicles start with full load
 
-        self.visiting_seq.append(self.pos) # append the depot position
-        self.available = np.ones((self.num_env, self.action_size), dtype=bool) # all nodes are available at the beginning
+        self.visiting_seq.append(self.pos)  # append the depot position
+        self.available = np.ones((self.num_env, self.action_size),
+                                 dtype=bool)  # all nodes are available at the beginning
         np.put_along_axis(self.available, self.pos, False, axis=1)  # set the current pos to False
 
         obs = self._get_obs()

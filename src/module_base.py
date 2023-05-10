@@ -2,16 +2,14 @@ from copy import deepcopy
 from logging import getLogger
 from pathlib import Path
 
-import numpy as np
 import torch
 
+from src.common.dir_parser import DirParser
 from src.common.utils import TimeEstimator, create_logger
 from src.env.gymnasium.cvrp_gymnasium import CVRPEnv
-from src.env.routing_env import RoutingEnv
 from src.env.gymnasium.tsp_gymnasium import TSPEnv
-from src.mcts import MCTS
+from src.env.routing_env import RoutingEnv
 from src.models.routing_model import RoutingModel
-from src.common.dir_parser import DirParser
 
 
 class RolloutBase:
@@ -133,9 +131,6 @@ class RolloutBase:
     def run(self):
         # abstract method
         raise NotImplementedError
-
-
-
 
 # def rollout_episode(env, agent_load_dir, agent_params, device, mcts_params):
 #     obs = env.reset()

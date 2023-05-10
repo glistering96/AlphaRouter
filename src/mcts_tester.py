@@ -57,7 +57,7 @@ def test_one_episode(env, agent, mcts_params, temp):
         while not done:
             mcts = MCTS(env, agent, mcts_params, training=False)
             action_probs = mcts.get_action_prob(obs, temp=temp)
-            action = int(np.argmax(action_probs, -1))   # type must be python native
+            action = int(np.argmax(action_probs, -1))  # type must be python native
 
             next_state, reward, done, _, _ = env.step(action)
 

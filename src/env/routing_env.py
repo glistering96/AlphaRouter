@@ -1,7 +1,7 @@
-from src.env.np_vec.cvrp_np_vec_env import CVRPNpVec
-from src.env.np_vec.tsp_np_vec_env import TSPNpVec
 from src.env.gymnasium.cvrp_gymnasium import CVRPEnv
 from src.env.gymnasium.tsp_gymnasium import TSPEnv
+from src.env.np_vec.cvrp_np_vec_env import CVRPNpVec
+from src.env.np_vec.tsp_np_vec_env import TSPNpVec
 
 
 class RoutingEnv:
@@ -33,8 +33,6 @@ class RoutingEnv:
         return env
 
 
-
-
 if __name__ == '__main__':
     env_params = {
         'env_type': 'cvrp',
@@ -42,7 +40,7 @@ if __name__ == '__main__':
         'num_depots': 1,
 
     }
-    num_episode= 4
+    num_episode = 4
 
     env = SyncVectorEnv([lambda: CVRPEnv(**env_params) for _ in range(num_episode)])
 

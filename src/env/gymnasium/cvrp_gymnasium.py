@@ -3,7 +3,6 @@ import pickle
 
 import gymnasium as gym
 import numpy as np
-
 from gymnasium.spaces import Discrete, Dict, Box, MultiBinary
 from gymnasium.utils import seeding
 
@@ -14,7 +13,8 @@ from src.common.utils import cal_distance
 class CVRPEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 2}
 
-    def __init__(self, num_depots, num_nodes, step_reward=False, render_mode=None, training=True, seed=None, data_path='./data', **kwargs):
+    def __init__(self, num_depots, num_nodes, step_reward=False, render_mode=None, training=True, seed=None,
+                 data_path='./data', **kwargs):
         super(CVRPEnv, self).__init__()
         self.action_size = num_nodes + num_depots
         self.num_depots = num_depots
@@ -33,9 +33,9 @@ class CVRPEnv(gym.Env):
                     high=np.array([0.0] + [1.0 for _ in range(num_nodes)], dtype=np.float32),
                     dtype=np.float32),
                 "pos": Discrete(self.action_size),
-                "load": Box(0, 1, (1, ), dtype=np.float32),
+                "load": Box(0, 1, (1,), dtype=np.float32),
                 "available": MultiBinary(self.action_size)
-             }
+            }
         )
 
         self.action_space = Discrete(self.action_size, seed=seed)
@@ -117,7 +117,7 @@ class CVRPEnv(gym.Env):
         if xy.ndim == 3:
             xy = xy.reshape(-1, 2)
 
-        demands = demands.reshape(-1,)
+        demands = demands.reshape(-1, )
 
         return xy, demands
 
@@ -312,7 +312,8 @@ class CVRPEnv(gym.Env):
 
         # Show current load
         load_text = self.display_font.render("Load: {:.3f}".format(float(self.load)), True, self.BLACK)
-        load_rect = load_text.get_rect(topright=(self.screen_width - self.screen_width*0.05, self.screen_height*0.05))
+        load_rect = load_text.get_rect(
+            topright=(self.screen_width - self.screen_width * 0.05, self.screen_height * 0.05))
         canvas.blit(load_text, load_rect)
 
         # Current distance cal
@@ -322,7 +323,7 @@ class CVRPEnv(gym.Env):
 
         # current dist show
         dist_text = self.display_font.render("Distance: {:.3f}".format(float(reward)), True, self.BLACK)
-        dist_rect = load_text.get_rect(topright=(self.screen_width -  self.screen_width*0.1, self.screen_height*0.1))
+        dist_rect = load_text.get_rect(topright=(self.screen_width - self.screen_width * 0.1, self.screen_height * 0.1))
         canvas.blit(dist_text, dist_rect)
 
         if self.render_mode == 'human':
@@ -333,7 +334,7 @@ class CVRPEnv(gym.Env):
 
         else:
             return np.transpose(
-                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1,0,2)
+                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
             )
 
     def close(self):

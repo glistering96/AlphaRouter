@@ -33,7 +33,7 @@ def max_norm(x, dim=-1):
     else:
         raise TypeError(f"type of dist({type(x)}) is neither np.ndarray or torch.Tensor")
 
-    out = (x / (max_dist+1e-6))
+    out = (x / (max_dist + 1e-6))
 
     return out, (max_dist, 0)
 

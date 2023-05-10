@@ -22,7 +22,7 @@ def make_cord(num_rollouts, num_depots, num_nodes):
 def make_demands(num_rollouts, num_depots, num_nodes):
     depot_demands = np.zeros((num_rollouts, num_depots))
 
-    if num_nodes == 20 or num_nodes==10:
+    if num_nodes == 20 or num_nodes == 10:
         demand_scaler = 30
     elif num_nodes == 50:
         demand_scaler = 40
@@ -48,6 +48,7 @@ def create_problem(env_type, num_depots, num_nodes, num_rollouts):
 
     else:
         raise NotImplementedError
+
 
 if __name__ == '__main__':
     # print(make_demands(1, 1, 20).shape)

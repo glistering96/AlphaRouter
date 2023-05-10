@@ -14,6 +14,7 @@ class MCTS():
     """
     This class handles the MCTS tree.
     """
+
     def __init__(self, env, model, mcts_params, training=True):
 
         self.env = deepcopy(env)
@@ -33,7 +34,7 @@ class MCTS():
 
         self.Q = {}  # stores Q values for s,a (as defined in the paper)
         self.W = {}  # sum of values
-        self.Ns = {} # sum of visit counts for state s
+        self.Ns = {}  # sum of visit counts for state s
         self.N = {}  # stores #times edge s,a was visited
         self.P = {}  # stores initial policy (returned by neural net), dtype: numpy ndarray
 
@@ -95,12 +96,12 @@ class MCTS():
 
             ucb = self.cpuct * self.P[(s, a)] * math.sqrt(self.Ns[s]) / (1 + self.N[(s, a)])
 
-            Q_val = self.Q[(s,a)]
+            Q_val = self.Q[(s, a)]
 
             diff = self.max_q_val - self.min_q_val
 
             if Q_val != 0 and self.normalize_q_value:
-                Q_val = (self.Q[(s,a)] - self.min_q_val) / (self.max_q_val - self.min_q_val + 1e-8)
+                Q_val = (self.Q[(s, a)] - self.min_q_val) / (self.max_q_val - self.min_q_val + 1e-8)
 
             if diff < 1e-8:
                 Q_val = 0
@@ -116,7 +117,7 @@ class MCTS():
         s = state['t']
 
         prob_dist, val = self.model(state)
-        probs = prob_dist.view(-1,).cpu().numpy()
+        probs = prob_dist.view(-1, ).cpu().numpy()
         avail, _ = self.env.get_avail_mask()
 
         self.Ns[s] = 1
@@ -127,7 +128,7 @@ class MCTS():
         for a in range(self.action_space):
             if add_noise and avail[a]:
                 action_noise = float(noise[a] * avail[a])
-                prob = 0.75*probs[a] + 0.25*action_noise
+                prob = 0.75 * probs[a] + 0.25 * action_noise
 
             else:
                 prob = probs[a]
@@ -168,12 +169,12 @@ class MCTS():
             v = v.item()
 
         for s, a in reversed(path):
-            self.N[(s,a)] += 1
+            self.N[(s, a)] += 1
             self.Ns[s] += 1
-            self.W[(s,a)] += v
+            self.W[(s, a)] += v
 
         for i, (s, a) in enumerate(reversed(path)):
-            Q_val = self.W[(s,a)] / self.N[(s,a)]
+            Q_val = self.W[(s, a)] / self.N[(s, a)]
 
             if Q_val < self.min_q_val:
                 self.min_q_val = Q_val
@@ -184,7 +185,7 @@ class MCTS():
             self.Q[(s, a)] = Q_val
 
     def _reset_env_field(self):
-        self.env.visiting_seq = deepcopy(self._initial_visiting_seq)    # type is list
+        self.env.visiting_seq = deepcopy(self._initial_visiting_seq)  # type is list
         self.env.visited = deepcopy(self._initial_visited)
         self.env.available = deepcopy(self._initial_available)
         self.env.t = deepcopy(self._initial_t)
@@ -254,9 +255,3 @@ class MCTS():
             obs, reward, done, _, _ = _env.step(a)
 
         return -reward
-
-
-
-
-
-

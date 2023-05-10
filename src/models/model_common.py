@@ -68,10 +68,10 @@ class EncoderLayer(nn.Module):
         self.head_num = self.model_params['head_num']
         self.qkv_dim = self.model_params['qkv_dim']
 
-        self.Wq = nn.Linear(embedding_dim, self.head_num  * self.qkv_dim, bias=False)
-        self.Wk = nn.Linear(embedding_dim, self.head_num  * self.qkv_dim, bias=False)
-        self.Wv = nn.Linear(embedding_dim, self.head_num  * self.qkv_dim, bias=False)
-        self.multi_head_combine = nn.Linear(self.head_num  * self.qkv_dim, embedding_dim)
+        self.Wq = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
+        self.Wk = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
+        self.Wv = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
+        self.multi_head_combine = nn.Linear(self.head_num * self.qkv_dim, embedding_dim)
 
         self.add_n_normalization_1 = AddAndInstanceNormalization(**model_params)
         self.feed_forward = FeedForward(**model_params)
@@ -128,7 +128,7 @@ class FeedForward(nn.Module):
     def __init__(self, **model_params):
         super().__init__()
         embedding_dim = model_params['embedding_dim']
-        ff_hidden_dim = embedding_dim*2
+        ff_hidden_dim = embedding_dim * 2
 
         self.W1 = nn.Linear(embedding_dim, ff_hidden_dim)
         self.W2 = nn.Linear(ff_hidden_dim, embedding_dim)

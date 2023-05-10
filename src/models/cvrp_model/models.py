@@ -43,9 +43,9 @@ class CVRPModel(nn.Module):
 
         load = load.reshape(B, 1)
 
-        cur_node = cur_node.reshape(B,)
+        cur_node = cur_node.reshape(B, )
 
-        available = available.reshape(B,-1)
+        available = available.reshape(B, -1)
 
         return load, cur_node, available, xy, demands
 
@@ -149,5 +149,3 @@ class Value(nn.Module):
     def forward(self, mh_attn_out):
         val = self.val(mh_attn_out)
         return val
-
-

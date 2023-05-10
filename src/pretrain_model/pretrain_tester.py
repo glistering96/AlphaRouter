@@ -41,7 +41,7 @@ class AMTesterModule(RolloutBase):
         self.time_estimator.reset(self.epochs)
         start = time.time()
         test_score = test_one_episode(self.env, self.model)
-        runtime= time.time() - start
+        runtime = time.time() - start
         self.logger.info(f"Test score: {test_score: .5f}")
 
         self.logger.info(" *** Testing Done *** ")
@@ -60,7 +60,7 @@ def test_one_episode(env, agent):
     with torch.no_grad():
         while not done:
             action_probs, _ = agent(obs)
-            action = action_probs.argmax(-1).detach().item() # type must be python native
+            action = action_probs.argmax(-1).detach().item()  # type must be python native
 
             next_state, reward, done, _, _ = env.step(action)
 

@@ -1,11 +1,12 @@
 import math
 
 import torch
+import torch.nn.functional as F
 from torch.distributions import Categorical
 
 from src.models.model_common import get_encoding, _to_tensor, EncoderLayer
 from src.models.tsp_model.modules import *
-import torch.nn.functional as F
+
 
 class TSPModel(nn.Module):
     def __init__(self, **model_params):
@@ -39,7 +40,7 @@ class TSPModel(nn.Module):
 
         cur_node = cur_node.reshape(B, 1)
 
-        available = available.reshape(B,-1)
+        available = available.reshape(B, -1)
 
         return xy, cur_node, available
 
@@ -140,5 +141,3 @@ class Value(nn.Module):
     def forward(self, mh_attn_out):
         val = self.val(mh_attn_out)
         return val
-
-

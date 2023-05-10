@@ -228,9 +228,9 @@ class PreTrainerModule(RolloutBase):
         self.optimizer.zero_grad()
         self.scheduler.step()
 
-            # self.model.zero_grad()
-            # loss.backward()
-            # self.optimizer.step()
-            # self.scheduler.step()
+        # self.model.zero_grad()
+        # loss.backward()
+        # self.optimizer.step()
+        # self.scheduler.step()
 
         return reward.mean().item(), loss, p_loss, val_loss, len(prob_lst), entropy

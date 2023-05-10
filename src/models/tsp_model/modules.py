@@ -1,9 +1,9 @@
 import torch.nn as nn
 
-# Encoder model related
-import torch.nn.functional as F
-
 from src.models.model_common import ScaledDotProductAttention
+
+
+# Encoder model related
 
 
 class Decoder(nn.Module):
@@ -55,5 +55,3 @@ class Decoder(nn.Module):
         # shape: (batch, 1 or T, embedding)
 
         return mh_atten_out
-
-

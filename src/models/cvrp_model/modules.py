@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 from src.models.model_common import ScaledDotProductAttention
 
@@ -15,7 +14,7 @@ class Decoder(nn.Module):
         self.qkv_dim = self.model_params['qkv_dim']
 
         # self.load_embedder = nn.Linear(1, embedding_dim)
-        self.embedding_mixer = nn.Linear(embedding_dim + embedding_dim//2, embedding_dim)
+        self.embedding_mixer = nn.Linear(embedding_dim + embedding_dim // 2, embedding_dim)
         self.multi_head_combine = nn.Linear(self.head_num * self.qkv_dim, embedding_dim)
 
         self.Wq_last = nn.Linear(embedding_dim + 1, self.head_num * self.qkv_dim, bias=False)

@@ -30,7 +30,7 @@ class TSPEnv(gym.Env):
                 "xy": Box(0.0, 1.0, (self.action_size, 2), dtype=np.float32),
                 "pos": Discrete(self.action_size),
                 "available": MultiBinary(self.action_size)
-             }
+            }
         )
 
         self.action_space = Discrete(self.action_size, seed=seed)
@@ -131,7 +131,6 @@ class TSPEnv(gym.Env):
 
             pygame.init()
             # Define font
-
 
     def get_reward(self):
         if self._is_done() or self.step_reward:
@@ -257,7 +256,7 @@ class TSPEnv(gym.Env):
 
         # current dist show
         dist_text = display_font.render("Distance: {:.3f}".format(float(reward)), True, self.BLACK)
-        dist_rect = dist_text.get_rect(topright=(self.screen_width - self.screen_width*0.1, self.screen_height*0.1))
+        dist_rect = dist_text.get_rect(topright=(self.screen_width - self.screen_width * 0.1, self.screen_height * 0.1))
         canvas.blit(dist_text, dist_rect)
 
         if self.render_mode == 'human':
@@ -268,7 +267,7 @@ class TSPEnv(gym.Env):
 
         else:
             return np.transpose(
-                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1,0,2)
+                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
             )
 
     def close(self):
