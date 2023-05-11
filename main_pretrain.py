@@ -4,23 +4,21 @@ import os
 import time
 from pathlib import Path
 
-from src.common.utils import dict_product, parse_saved_model_dir
+from src.common.utils import dict_product
 from src.run import parse_args, run_pretrain
 
 import torch.multiprocessing as mp
-
+from src.common.dir_parser import DirParser
 
 def _work(**kwargs):
+    load_from_the_latest = kwargs.pop('load_from_the_latest')
+
     args = parse_args()
 
     for k, v in kwargs.items():
         setattr(args, k, v)
 
-    save_path = f"./{args.result_dir}/{args.env_type}/{args.name_prefix}/N_{args.num_nodes}/{args.nn}-{args.embedding_dim}-" \
-                f"{args.encoder_layer_num}-{args.qkv_dim}-{args.head_num}-{args.C}"
-    
-    save_path = parse_saved_model_dir(args, args.result_dir, args.name_prefix, ignore_debug=True)
-    saved_model_path = save_path + "/saved_models/"
+    saved_model_path = DirParser(args).get_model_checkpoint()
 
     latest_epoch = list(
         map(lambda x: int(x), list(
@@ -31,14 +29,10 @@ def _work(**kwargs):
             )
     )
 
-    if latest_epoch:
-        args.model_load = latest_epoch
+    if load_from_the_latest and latest_epoch:
+        args.model_load = max(latest_epoch)
 
-    score = run_pretrain(args)
-
-    str_vals = [f"{name}_{val}" for name, val in zip(kwargs.keys(), kwargs.values())]
-    key = "-".join(str_vals)
-    return key, score, save_path
+    run_pretrain(args)
 
 
 def search_params(num_proc):
@@ -90,20 +84,24 @@ def search_params(num_proc):
 
 if __name__ == '__main__':
     params = {
-    'num_nodes' : 20,
+    'num_nodes' : 50,
     'result_dir' : 'pretrained_result',
     'name_prefix' : '',
     'render_mode' : None,
     'num_episode' : 1024,
     'qkv_dim' : 32,
+    'load_from_the_latest' : True,
+    'env_type' : 'tsp',
     }
 
-    for env_type in [
-        'tsp'
-    ]:
-        for num_node in [50, 100]:
-            params['env_type'] = env_type
-            params['num_nodes'] = num_node
-            _work(**params)
+    _work(**params)
+
+    # for env_type in [
+    #     'tsp'
+    # ]:
+    #     for num_node in [50, 100]:
+    #         params['env_type'] = env_type
+    #         params['num_nodes'] = num_node
+    #         _work(**params)
 
 

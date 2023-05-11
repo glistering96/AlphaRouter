@@ -7,3 +7,10 @@
 /logs/
 /debug/
 /result/
+/notebooks/flash_attention_test.ipynb
+/notebooks/to_be_deleted.ipynb
+/src/env/torch_vec/gpu_vec_env_tsp_test.py
+/src/env/torch_vec/gpu_vec_env_cvrp_test.py
+/notebooks/.ipynb_checkpoints/flash_attention_test-checkpoint.ipynb
+/notebooks/.ipynb_checkpoints/to_be_deleted-checkpoint.ipynb
+/debug_pretrain.py
