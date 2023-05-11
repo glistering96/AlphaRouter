@@ -75,11 +75,13 @@ class TSPEnv(gym.Env):
             with open(filepath, 'rb') as f:
                 xy = pickle.load(f)
 
-            xy = np.array(xy, dtype=np.float32)[self._load_data_idx, :]
+            xy = np.array(xy, dtype=np.float32)[[self._load_data_idx], :]
             # self._load_data_idx += 1
 
         else:
             raise ValueError(f"Invalid file extension for loading data: {ext}")
+
+        # xy must be in shape of [batch, num_nodes, 2]
         return xy
 
     def _load_problem(self):
