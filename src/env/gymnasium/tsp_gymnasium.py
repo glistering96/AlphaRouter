@@ -102,6 +102,9 @@ class TSPEnv(gym.Env):
 
             np.savez_compressed(file_path, xy=xy, demands=None)
 
+        if xy.ndim == 3:
+            xy = xy.squeeze(0)
+
         return xy
 
     def _init_rendering(self):
