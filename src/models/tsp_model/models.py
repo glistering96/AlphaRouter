@@ -40,7 +40,7 @@ class TSPModel(nn.Module):
 
         cur_node = cur_node.reshape(B, 1)
 
-        available = available.reshape(B, -1)
+        available = available.reshape(B, 1, -1)
 
         return xy, cur_node, available
 
@@ -52,10 +52,8 @@ class TSPModel(nn.Module):
 
         B, T = xy.size(0), 1
 
-        # mask = torch.zeros_like(available).type(torch.float16)
-        # mask[available == False] = float('-inf')
-
-        mask = available
+        mask = torch.zeros_like(available).type(torch.float32)
+        mask[available == False] = float('-inf')
 
         if self.encoding is None:
             self.encoding = self.encoder(xy)
