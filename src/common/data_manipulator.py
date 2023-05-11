@@ -4,8 +4,8 @@ import numpy as np
 
 
 def make_cord(num_rollouts, num_depots, num_nodes):
-    depot_cord = np.random.rand(num_rollouts, num_depots, 2).astype(np.float16)
-    node_cord = np.random.rand(num_rollouts, num_nodes, 2).astype(np.float16)
+    depot_cord = np.random.rand(num_rollouts, num_depots, 2).astype(np.float32)
+    node_cord = np.random.rand(num_rollouts, num_nodes, 2).astype(np.float32)
     depot_node_cord = np.concatenate([depot_cord, node_cord], axis=1)
     return depot_node_cord
 
@@ -20,7 +20,7 @@ def make_cord(num_rollouts, num_depots, num_nodes):
 
 
 def make_demands(num_rollouts, num_depots, num_nodes):
-    depot_demands = np.zeros((num_rollouts, num_depots)).astype(np.float16)
+    depot_demands = np.zeros((num_rollouts, num_depots)).astype(np.float32)
 
     if num_nodes == 20 or num_nodes == 10:
         demand_scaler = 30
@@ -31,7 +31,7 @@ def make_demands(num_rollouts, num_depots, num_nodes):
     else:
         raise NotImplementedError
 
-    node_demands = np.random.randint(1, 10, size=(num_rollouts, num_nodes), dtype=np.float16) / float(demand_scaler)
+    node_demands = np.random.randint(1, 10, size=(num_rollouts, num_nodes), dtype=np.float32) / demand_scaler
     depot_node_demands = np.concatenate([depot_demands, node_demands], axis=1)
     return depot_node_demands
 

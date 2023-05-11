@@ -50,7 +50,7 @@ class TSPNpVec:
         np.put_along_axis(self.visited, self.pos, True, axis=1)  # set the current pos as visited
 
         self.visiting_seq = []
-        self.load = np.ones((self.num_env, 1), dtype=np.float16)  # all vehicles start with full load
+        self.load = np.ones((self.num_env, 1), dtype=np.float32)  # all vehicles start with full load
 
         self.visiting_seq.append(self.pos)  # append the depot position
         self.available = np.ones((self.num_env, self.action_size),
