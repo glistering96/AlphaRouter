@@ -39,7 +39,7 @@ def parse_args():
 
     # trainer params
     parser.add_argument("--mini_batch_size", type=int, default=2048, help="mini-batch size")
-    parser.add_argument("--epochs", type=int, default=500000, help="number of training epochs")
+    parser.add_argument("--nn_train_epochs", type=int, default=500000, help="number of training epochs")
     parser.add_argument("--train_epochs", type=int, default=10, help="train epochs")
     parser.add_argument("--num_episode", type=int, default=128, help="number of parallel episodes to run or collect")
     parser.add_argument("--load_epoch", type=int, default=None, help="If value is not None, it will load the model")
