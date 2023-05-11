@@ -47,7 +47,7 @@ class TSPEnv(gym.Env):
         self.t = 0
 
         self.test_data_type = kwargs.get('test_data_type')
-        self._load_data_idx = 0
+        self._load_data_idx = kwargs.get('test_data_idx')
 
     def seed(self, seed):
         self._np_random, self._seed = seeding.np_random(seed)
@@ -76,7 +76,7 @@ class TSPEnv(gym.Env):
                 xy = pickle.load(f)
 
             xy = np.array(xy, dtype=np.float32)[self._load_data_idx, :]
-            self._load_data_idx += 1
+            # self._load_data_idx += 1
 
         else:
             raise ValueError(f"Invalid file extension for loading data: {ext}")

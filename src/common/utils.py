@@ -238,47 +238,10 @@ def get_param_dict(args, copy_src=True):
     # env_params
     num_demand_nodes = args.num_nodes
     num_depots = args.num_depots
-    step_reward = args.step_reward
-    env_type = args.env_type
-    render_mode = args.render_mode
-    test_data_type = args.test_data_type
-
-    # mcts params
-    num_simulations = args.num_simulations
-    temp_threshold = args.temp_threshold
-    noise_eta = args.noise_eta
-    cpuct = args.cpuct
     action_space = num_demand_nodes + num_depots
-    normalize_value = args.normalize_value
-    rollout_game = args.rollout_game
 
-    # model_params
-    nn = args.nn
-    embedding_dim = args.embedding_dim
-    encoder_layer_num = args.encoder_layer_num
-    qkv_dim = args.qkv_dim
-    head_num = args.head_num
-    C = args.C
-
-    # trainer params
-    mini_batch_size = args.mini_batch_size
-    num_episode = args.num_episode
-    train_epochs = args.train_epochs
-    nn_train_epochs = args.nn_train_epochs  # epochs for training the neural network
     load_epoch = args.load_epoch
     load_model = True if load_epoch is not None else False
-    cuda_device_num = args.gpu_id
-    num_proc = args.num_proc
-    lr = args.lr
-    ent_coef = args.ent_coef
-
-    # logging params
-    model_save_interval = args.model_save_interval
-    log_interval = args.log_interval
-
-    # etc
-    data_path = args.data_path
-    seed = args.seed
 
     if check_debug():
         seed = 2
@@ -292,72 +255,58 @@ def get_param_dict(args, copy_src=True):
 
     # allocating hyper-parameters
     env_params = {
-        'num_nodes': num_demand_nodes,
-        'num_depots': num_depots,
-        'seed': seed,
-        'step_reward': step_reward,
-        'env_type': env_type,
-        'render_mode': render_mode,
-        'test_data_type': test_data_type
+        'num_nodes': args.num_demand_nodes,
+        'num_depots': args.num_depots,
+        'seed': args.seed,
+        'step_reward': args.step_reward,
+        'env_type': args.env_type,
+        'render_mode': args.render_mode,
+        'test_data_type': args.test_data_type,
+        'test_data_idx': args.test_data_idx
 
     }
 
     mcts_params = {
-        'num_simulations': num_simulations,
-        'temp_threshold': temp_threshold,  #
-        'noise_eta': noise_eta,  # 0.25
-        'cpuct': cpuct,
+        'num_simulations': args.num_simulations,
+        'temp_threshold': args.temp_threshold,  #
+        'noise_eta': args.noise_eta,  # 0.25
+        'cpuct': args.cpuct,
         'action_space': action_space,
-        'normalize_value': normalize_value,
-        'rollout_game': rollout_game
+        'normalize_value': args.normalize_value,
+        'rollout_game': args.rollout_game
     }
 
     model_params = {
-        'nn': nn,
-        'embedding_dim': embedding_dim,
-        'encoder_layer_num': encoder_layer_num,
-        'qkv_dim': qkv_dim,
-        'head_num': head_num,
-        'C': C,
+        'nn': args.nn,
+        'embedding_dim': args.embedding_dim,
+        'encoder_layer_num': args.encoder_layer_num,
+        'qkv_dim': args.qkv_dim,
+        'head_num': args.head_num,
+        'C': args.C,
     }
 
     h_params = {
-        'num_nodes': num_demand_nodes,
-        'num_depots': num_depots,
-        'num_simulations': num_simulations,
-        'temp_threshold': temp_threshold,  # 40
-        'noise_eta': noise_eta,  # 0.25
-        'cpuct': cpuct,
-        'action_space': action_space,
-        'normalize_value': normalize_value,
-        'model_type': nn,
-        'embedding_dim': embedding_dim,
-        'encoder_layer_num': encoder_layer_num,
-        'qkv_dim': qkv_dim,
-        'head_num': head_num,
-        'C': C
-
     }
 
     run_params = {
         'use_cuda': True,
-        'cuda_device_num': cuda_device_num,
-        'train_epochs': train_epochs,
-        'nn_train_epochs': nn_train_epochs,
-        'num_episode': num_episode,
-        'mini_batch_size': mini_batch_size,
-        'num_proc': num_proc,
-        'data_path': data_path,
-        'ent_coef': ent_coef,
+        'cuda_device_num': args.cuda_device_num,
+        'train_epochs': args.train_epochs,
+        'nn_train_epochs': args.nn_train_epochs,
+        'num_episode': args.num_episode,
+        'mini_batch_size': args.mini_batch_size,
+        'num_proc': args.num_proc,
+        'data_path': args.data_path,
+        'ent_coef': args.ent_coef,
 
         'logging': {
-            'model_save_interval': model_save_interval,
-            'log_interval': log_interval,
+            'model_save_interval': args.model_save_interval,
+            'log_interval': args.log_interval,
         },
 
         'model_load': {
             'enable': load_model,
-            'epoch': load_epoch
+            'epoch': args.load_epoch
         }
     }
 
@@ -369,7 +318,7 @@ def get_param_dict(args, copy_src=True):
     }
 
     optimizer_params = {
-        'lr': lr,
+        'lr': args.lr,
         'eps': 1e-5,
         'betas': (0.9, 0.9)
     }

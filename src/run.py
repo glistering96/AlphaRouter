@@ -19,6 +19,7 @@ def parse_args():
                         help="whether to have step reward. If false, only the "
                              "reward in the last transition will be returned")
     parser.add_argument("--test_data_type", type=str, default='npz', help="extension for test data file")
+    parser.add_argument("--test_data_idx", type=int, default=0, help="index for loading data for pkl datasets")
 
     # model params
     parser.add_argument("--nn", type=str, default='shared_mha', help="type of policy network to use")
