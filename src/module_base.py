@@ -90,6 +90,7 @@ class RolloutBase:
         checkpoint = torch.load(checkpoint_fullname, map_location=self.device)
 
         self.start_epoch = checkpoint['epoch'] + 1
+        self.epochs = self.run_params['nn_train_epochs'] - self.start_epoch + 1
         self.best_score = checkpoint['best_score']
 
         loaded_state_dict = checkpoint['model_state_dict']
