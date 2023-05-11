@@ -31,7 +31,8 @@ def make_demands(num_rollouts, num_depots, num_nodes):
     else:
         raise NotImplementedError
 
-    node_demands = np.random.randint(1, 10, size=(num_rollouts, num_nodes), dtype=np.float32) / demand_scaler
+    node_demands = np.random.randint(1, 10, size=(num_rollouts, num_nodes)) / demand_scaler
+    node_demands = node_demands.astype(np.float32)
     depot_node_demands = np.concatenate([depot_demands, node_demands], axis=1)
     return depot_node_demands
 
