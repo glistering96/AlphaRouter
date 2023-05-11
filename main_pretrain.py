@@ -30,7 +30,7 @@ def _work(**kwargs):
     )
 
     if load_from_the_latest and latest_epoch:
-        args.model_load = max(latest_epoch)
+        args.load_epoch = max(latest_epoch)
 
     run_pretrain(args)
 
