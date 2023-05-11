@@ -22,10 +22,7 @@ class PreTrainerModule(RolloutBase):
         global tb
 
         self.optimizer_params = optimizer_params
-        filename = self.dir_parser.get_result_dir(mcts=False)
-        tb_log_dir = self.dir_parser.get_tensorboard_logging_dir()
-
-        tb_log_path = f'{tb_log_dir}/{filename}/'
+        tb_log_path = self.dir_parser.get_tensorboard_logging_dir()
 
         tb = SummaryWriter(tb_log_path)
 
