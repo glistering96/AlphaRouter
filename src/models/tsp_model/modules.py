@@ -48,9 +48,6 @@ class Decoder(nn.Module):
         if mask.dim() == 2:
             mask = mask[:, None, None, :]
 
-        elif mask.dim() == 3:
-            mask = mask[:, None, :, :]
-
         out_concat = self.scaled_dot_product_attention(q, self.k, self.v, mask)
         # (batch, 1 or T, qkv*head_num)
 

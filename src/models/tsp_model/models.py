@@ -40,7 +40,7 @@ class TSPModel(nn.Module):
 
         cur_node = cur_node.reshape(B, 1)
 
-        available = available.reshape(B, 1, -1)
+        available = available.reshape(B, -1)
 
         return xy, cur_node, available
 
