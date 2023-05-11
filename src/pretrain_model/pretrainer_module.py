@@ -54,6 +54,7 @@ class PreTrainerModule(RolloutBase):
                                                        first_cycle_steps=first_cycle_steps,
                                                        warmup_steps=warmup_epochs,
                                                        min_lr=optimizer_params['lr'] / 100,
+                                                       max_lr=optimizer_params['lr']
                                                        )
 
     def _record_video(self, epoch):
@@ -101,7 +102,7 @@ class PreTrainerModule(RolloutBase):
         total_epochs = self.run_params['nn_train_epochs']
         valid_scores = self.get_valid_score()
 
-        self._record_video(0)
+        # self._record_video(0)
 
         for epoch in range(self.start_epoch, total_epochs + 1):
             # Train
@@ -170,6 +171,7 @@ class PreTrainerModule(RolloutBase):
             tb.add_scalar('loss/p_loss', p_loss, epoch)
             tb.add_scalar('loss/val_loss', val_loss, epoch)
             tb.add_scalar('loss/entropy', entropy, epoch)
+            tb.add_scalar('debug/lr', self.current_lr, epoch)
 
             self.debug_epoch += 1
 
