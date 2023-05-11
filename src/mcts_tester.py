@@ -33,9 +33,9 @@ class MCTSTesterModule(RolloutBase):
     def run(self):
         self.time_estimator.reset(self.epochs)
         global hparam_writer
-        start = time.time()
-        test_score = test_one_episode(self.env, self.model, self.mcts_params, 1)
-        runtime = time.time() - start
+
+        test_score, runtime = test_one_episode(self.env, self.model, self.mcts_params, 1)
+
         self.logger.info(f"Test score: {test_score: .5f}")
         self.logger.info(" *** Testing Done *** ")
         return test_score, runtime
@@ -53,6 +53,8 @@ def test_one_episode(env, agent, mcts_params, temp):
 
     agent.encoding = None
 
+    start = time.time()
+
     with torch.no_grad():
         while not done:
             mcts = MCTS(env, agent, mcts_params, training=False)
@@ -65,4 +67,5 @@ def test_one_episode(env, agent, mcts_params, temp):
             debug += 1
 
             if done:
-                return -reward
+
+                return -reward, time.time() - start
