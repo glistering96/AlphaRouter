@@ -7,7 +7,7 @@ from gymnasium.wrappers import RecordVideo
 from torch.optim import Adam as Optimizer
 from torch.utils.tensorboard import SummaryWriter
 
-from src.common.lr_scheduler import CosineWarmupScheduler
+from src.common.lr_scheduler import CosineAnnealingWarmupRestarts
 from src.module_base import RolloutBase
 
 tb = None
@@ -31,8 +31,6 @@ class PreTrainerModule(RolloutBase):
 
         # policy_optimizer
         self.optimizer = Optimizer(self.model.parameters(), **optimizer_params)
-        warmup_epochs = run_params['nn_train_epochs'] * 0.01
-        self.scheduler = CosineWarmupScheduler(self.optimizer, warmup_epochs, run_params['nn_train_epochs'])
 
         self.scaler = torch.cuda.amp.GradScaler()
 
@@ -49,6 +47,14 @@ class PreTrainerModule(RolloutBase):
 
         self.min_reward = float('inf')
         self.max_reward = float('-inf')
+
+        warmup_epochs = 2000
+        first_cycle_steps = (run_params['nn_train_epochs'] + 1 - self.start_epoch) // 4
+        self.scheduler = CosineAnnealingWarmupRestarts(self.optimizer,
+                                                       first_cycle_steps=first_cycle_steps,
+                                                       warmup_steps=warmup_epochs,
+                                                       min_lr=optimizer_params['lr'] / 100,
+                                                       )
 
     def _record_video(self, epoch):
         video_dir = self.result_folder + f'/videos/'
@@ -225,6 +231,7 @@ class PreTrainerModule(RolloutBase):
         self.optimizer.zero_grad()
         self.scheduler.step()
 
+        self.current_lr = self.optimizer.param_groups[0]['lr']
         # self.model.zero_grad()
         # loss.backward()
         # self.optimizer.step()
