@@ -255,7 +255,7 @@ def get_param_dict(args, copy_src=True):
 
     # allocating hyper-parameters
     env_params = {
-        'num_nodes': args.num_demand_nodes,
+        'num_nodes': args.num_nodes,
         'num_depots': args.num_depots,
         'seed': args.seed,
         'step_reward': args.step_reward,
@@ -290,7 +290,7 @@ def get_param_dict(args, copy_src=True):
 
     run_params = {
         'use_cuda': True,
-        'cuda_device_num': args.cuda_device_num,
+        'cuda_device_num': args.gpu_id,
         'train_epochs': args.train_epochs,
         'nn_train_epochs': args.nn_train_epochs,
         'num_episode': args.num_episode,
