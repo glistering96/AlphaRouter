@@ -75,7 +75,7 @@ class TSPEnv(gym.Env):
             with open(filepath, 'rb') as f:
                 xy = pickle.load(f)
 
-            xy = np.array(xy, dtype=np.float32)[[self._load_data_idx], :]
+            xy = np.array(xy, dtype=np.float32)[self._load_data_idx, :]
             # self._load_data_idx += 1
 
         else:
@@ -102,9 +102,6 @@ class TSPEnv(gym.Env):
 
             np.savez_compressed(file_path, xy=xy, demands=None)
 
-        if xy.ndim == 3:
-            xy = xy.reshape(-1, 2)
-
         return xy
 
     def _init_rendering(self):
@@ -129,7 +126,7 @@ class TSPEnv(gym.Env):
             self.RED = (255, 0, 0)
             self.BLUE = (0, 0, 255)
 
-            self.scaled_xy = [(float(x * scaler) + left_margin, float(y * scaler) + top_margin) for x, y in self.xy]
+            self.scaled_xy = [(float(x * scaler) + left_margin, float(y * scaler) + top_margin) for x, y in self.xy.reshape(-1,2)]
 
             pygame.init()
             # Define font

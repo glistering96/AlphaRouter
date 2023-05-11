@@ -16,15 +16,6 @@ class MCTSTesterModule(RolloutBase):
 
         self.env = self.env_setup.create_env(test=True)
 
-        self.start_epoch = 1
-        self.best_score = float('inf')
-        self.best_loss = float('inf')
-
-        self.debug_epoch = 0
-
-        self.min_reward = float('inf')
-        self.max_reward = float('-inf')
-
         self._load_model(run_params['model_load']['epoch'])
 
         video_dir = self.result_folder + f'/videos/'

@@ -13,10 +13,8 @@ def run_test(**kwargs):
     for k, v in kwargs.items():
         setattr(args, k, v)
 
-    # = parse_saved_model_dir(args, "pretrained_result", args.name_prefix, epochs, mcts_param=False,
-    #                                     ignore_debug=True, return_checkpoint=True)
     score, runtime = run_mcts_test(args)
-    # the result json folder is the same as the model folder
+
     return score, runtime, args.test_data_idx
 
 
@@ -41,6 +39,9 @@ def run_parallel_test(param_ranges, num_proc=4):
     pool.close()
     pool.join()
 
+    if async_result.empty():
+        return
+
     while not async_result.empty():
         score, runtime, test_data_idx = async_result.get()
         result_dict[test_data_idx] = {'score': score, 'runtime': runtime}
@@ -54,18 +55,18 @@ def run_parallel_test(param_ranges, num_proc=4):
     result_dict['average'] = {'score': avg_score, 'runtime': avg_runtime}
     result_dict['std'] = {'score': std_score, 'runtime': std_runtime}
 
-    if not Path(f"./result_summary/").exists():
-        Path(f"./result_summary/").mkdir(parents=True, exist_ok=False)
+    path = f"./result_summary/mcts/{run_param_dict['env_type'][0]}_{problem_size}"
+    if not Path(path).exists():
+        Path(path).mkdir(parents=True, exist_ok=False)
 
     # write the result_dict to a json file
-    with open(f"./result_summary/"
-              f"{run_param_dict['env_type'][0]}_{problem_size}_{run_param_dict['load_epoch'][0]}_test_result.json", 'w') as f:
+    with open(f"{path}/{run_param_dict['load_epoch'][0]}.json", 'w') as f:
         json.dump(result_dict, f, indent=4)
 
 
 
 if __name__ == '__main__':
-    problem_size = 50
+    problem_size = 20
     num_problems = 100
 
     run_param_dict = {
@@ -73,7 +74,7 @@ if __name__ == '__main__':
         'env_type': ['tsp'],
         'num_nodes': [problem_size],
         'num_episode': [1024],
-        'test_data_idx': list(range(num_problems)),
+        'test_data_idx': list(range(num_problems), ),
         'num_simulations': [problem_size*2]
     }
 
@@ -93,7 +94,7 @@ if __name__ == '__main__':
     #     json.dump(result_dict, f, indent=4)
     #
 
-    for load_epoch in list(range(250000, 500000)) + ['best']:
+    for load_epoch in list(range(400000, 500000, 5000)) + ['best', 'best_val_loss']:
         run_param_dict['load_epoch'] = [load_epoch]
         run_parallel_test(run_param_dict, num_proc=4)
 
