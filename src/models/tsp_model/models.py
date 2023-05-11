@@ -52,8 +52,10 @@ class TSPModel(nn.Module):
 
         B, T = xy.size(0), 1
 
-        mask = torch.zeros_like(available).type(torch.float16)
-        mask[available == False] = float('-inf')
+        # mask = torch.zeros_like(available).type(torch.float16)
+        # mask[available == False] = float('-inf')
+
+        mask = available
 
         if self.encoding is None:
             self.encoding = self.encoder(xy)
