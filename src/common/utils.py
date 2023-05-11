@@ -264,7 +264,7 @@ def get_param_dict(args, copy_src=True):
     mini_batch_size = args.mini_batch_size
     num_episode = args.num_episode
     train_epochs = args.train_epochs
-    epochs = args.epochs  # epochs for training the neural network
+    nn_train_epochs = args.nn_train_epochs  # epochs for training the neural network
     load_epoch = args.load_epoch
     load_model = True if load_epoch is not None else False
     cuda_device_num = args.gpu_id
@@ -343,7 +343,7 @@ def get_param_dict(args, copy_src=True):
         'use_cuda': True,
         'cuda_device_num': cuda_device_num,
         'train_epochs': train_epochs,
-        'nn_train_epochs': epochs,
+        'nn_train_epochs': nn_train_epochs,
         'num_episode': num_episode,
         'mini_batch_size': mini_batch_size,
         'num_proc': num_proc,
