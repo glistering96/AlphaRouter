@@ -18,19 +18,20 @@ def _work(**kwargs):
     for k, v in kwargs.items():
         setattr(args, k, v)
 
-    saved_model_path = DirParser(args).get_model_checkpoint()
+    if load_from_the_latest:
+        saved_model_path = DirParser(args).get_model_checkpoint()
 
-    latest_epoch = list(
-        map(lambda x: int(x), list(
-            filter(lambda x: x.isdigit(), list(
-                map(lambda x: x.split('-')[1].split('.')[0], os.listdir(saved_model_path)))
-                   )
-        )
+        latest_epoch = list(
+            map(lambda x: int(x), list(
+                filter(lambda x: x.isdigit(), list(
+                    map(lambda x: x.split('-')[1].split('.')[0], os.listdir(saved_model_path)))
+                       )
             )
-    )
+                )
+        )
 
-    if load_from_the_latest and latest_epoch:
-        args.load_epoch = max(latest_epoch)
+        if latest_epoch:
+            args.load_epoch = max(latest_epoch)
 
     run_pretrain(args)
 
@@ -92,6 +93,8 @@ if __name__ == '__main__':
     'qkv_dim' : 32,
     'load_from_the_latest' : True,
     'env_type' : 'tsp',
+    'embedding_dim': 128,
+    'nn_train_epochs': 750000
     }
 
     _work(**params)
