@@ -49,7 +49,7 @@ class PreTrainerModule(RolloutBase):
         self.max_reward = float('-inf')
 
         warmup_epochs = 2000
-        first_cycle_steps = (run_params['nn_train_epochs'] + 1 - self.start_epoch) // 4
+        first_cycle_steps = (run_params['nn_train_epochs'] + 1 - self.start_epoch)
         self.scheduler = CosineAnnealingWarmupRestarts(self.optimizer,
                                                        first_cycle_steps=first_cycle_steps,
                                                        warmup_steps=warmup_epochs,
