@@ -85,16 +85,16 @@ def search_params(num_proc):
 
 if __name__ == '__main__':
     params = {
-    'num_nodes' : 50,
+    'num_nodes' : 100,
     'result_dir' : 'pretrained_result',
     'name_prefix' : '',
     'render_mode' : None,
     'num_episode' : 1024,
     'qkv_dim' : 32,
-    'load_from_the_latest' : True,
+    'load_from_the_latest' : False,
     'env_type' : 'tsp',
     'embedding_dim': 128,
-    'nn_train_epochs': 750000
+    'nn_train_epochs': 1000000
     }
 
     _work(**params)

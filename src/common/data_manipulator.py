@@ -4,8 +4,15 @@ import numpy as np
 
 
 def make_cord(num_rollouts, num_depots, num_nodes):
-    depot_cord = np.random.rand(num_rollouts, num_depots, 2).astype(np.float32)
-    node_cord = np.random.rand(num_rollouts, num_nodes, 2).astype(np.float32)
+    depot_cord = np.concatenate(
+        [np.random.rand(num_rollouts//2, num_depots, 2).astype(np.float32) for _ in range(2)], axis=0
+    )
+    # to alleviate memory alloc problem, we split the rollouts into two groups
+    # as numpy's default type for floating point is double, we need to convert it to float32
+
+    node_cord = np.concatenate(
+        [np.random.rand(num_rollouts//2, num_nodes, 2).astype(np.float32) for _ in range(2)], axis=0
+    )
     depot_node_cord = np.concatenate([depot_cord, node_cord], axis=1)
     return depot_node_cord
 
