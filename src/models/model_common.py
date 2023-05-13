@@ -128,7 +128,7 @@ class FeedForward(nn.Module):
     def __init__(self, **model_params):
         super().__init__()
         embedding_dim = model_params['embedding_dim']
-        ff_hidden_dim = embedding_dim * 2
+        ff_hidden_dim = 512
 
         self.W1 = nn.Linear(embedding_dim, ff_hidden_dim)
         self.W2 = nn.Linear(ff_hidden_dim, embedding_dim)
