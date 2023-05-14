@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
 
     params = {
-        'num_nodes' : 20,
+        'num_nodes' : 50,   # num_nodes model to load
         'result_dir' : 'pretrained_result',
         'name_prefix' : '',
         'render_mode' : None,
@@ -113,10 +113,38 @@ if __name__ == '__main__':
         'load_from_the_latest' : False,
         'env_type' : 'tsp',
         'embedding_dim': 128,
-        'test_num': 50,
+        'test_num': 20,
         'load_epoch': 'best',
+        'test_data_type': 'pkl',
     }
 
-    run_test(**params)
+    test_result = {}
 
-    # 50 -> 50:
+    for load_from in [20, 50]:
+        for test_to in [20, 50]:
+            for test_data_idx in range(10):
+                params['num_nodes'] = test_to
+                params['test_data_idx'] = test_data_idx
+                params['load_epoch'] = load_from
+
+                score, _, test_data_idx = run_test(**params)
+                key = (load_from, test_to)
+                if key not in test_result:
+                    test_result[key] = {}
+
+                test_result[key][test_data_idx] = score
+
+    path = f"./result_summary/cross_test_result/am/{params['env_type']}"
+    if not Path(path).exists():
+        Path(path).mkdir(parents=True, exist_ok=False)
+
+    # write the result_dict to a json file
+    with open(f"{path}/result.json", 'w') as f:
+        json.dump(test_result, f, indent=4)
+
+    # get average score for each key
+    avg_result = {}
+    for key, result in test_result.items():
+        avg_result[key] = sum(result.values()) / len(result)
+
+    print(avg_result)
