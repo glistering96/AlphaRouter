@@ -49,11 +49,10 @@ class PreTrainerModule(RolloutBase):
         self.max_reward = float('-inf')
 
         warmup_epochs = 2000
-        first_cycle_steps = (run_params['nn_train_epochs'] + 1 - self.start_epoch) // 4
+        first_cycle_steps = (run_params['nn_train_epochs'] + 1 - self.start_epoch)
         self.scheduler = CosineAnnealingWarmupRestarts(self.optimizer,
                                                        first_cycle_steps=first_cycle_steps,
                                                        warmup_steps=warmup_epochs,
-                                                       gamma=0.5,
                                                        min_lr=optimizer_params['lr'] / 10,
                                                        max_lr=optimizer_params['lr']
                                                        )
@@ -131,11 +130,11 @@ class PreTrainerModule(RolloutBase):
                 self.best_score = to_compare_score
                 self._save_checkpoints(epoch, is_best=True)
 
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    score = self._record_video(f"best")
+                # with warnings.catch_warnings():
+                #     warnings.simplefilter("ignore")
+                #     score = self._record_video(f"best")
 
-                valid_scores['best'] = round(score, 4)
+                # valid_scores['best'] = round(score, 4)
 
                 if not (all_done or (epoch % model_save_interval) == 0):
                     self._log_info(epoch, train_score, loss, p_loss, val_loss, elapsed_time_str, remain_time_str)

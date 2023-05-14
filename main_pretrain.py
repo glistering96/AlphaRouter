@@ -87,7 +87,7 @@ if __name__ == '__main__':
     params = {
     'num_nodes' : 50,
     'result_dir' : 'pretrained_result',
-    'name_prefix' : '4_step-gamma_0.5_lr_3e-4',
+    'name_prefix' : '',
     'render_mode' : None,
     'num_episode' : 1024,
     'qkv_dim' : 32,
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     'env_type' : 'cvrp',
     'embedding_dim': 128,
     'nn_train_epochs': 50000,
-    'lr': 3e-4,
+    'lr': 1e-3,
     }
 
     _work(**params)

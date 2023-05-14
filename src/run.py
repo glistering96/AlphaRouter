@@ -11,8 +11,8 @@ def parse_args():
     parser = ArgumentParser()
 
     # env params
-    parser.add_argument("--env_type", type=str, default='cvrp', help="Type of environment to use")
-    parser.add_argument("--num_nodes", type=int, default=20, help="Number of nodes in the test data generation")
+    parser.add_argument("--env_type", type=str, help="Type of environment to use")
+    parser.add_argument("--num_nodes", type=int, help="Number of nodes in the test data generation")
     parser.add_argument("--num_depots", type=int, default=1, help="Number of depots in the test data generation")
     parser.add_argument("--render_mode", type=str, default='rgb_array', help="Type of render for the environment")
     parser.add_argument("--step_reward", type=bool, default=False,
@@ -44,7 +44,7 @@ def parse_args():
     parser.add_argument("--train_epochs", type=int, default=10, help="train epochs")
     parser.add_argument("--num_episode", type=int, default=128, help="number of parallel episodes to run or collect")
     parser.add_argument("--load_epoch", type=int, default=None, help="If value is not None, it will load the model")
-    parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate of ADAM optimizer")
+    parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate of ADAM optimizer")
     parser.add_argument("--ent_coef", type=float, default=0.01, help="Coefficient for entropy regularizer")
     parser.add_argument("--gpu_id", type=int, default=0, help="Id of gpu to use")
     parser.add_argument("--num_proc", type=int, default=4, help="number of episodes to run")
@@ -63,9 +63,6 @@ def parse_args():
 
     if args.test_num is None:
         args.test_num = args.num_nodes
-
-    noise_eta_table = {20: 1, 50: 0.5, 100: 0.25}
-    args.noise_eta = noise_eta_table[args.num_nodes]
 
     return args
 

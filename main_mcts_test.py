@@ -64,6 +64,51 @@ def run_parallel_test(param_ranges, num_proc=4):
         json.dump(result_dict, f, indent=4)
 
 
+def run_cross_test():
+    params = {
+        'num_nodes' : 50,   # num_nodes model to load
+        'result_dir' : 'pretrained_result',
+        'name_prefix' : '',
+        'render_mode' : None,
+        'num_episode' : 1024,
+        'qkv_dim' : 32,
+        'env_type' : 'tsp',
+        'embedding_dim': 128,
+        'test_num': 20,
+        'load_epoch': 'best',
+        'test_data_type': 'pkl',
+    }
+
+    test_result = {}
+
+    for load_from in [20, 50]:
+        for test_num in [20, 50]:
+            for test_data_idx in range(100):
+                params['num_nodes'] = load_from
+                params['test_data_idx'] = test_data_idx
+                params['test_num'] = test_num
+
+                score, _, test_data_idx = run_test(**params)
+                key = f"Trained on {load_from} Test on {test_num}"
+                if key not in test_result:
+                    test_result[key] = {}
+
+                test_result[key][test_data_idx] = score
+
+    path = f"./result_summary/cross_test_result/mcts/{params['env_type']}"
+    if not Path(path).exists():
+        Path(path).mkdir(parents=True, exist_ok=False)
+
+    # write the result_dict to a json file
+    with open(f"{path}/result.json", 'w') as f:
+        json.dump(test_result, f, indent=4)
+
+    # get average score for each key
+    avg_result = {}
+    for key, result in test_result.items():
+        avg_result[key] = sum(result.values()) / len(result)
+
+    print(avg_result)
 
 if __name__ == '__main__':
     problem_size = 20
@@ -94,7 +139,9 @@ if __name__ == '__main__':
     #     json.dump(result_dict, f, indent=4)
     #
 
-    for load_epoch in list(range(400000, 500000, 5000)) + ['best', 'best_val_loss']:
-        run_param_dict['load_epoch'] = [load_epoch]
-        run_parallel_test(run_param_dict, num_proc=4)
+    # for load_epoch in list(range(400000, 500000, 5000)) + ['best', 'best_val_loss']:
+    #     run_param_dict['load_epoch'] = [load_epoch]
+    #     run_parallel_test(run_param_dict, num_proc=4)
+
+    run_cross_test()
 

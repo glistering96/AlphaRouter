@@ -240,6 +240,9 @@ def get_param_dict(args, copy_src=True):
     num_depots = args.num_depots
     action_space = num_demand_nodes + num_depots
 
+    # noise_eta_table = {20: 1, 50: 0.5, 100: 0.25}
+    # args.noise_eta = noise_eta_table[args.num_nodes]
+
     load_epoch = args.load_epoch
     load_model = True if load_epoch is not None else False
 
