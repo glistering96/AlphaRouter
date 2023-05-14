@@ -38,16 +38,17 @@ def parse_args():
     parser.add_argument("--normalize_value", type=bool, default=True, help="Normalize q values in mcts search")
     parser.add_argument("--rollout_game", type=bool, default=False, help="whether to rollout to the terminal episode")
 
-    # trainer params
+    # run params
     parser.add_argument("--mini_batch_size", type=int, default=2048, help="mini-batch size")
     parser.add_argument("--nn_train_epochs", type=int, default=500000, help="number of training epochs")
     parser.add_argument("--train_epochs", type=int, default=10, help="train epochs")
     parser.add_argument("--num_episode", type=int, default=128, help="number of parallel episodes to run or collect")
     parser.add_argument("--load_epoch", type=int, default=None, help="If value is not None, it will load the model")
-    parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate of ADAM optimizer")
+    parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate of ADAM optimizer")
     parser.add_argument("--ent_coef", type=float, default=0.01, help="Coefficient for entropy regularizer")
     parser.add_argument("--gpu_id", type=int, default=0, help="Id of gpu to use")
     parser.add_argument("--num_proc", type=int, default=4, help="number of episodes to run")
+    parser.add_argument("--test_num", type=int, default=None, help="number of workers for data loading")
 
     # etc.
     parser.add_argument("--result_dir", type=str, default='result', help="Result folder directory.")
@@ -59,6 +60,9 @@ def parse_args():
     parser.add_argument("--seed", type=int, default=1, help="values smaller than 1 will not set any seeds")
 
     args = parser.parse_args()
+
+    if args.test_num is None:
+        args.test_num = args.num_nodes
 
     noise_eta_table = {20: 1, 50: 0.5, 100: 0.25}
     args.noise_eta = noise_eta_table[args.num_nodes]

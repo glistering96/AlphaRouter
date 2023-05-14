@@ -85,26 +85,25 @@ def search_params(num_proc):
 
 if __name__ == '__main__':
     params = {
-    'num_nodes' : 100,
+    'num_nodes' : 50,
     'result_dir' : 'pretrained_result',
-    'name_prefix' : '',
+    'name_prefix' : '4_step-gamma_0.5_lr_3e-4',
     'render_mode' : None,
     'num_episode' : 1024,
     'qkv_dim' : 32,
     'load_from_the_latest' : False,
-    'env_type' : 'tsp',
+    'env_type' : 'cvrp',
     'embedding_dim': 128,
-    'nn_train_epochs': 1000000
+    'nn_train_epochs': 50000,
+    'lr': 3e-4,
     }
 
     _work(**params)
 
-    # for env_type in [
-    #     'tsp'
-    # ]:
-    #     for num_node in [50, 100]:
-    #         params['env_type'] = env_type
-    #         params['num_nodes'] = num_node
+    # for qkv_dim in [32, 64]:
+    #     for embedding_dim in [128, 256]:
+    #         params['qkv_dim'] = qkv_dim
+    #         params['embedding_dim'] = embedding_dim
     #         _work(**params)
 
 

@@ -14,8 +14,8 @@ class AMTesterModule(RolloutBase):
         self.start_epoch = 1
         self.debug_epoch = 0
 
-        self._load_model(run_params['model_load']['path'])
-        self.env = self.env_setup.create_env(test=False)
+        self._load_model(run_params['model_load']['epoch'])
+        self.env = self.env_setup.create_env(test=True)
 
     def _record_video(self, epoch):
         video_dir = self.result_folder + f'/videos/'
@@ -50,7 +50,7 @@ class AMTesterModule(RolloutBase):
 
 def test_one_episode(env, agent):
     env.set_test_mode()
-    obs = env.reset()
+    obs, _ = env.reset()
     done = False
     agent.eval()
     debug = 0

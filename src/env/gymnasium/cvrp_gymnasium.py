@@ -16,7 +16,6 @@ class CVRPEnv(gym.Env):
     def __init__(self, num_depots, num_nodes, step_reward=False, render_mode=None, training=True, seed=None,
                  data_path='./data', **kwargs):
         super(CVRPEnv, self).__init__()
-        self.action_size = num_nodes + num_depots
         self.num_depots = num_depots
         self.num_nodes = num_nodes
         self.step_reward = step_reward
@@ -24,6 +23,8 @@ class CVRPEnv(gym.Env):
         self.seed = seed
         self.data_path = data_path
         self.env_type = 'cvrp'
+        self.test_num = kwargs.get('test_num')
+        self.action_size = self.num_nodes + num_depots if self.test_num is None else self.test_num + num_depots
 
         self.observation_space = Dict(
             {
@@ -97,17 +98,17 @@ class CVRPEnv(gym.Env):
 
     def _load_problem(self):
         if self.test_data_type == 'npz':
-            file_path = f"{self.data_path}/cvrp/N_{self.num_nodes}.npz"
+            file_path = f"{self.data_path}/cvrp/N_{self.test_num}.npz"
 
         else:
-            file_path = f"{self.data_path}/cvrp/cvrp{self.num_nodes}_test_seed1234.pkl"
+            file_path = f"{self.data_path}/cvrp/cvrp{self.test_num}_test_seed1234.pkl"
 
         if os.path.isfile(file_path):
             xy, demands = self._load_data(file_path)
 
         else:
-            xy = make_cord(1, self.num_depots, self.num_nodes)
-            demands = make_demands(1, self.num_depots, self.num_nodes)
+            xy = make_cord(1, self.num_depots, self.test_num)
+            demands = make_demands(1, self.num_depots, self.test_num)
 
             if not os.path.exists(self.data_path):
                 os.makedirs(self.data_path, exist_ok=True)

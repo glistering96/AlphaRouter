@@ -94,11 +94,29 @@ if __name__ == '__main__':
     #     json.dump(result_dict, f, indent=4)
     #
 
-    for load_epoch in list(range(400000, 500000, 5000)) + ['best', 'best_val_loss']:
-        run_param_dict['load_epoch'] = [load_epoch]
-        run_parallel_test(run_param_dict, num_proc=10)
+    # for load_epoch in list(range(400000, 500000, 5000)) + ['best', 'best_val_loss']:
+    #     run_param_dict['load_epoch'] = [load_epoch]
+    #     run_parallel_test(run_param_dict, num_proc=10)
 
     # for param in dict_product(run_param_dict):
     #     param['load_epoch'] = 'best'
     #     run_test(**param)
 
+
+    params = {
+        'num_nodes' : 20,
+        'result_dir' : 'pretrained_result',
+        'name_prefix' : '',
+        'render_mode' : None,
+        'num_episode' : 1024,
+        'qkv_dim' : 32,
+        'load_from_the_latest' : False,
+        'env_type' : 'tsp',
+        'embedding_dim': 128,
+        'test_num': 50,
+        'load_epoch': 'best',
+    }
+
+    run_test(**params)
+
+    # 50 -> 50:

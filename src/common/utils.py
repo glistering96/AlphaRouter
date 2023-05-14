@@ -262,7 +262,8 @@ def get_param_dict(args, copy_src=True):
         'env_type': args.env_type,
         'render_mode': args.render_mode,
         'test_data_type': args.test_data_type,
-        'test_data_idx': args.test_data_idx
+        'test_data_idx': args.test_data_idx,
+        'test_num': args.test_num,
 
     }
 
