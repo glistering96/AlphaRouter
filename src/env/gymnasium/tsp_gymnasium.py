@@ -12,7 +12,7 @@ from src.common.utils import cal_distance
 
 
 class TSPEnv(gym.Env):
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 2}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 3}
 
     def __init__(self, num_nodes,
                  step_reward=False, render_mode=None, training=True, seed=None, data_path='./data', **kwargs):
@@ -115,7 +115,7 @@ class TSPEnv(gym.Env):
             self.screen_height = 600
 
             # Set node size and edge width
-            self.node_size = 30
+            self.node_size = 20
             self.edge_width = 2
 
             scaler = 450
@@ -213,7 +213,7 @@ class TSPEnv(gym.Env):
         if self.render_mode is None:
             return
 
-        assert self.screen is not None, "render mode setting is wrong"
+        pygame.font.init()
         display_font = pygame.font.Font(None, 30)
         node_font = pygame.font.Font(None, 20)
 

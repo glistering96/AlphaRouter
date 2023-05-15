@@ -110,6 +110,7 @@ def run_cross_test():
 
     print(avg_result)
 
+
 if __name__ == '__main__':
     problem_size = 20
     num_problems = 100
@@ -119,9 +120,14 @@ if __name__ == '__main__':
         'env_type': ['tsp'],
         'num_nodes': [problem_size],
         'num_episode': [1024],
-        'test_data_idx': list(range(num_problems), ),
-        'num_simulations': [problem_size*2]
+        'test_data_idx': [0],
+        'num_simulations': [problem_size*2],
+        # 'render_mode': ["rgb_array"],
+        'load_epoch': ['best', 5000],
     }
+
+    for params in dict_product(run_param_dict):
+        run_test(**params)
 
     # result_dict = {}
     #
@@ -143,5 +149,5 @@ if __name__ == '__main__':
     #     run_param_dict['load_epoch'] = [load_epoch]
     #     run_parallel_test(run_param_dict, num_proc=4)
 
-    run_cross_test()
+    # run_cross_test()
 

@@ -11,7 +11,7 @@ from src.common.utils import cal_distance
 
 
 class CVRPEnv(gym.Env):
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 2}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 3}
 
     def __init__(self, num_depots, num_nodes, step_reward=False, render_mode=None, training=True, seed=None,
                  data_path='./data', **kwargs):
@@ -131,7 +131,7 @@ class CVRPEnv(gym.Env):
             self.screen_height = 600
 
             # Set node size and edge width
-            self.node_size = 30
+            self.node_size = 20
             self.edge_width = 2
 
             scaler = 450
@@ -151,7 +151,7 @@ class CVRPEnv(gym.Env):
             pygame.init()
             # Define font
             self.display_font = pygame.font.Font(None, 30)
-            self.node_font = pygame.font.Font(None, 20)
+            self.node_font = pygame.font.Font(None, 15)
 
             # Create screen
             self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), flags=pygame.HIDDEN)
@@ -267,7 +267,7 @@ class CVRPEnv(gym.Env):
             return
 
         import pygame
-        assert self.screen is not None, "render mode setting is wrong"
+        pygame.font.init()
 
         canvas = pygame.Surface((self.screen_width, self.screen_height))
         canvas.fill(self.WHITE)

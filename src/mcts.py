@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import numpy as np
 import torch
+from gymnasium.wrappers import RecordVideo
 
 EPS = 1e-8
 
@@ -28,8 +29,6 @@ class MCTS():
         self.noise_eta = mcts_params['noise_eta']
         self.rollout_game = mcts_params['rollout_game']
 
-        self._save_state_field()
-
         self.training = training
 
         self.Q = {}  # stores Q values for s,a (as defined in the paper)
@@ -41,15 +40,12 @@ class MCTS():
         self.max_q_val = float('-inf')
         self.min_q_val = float('inf')
 
-    def _save_state_field(self):
-        self._initial_visiting_seq = deepcopy(self.env.visiting_seq)
-        self._initial_visited = deepcopy(self.env.visited)
-        self._initial_pos = deepcopy(self.env.pos)
-        self._initial_available = deepcopy(self.env.available)
-        self._initial_t = deepcopy(self.env.t)
+        if isinstance(self.env, RecordVideo):
+            self.env = self.env.env
 
-        if self.env_type == 'cvrp':
-            self._initial_load = deepcopy(self.env.load)
+        self.target_env_address = self.env
+
+        self._save_state_field()
 
     def _cal_probs(self, target_state, temp):
         s = target_state['t']
@@ -183,6 +179,16 @@ class MCTS():
                 self.max_q_val = Q_val
 
             self.Q[(s, a)] = Q_val
+
+    def _save_state_field(self):
+        self._initial_visiting_seq = deepcopy(self.env.visiting_seq)
+        self._initial_visited = deepcopy(self.env.visited)
+        self._initial_pos = deepcopy(self.env.pos)
+        self._initial_available = deepcopy(self.env.available)
+        self._initial_t = deepcopy(self.env.t)
+
+        if self.env_type == 'cvrp':
+            self._initial_load = deepcopy(self.env.load)
 
     def _reset_env_field(self):
         self.env.visiting_seq = deepcopy(self._initial_visiting_seq)  # type is list

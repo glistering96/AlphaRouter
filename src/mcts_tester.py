@@ -15,11 +15,13 @@ class MCTSTesterModule(RolloutBase):
         global hparam_writer
 
         self.env = self.env_setup.create_env(test=True)
+        load_epoch = run_params['model_load']['epoch']
 
-        self._load_model(run_params['model_load']['epoch'])
+        self._load_model(load_epoch)
 
         video_dir = self.result_folder + f'/videos/'
-        self.test_env_with_vide = RecordVideo(self.env_setup.create_env(test=True), video_dir, name_prefix='test')
+        self.test_env_with_vide = RecordVideo(self.env_setup.create_env(test=True, render_mode='rgb_array'), video_dir,
+                                              name_prefix=f'test_on_{env_params["test_data_idx"]}_with_{load_epoch}')
 
     def run(self):
         self.time_estimator.reset(self.epochs)
@@ -29,6 +31,9 @@ class MCTSTesterModule(RolloutBase):
 
         self.logger.info(f"Test score: {test_score: .5f}")
         self.logger.info(" *** Testing Done *** ")
+
+        self.record_video()
+
         return test_score, runtime
 
     def record_video(self):
@@ -58,5 +63,4 @@ def test_one_episode(env, agent, mcts_params, temp):
             debug += 1
 
             if done:
-
                 return -reward, time.time() - start
