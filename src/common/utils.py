@@ -240,6 +240,9 @@ def get_param_dict(args, copy_src=True):
     num_depots = args.num_depots
     action_space = num_demand_nodes + num_depots
 
+    if args.test_num is None:
+        args.test_num = num_demand_nodes
+
     # noise_eta_table = {20: 1, 50: 0.5, 100: 0.25}
     # args.noise_eta = noise_eta_table[args.num_nodes]
 
