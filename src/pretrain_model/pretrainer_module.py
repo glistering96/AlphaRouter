@@ -227,6 +227,10 @@ class PreTrainerModule(RolloutBase):
             loss = p_loss + val_loss + self.ent_coef * entropy
 
         self.scaler.scale(loss).backward()  # scaled loss backward call first to create scaled gradients
+
+        self.scaler.unscale_(self.optimizer)
+        torch.nn.utils.clip_grad_value_(self.model.parameters(), 1)
+
         self.scaler.step(self.optimizer)  # scaler step call
         self.scaler.update()  # scaler update call
 
