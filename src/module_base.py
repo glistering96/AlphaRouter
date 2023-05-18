@@ -49,7 +49,7 @@ class RolloutBase:
         self.device = device
 
         # Env
-        self.env_setup = RoutingEnv(self.env_params, self.run_params)
+        self.env_setup = RoutingEnv(self.env_params)
         self.video_env = self.init_test_env()
 
         # Model

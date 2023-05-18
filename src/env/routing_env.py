@@ -7,12 +7,11 @@ from src.env.np_vec.tsp_np_vec_env import TSPNpVec
 
 
 class RoutingEnv:
-    def __init__(self, env_params, run_params):
+    def __init__(self, env_params):
         self.env_params = env_params
-        self.run_params = run_params
 
     def create_env(self, test=True, **kwargs):
-        num_episode = self.run_params['num_parallel_env']
+        num_episode = self.env_params['num_parallel_env']
         env_type = self.env_params['env_type']
         env_params = deepcopy(self.env_params)
 
