@@ -12,7 +12,7 @@ class RoutingEnv:
         self.run_params = run_params
 
     def create_env(self, test=True, **kwargs):
-        num_episode = self.run_params['num_episode']
+        num_episode = self.run_params['num_parallel_env']
         env_type = self.env_params['env_type']
         env_params = deepcopy(self.env_params)
 

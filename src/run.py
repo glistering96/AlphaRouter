@@ -4,7 +4,8 @@ from src.common.dir_parser import DirParser
 from src.common.utils import get_param_dict
 from src.mcts_tester import MCTSTesterModule
 from src.pretrain_model.pretrain_tester import AMTesterModule
-from src.pretrain_model.pretrainer_module import PreTrainerModule
+from src.pretrain_model.pretrainer_module_pl import AMTrainer
+import lightning.pytorch as pl
 
 
 def parse_args():
@@ -18,6 +19,7 @@ def parse_args():
     parser.add_argument("--step_reward", type=bool, default=False,
                         help="whether to have step reward. If false, only the "
                              "reward in the last transition will be returned")
+    parser.add_argument("--num_parallel_env", type=int, default=512, help="number of parallel episodes to run or collect")
     parser.add_argument("--test_data_type", type=str, default='npz', help="extension for test data file")
     parser.add_argument("--test_data_idx", type=int, default=0, help="index for loading data for pkl datasets")
 
@@ -42,7 +44,6 @@ def parse_args():
     parser.add_argument("--mini_batch_size", type=int, default=2048, help="mini-batch size")
     parser.add_argument("--nn_train_epochs", type=int, default=500000, help="number of training epochs")
     parser.add_argument("--train_epochs", type=int, default=10, help="train epochs")
-    parser.add_argument("--num_episode", type=int, default=128, help="number of parallel episodes to run or collect")
     parser.add_argument("--load_epoch", type=int, default=None, help="If value is not None, it will load the model")
     parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate of ADAM optimizer")
     parser.add_argument("--ent_coef", type=float, default=0.01, help="Coefficient for entropy regularizer")
@@ -84,14 +85,25 @@ def run_mcts_test(args):
 def run_pretrain(args):
     env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args)
 
-    trainer = PreTrainerModule(env_params=env_params,
+    model = AMTrainer(env_params=env_params,
                                model_params=model_params,
                                logger_params=logger_params,
                                run_params=run_params,
-                               optimizer_params=optimizer_params,
-                               dir_parser=DirParser(args))
+                               optimizer_params=optimizer_params,)
 
-    trainer.run()
+    default_root_dir = DirParser(args).get_model_root_dir()
+    max_epochs = run_params['nn_train_epochs']
+
+    trainer = pl.Trainer(
+
+        check_val_every_n_epoch=0,
+        max_epochs=max_epochs,
+        default_root_dir=default_root_dir,
+        precision="16-mixed",
+
+    )
+    trainer.fit()
+
 
 
 def run_am_test(args):

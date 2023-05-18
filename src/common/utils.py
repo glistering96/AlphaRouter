@@ -270,6 +270,7 @@ def get_param_dict(args, copy_src=True):
         'test_data_type': args.test_data_type,
         'test_data_idx': args.test_data_idx,
         'test_num': args.test_num,
+        'num_parallel_env': args.num_parallel_env,
 
     }
 
@@ -300,7 +301,6 @@ def get_param_dict(args, copy_src=True):
         'cuda_device_num': args.gpu_id,
         'train_epochs': args.train_epochs,
         'nn_train_epochs': args.nn_train_epochs,
-        'num_episode': args.num_episode,
         'mini_batch_size': args.mini_batch_size,
         'num_proc': args.num_proc,
         'data_path': args.data_path,

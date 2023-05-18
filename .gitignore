@@ -14,3 +14,5 @@
 /notebooks/.ipynb_checkpoints/flash_attention_test-checkpoint.ipynb
 /notebooks/.ipynb_checkpoints/to_be_deleted-checkpoint.ipynb
 /debug_pretrain.py
+*.pyc
+log_archive/
