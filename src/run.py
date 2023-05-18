@@ -20,6 +20,9 @@ def parse_args():
                              "reward in the last transition will be returned")
     parser.add_argument("--test_data_type", type=str, default='npz', help="extension for test data file")
     parser.add_argument("--test_data_idx", type=int, default=0, help="index for loading data for pkl datasets")
+    parser.add_argument("--num_parallel_env", type=int, default=512, help="number of parallel episodes to run or collect")
+    parser.add_argument("--data_path", type=str, default='./data', help="Test data file locations")
+    parser.add_argument("--test_num", type=int, default=None, help="Number of nodes to test on")
 
     # model params
     parser.add_argument("--nn", type=str, default='shared_mha', help="type of policy network to use")
@@ -42,20 +45,16 @@ def parse_args():
     parser.add_argument("--mini_batch_size", type=int, default=2048, help="mini-batch size")
     parser.add_argument("--nn_train_epochs", type=int, default=500000, help="number of training epochs")
     parser.add_argument("--train_epochs", type=int, default=10, help="train epochs")
-    parser.add_argument("--num_episode", type=int, default=128, help="number of parallel episodes to run or collect")
     parser.add_argument("--load_epoch", type=int, default=None, help="If value is not None, it will load the model")
-    parser.add_argument("--lr", type=float, default=3e-4, help="Learning rate of ADAM optimizer")
+    parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate of ADAM optimizer")
     parser.add_argument("--ent_coef", type=float, default=0.01, help="Coefficient for entropy regularizer")
     parser.add_argument("--gpu_id", type=int, default=0, help="Id of gpu to use")
-    parser.add_argument("--num_proc", type=int, default=4, help="number of episodes to run")
-    parser.add_argument("--test_num", type=int, default=None, help="number of workers for data loading")
 
     # etc.
     parser.add_argument("--result_dir", type=str, default='result', help="Result folder directory.")
     parser.add_argument("--tb_log_dir", type=str, default='logs', help="Result log folder (tensorboard) directory.")
     parser.add_argument("--model_save_interval", type=int, default=10000, help="interval for model savings")
     parser.add_argument("--log_interval", type=int, default=10000, help="interval for model logging")
-    parser.add_argument("--data_path", type=str, default='./data', help="Test data file locations")
     parser.add_argument("--name_prefix", type=str, default='', help="name prefix")
     parser.add_argument("--seed", type=int, default=1, help="values smaller than 1 will not set any seeds")
 
