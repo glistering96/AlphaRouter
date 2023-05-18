@@ -12,7 +12,7 @@ class CVRPModel(nn.Module):
         super(CVRPModel, self).__init__()
 
         self.model_params = model_params
-        self.device = model_params['device']
+        # self.device = model_params['device']
 
         self.policy_net = Policy(**model_params)
         self.value_net = Value(**model_params)

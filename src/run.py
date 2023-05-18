@@ -6,7 +6,7 @@ from src.mcts_tester import MCTSTesterModule
 from src.pretrain_model.pretrain_tester import AMTesterModule
 from src.pretrain_model.pretrainer_module_pl import AMTrainer
 import lightning.pytorch as pl
-
+from lightning.pytorch import loggers as pl_loggers
 
 def parse_args():
     parser = ArgumentParser()
@@ -19,7 +19,6 @@ def parse_args():
     parser.add_argument("--step_reward", type=bool, default=False,
                         help="whether to have step reward. If false, only the "
                              "reward in the last transition will be returned")
-    parser.add_argument("--num_parallel_env", type=int, default=512, help="number of parallel episodes to run or collect")
     parser.add_argument("--test_data_type", type=str, default='npz', help="extension for test data file")
     parser.add_argument("--test_data_idx", type=int, default=0, help="index for loading data for pkl datasets")
     parser.add_argument("--num_parallel_env", type=int, default=512, help="number of parallel episodes to run or collect")
@@ -87,23 +86,46 @@ def run_pretrain(args):
 
     model = AMTrainer(env_params=env_params,
                                model_params=model_params,
-                               logger_params=logger_params,
                                run_params=run_params,
                                optimizer_params=optimizer_params,)
 
     default_root_dir = DirParser(args).get_model_root_dir()
     max_epochs = run_params['nn_train_epochs']
 
-    trainer = pl.Trainer(
+    logger = pl_loggers.TensorBoardLogger(save_dir=DirParser(args).get_tensorboard_logging_dir(),
+                                          name='', max_queue=500)
 
+    score_cp_callback = pl.callbacks.ModelCheckpoint(
+        dirpath=default_root_dir,
+        monitor="train_score",
+        every_n_epochs=run_params['model_save_interval'],
+        mode="min",
+        filename="{epoch}-{train_score:.5f}",
+        save_on_train_epoch_end=True,
+        save_top_k=1
+    )
+
+    val_cp_callback = pl.callbacks.ModelCheckpoint(
+        dirpath=default_root_dir,
+        monitor="val_loss",
+        mode="min",
+        filename="{epoch}-{val_loss:.5f}",
+        save_on_train_epoch_end=True,
+        save_top_k=1
+    )
+
+    trainer = pl.Trainer(
+        accumulate_grad_batches=3,
+        logger=logger,
+        log_every_n_steps=run_params['log_interval'],
         check_val_every_n_epoch=0,
         max_epochs=max_epochs,
         default_root_dir=default_root_dir,
         precision="16-mixed",
+        callbacks=[score_cp_callback, val_cp_callback],
 
     )
-    trainer.fit()
-
+    trainer.fit(model)
 
 
 def run_am_test(args):

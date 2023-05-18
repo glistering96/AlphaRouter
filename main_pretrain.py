@@ -4,6 +4,8 @@ import os
 import time
 from pathlib import Path
 
+import torch
+
 from src.common.utils import dict_product
 from src.run import parse_args, run_pretrain
 
@@ -85,7 +87,7 @@ def search_params(num_proc):
 
 if __name__ == '__main__':
     params = {
-    'num_nodes' : 50,
+    'num_nodes' : 20,
     'result_dir' : 'pretrained_result',
     'name_prefix' : '',
     'render_mode' : None,
@@ -94,9 +96,12 @@ if __name__ == '__main__':
     'load_from_the_latest' : False,
     'env_type' : 'cvrp',
     'embedding_dim': 128,
-    'nn_train_epochs': 50000,
+    'nn_train_epochs': 10,
+    'num_parallel_env': 4,
     'lr': 1e-3,
     }
+
+    torch.set_float32_matmul_precision('high')
 
     _work(**params)
 

@@ -11,18 +11,24 @@ import warnings
 import lightning.pytorch as pl
 
 from src.env.routing_env import RoutingEnv
+from src.models.routing_model import RoutingModel
 
 
 class AMTrainer(pl.LightningModule):
-    def __init__(self, env_params, model_params, logger_params, optimizer_params, run_params):
+    def __init__(self, env_params, model_params, optimizer_params, run_params):
         super(AMTrainer, self).__init__()
         # save arguments
         self.optimizer_params = optimizer_params
 
+        # model
+        self.model = RoutingModel(model_params, env_params).create_model(env_params['env_type'])
+
         # env
-        self.env = RoutingEnv(env_params, run_params).create_env(test=False)
+        self.env = RoutingEnv(env_params).create_env(test=False)
+
+        # etc
         self.ent_coef = run_params['ent_coef']
-        self.warmup_epochs = 2000
+        self.warm_up_epochs = 2000
 
     def training_step(self):
         # train for one epoch.

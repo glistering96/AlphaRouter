@@ -269,6 +269,7 @@ def get_param_dict(args, copy_src=True):
         'test_data_idx': args.test_data_idx,
         'test_num': args.test_num,
         'num_parallel_env': args.num_parallel_env,
+        'data_path': args.data_path,
 
     }
 
@@ -300,14 +301,10 @@ def get_param_dict(args, copy_src=True):
         'train_epochs': args.train_epochs,
         'nn_train_epochs': args.nn_train_epochs,
         'mini_batch_size': args.mini_batch_size,
-        'num_proc': args.num_proc,
-        'data_path': args.data_path,
         'ent_coef': args.ent_coef,
 
-        'logging': {
-            'model_save_interval': args.model_save_interval,
-            'log_interval': args.log_interval,
-        },
+        'model_save_interval': args.model_save_interval,
+        'log_interval': args.log_interval,
 
         'model_load': {
             'enable': load_model,
