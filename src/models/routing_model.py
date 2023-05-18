@@ -14,13 +14,9 @@ class RoutingModel:
         self.env_params = env_params
 
     def create_model(self, env_type):
-        model_params = deepcopy(self.model_params)
-
         if env_type == 'cvrp':
-            model_params['action_size'] = self.env_params['num_depots'] + self.env_params['num_nodes']
             return CVRPModel(**self.model_params)
         elif env_type == 'tsp':
-            model_params['action_size'] = self.env_params['num_nodes']
             return TSPModel(**self.model_params)
         else:
             raise NotImplementedError
