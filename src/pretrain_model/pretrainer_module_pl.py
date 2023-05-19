@@ -18,6 +18,7 @@ from src.models.routing_model import RoutingModel
 class AMTrainer(pl.LightningModule):
     def __init__(self, env_params, model_params, optimizer_params, run_params):
         super(AMTrainer, self).__init__()
+
         # save arguments
         self.optimizer_params = optimizer_params
 
@@ -30,7 +31,7 @@ class AMTrainer(pl.LightningModule):
         # etc
         self.ent_coef = run_params['ent_coef']
         self.nn_train_epochs = run_params['nn_train_epochs']
-        self.warm_up_epochs = 2000
+        self.warm_up_epochs = 1000
 
     def training_step(self, batch, _):
         # TODO: need to add a batch input for training step. It means that environment rollout must be isolated
@@ -91,6 +92,7 @@ class AMTrainer(pl.LightningModule):
         self.log('loss/entropy', entropy, prog_bar=True)
         lr = self.trainer.lr_scheduler_configs[0].scheduler.get_lr()[0]
         self.log('debug/lr', lr, prog_bar=True)
+        self.log('hp_metric', train_score)
 
         return loss
 

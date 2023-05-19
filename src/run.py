@@ -53,6 +53,7 @@ def parse_args():
     parser.add_argument("--ent_coef", type=float, default=0.01, help="Coefficient for entropy regularizer")
     parser.add_argument("--gpu_id", type=int, default=0, help="Id of gpu to use")
     parser.add_argument("--grad_acc", type=int, default=0, help="Accumulations of gradients")
+    parser.add_argument("--warm_up", type=int, default=1000, help="lr scheduler warm up steps")
 
     # etc.
     parser.add_argument("--result_dir", type=str, default='result', help="Result folder directory.")
@@ -85,13 +86,14 @@ def run_mcts_test(args):
 
 
 def run_pretrain(args):
-    env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args)
+    env_params, mcts_params, model_params, h_params, run_params, optimizer_params = get_param_dict(args)
 
     model = AMTrainer(env_params=env_params,
                                model_params=model_params,
                                run_params=run_params,
                                optimizer_params=optimizer_params,)
 
+    model.save_hyperparameters(h_params)
     default_root_dir = DirParser(args).get_model_root_dir()
     max_epochs = run_params['nn_train_epochs']
 

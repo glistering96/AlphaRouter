@@ -292,9 +292,6 @@ def get_param_dict(args, copy_src=True):
         'C': args.C,
     }
 
-    h_params = {
-    }
-
     run_params = {
         'use_cuda': True,
         'cuda_device_num': args.gpu_id,
@@ -305,6 +302,7 @@ def get_param_dict(args, copy_src=True):
 
         'model_save_interval': args.model_save_interval,
         'log_interval': args.log_interval,
+        'warm_up': args.warm_up,
 
         'model_load': {
             'enable': load_model,
@@ -312,24 +310,32 @@ def get_param_dict(args, copy_src=True):
         }
     }
 
-    logger_params = {
-        'log_file': {
-            'filename': 'log.txt',
-            'date_prefix': False
-        },
-    }
 
     optimizer_params = {
         'lr': args.lr,
         'eps': 1e-5,
-        'betas': (0.9, 0.9)
+        'betas': (0.9, 0.95)
+    }
+
+    h_params = {
+        'num_parallel_env': args.num_parallel_env,
+        'embedding_dim': args.embedding_dim,
+        'encoder_layer_num': args.encoder_layer_num,
+        'qkv_dim': args.qkv_dim,
+        'head_num': args.head_num,
+        'betas': (0.9, 0.95),
+        'lr': args.lr,
+        'nn_train_epochs': args.nn_train_epochs,
+        'ent_coef': args.ent_coef,
+        'grad_acc': args.grad_acc,
+        'warm_up': args.warm_up,
     }
 
     # TODO: result folder src copy needs to be managed
     # if copy_src:
     #     copy_all_src(result_folder_name)
 
-    return env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params
+    return env_params, mcts_params, model_params, h_params, run_params, optimizer_params
 
 
 def dict_product(dicts):
