@@ -96,7 +96,8 @@ if __name__ == '__main__':
     'load_from_the_latest' : False,
     'env_type' : 'cvrp',
     'embedding_dim': 128,
-    'nn_train_epochs': 10,
+    'nn_train_epochs': 100,
+    'model_save_interval': 500,
     'num_parallel_env': 4,
     'lr': 1e-3,
     }

@@ -38,7 +38,7 @@ def _to_tensor(obs, device):
                 tensor_obs[k] = tensor
 
             elif isinstance(v, int):
-                tensor_obs[k] = torch.tensor([v], dtype=torch.long, device=device)
+                tensor_obs[k] = torch.tensor([v], dtype=torch.long).to(device)
 
     return tensor_obs
 

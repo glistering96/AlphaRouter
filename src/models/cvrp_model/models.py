@@ -21,8 +21,8 @@ class CVRPModel(nn.Module):
 
         self.encoding = None
 
-    def _get_obs(self, observations):
-        observations = _to_tensor(observations, self.device)
+    def _get_obs(self, observations, device):
+        observations = _to_tensor(observations, device)
 
         xy, demands = observations['xy'], observations['demands']
         # (N, 2), (N, 1)
@@ -51,7 +51,8 @@ class CVRPModel(nn.Module):
         return load, cur_node, available, xy, demands
 
     def forward(self, obs):
-        load, cur_node, available, xy, demands = self._get_obs(obs)
+
+        load, cur_node, available, xy, demands = self._get_obs(obs, self.device)
         # load: (B, 1)
         # cur_node: (B, )
         # available: (B, N)

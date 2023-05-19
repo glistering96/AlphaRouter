@@ -1,5 +1,7 @@
 from argparse import ArgumentParser
 
+import torch.utils.data
+
 from src.common.dir_parser import DirParser
 from src.common.utils import get_param_dict
 from src.mcts_tester import MCTSTesterModule
@@ -107,25 +109,29 @@ def run_pretrain(args):
 
     val_cp_callback = pl.callbacks.ModelCheckpoint(
         dirpath=default_root_dir,
-        monitor="val_loss",
+        monitor="loss/val_loss",
         mode="min",
-        filename="{epoch}-{val_loss:.5f}",
-        save_on_train_epoch_end=True,
+        filename="best_val_loss",
+        save_on_train_epoch_end=False,
         save_top_k=1
     )
 
     trainer = pl.Trainer(
+
         accumulate_grad_batches=3,
         logger=logger,
-        log_every_n_steps=run_params['log_interval'],
+        log_every_n_steps=100,
         check_val_every_n_epoch=0,
+        # max_steps=100,
         max_epochs=max_epochs,
         default_root_dir=default_root_dir,
         precision="16-mixed",
         callbacks=[score_cp_callback, val_cp_callback],
-
     )
-    trainer.fit(model)
+
+    dummy_dl = torch.utils.data.DataLoader(torch.zeros((100, 1, 1, 1)), batch_size=1)
+    trainer.fit(model,
+                train_dataloaders=dummy_dl)
 
 
 def run_am_test(args):

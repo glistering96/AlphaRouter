@@ -30,12 +30,16 @@ class AMTrainer(pl.LightningModule):
         self.ent_coef = run_params['ent_coef']
         self.warm_up_epochs = 2000
 
-    def training_step(self):
+    def training_step(self, batch, _):
+        # TODO: need to add a batch input for training step. It means that environment rollout must be isolated
+        # from the training step.
+
         # train for one epoch.
         # In one epoch, the policy_net trains over given number of scenarios from tester parameters
         # The scenarios are trained in batched.
         done = False
         self.model.encoding = None
+        self.model.device = self.device
 
         obs, _ = self.env.reset()
         prob_lst = []
@@ -76,8 +80,9 @@ class AMTrainer(pl.LightningModule):
 
         train_score, loss, p_loss, val_loss, epi_len, entropy = reward.mean().item(), loss, p_loss, val_loss, len(prob_lst), entropy
 
-        self.log('score/train_score', train_score, prog_bar=True)
-        self.log('score/episode_length', epi_len, prog_bar=True)
+        self.log('score/train_score', train_score)
+        self.log('train_score', train_score, prog_bar=True, logger=False)
+        self.log('score/episode_length', float(epi_len), prog_bar=True)
         self.log('loss/total_loss', loss)
         self.log('loss/p_loss', p_loss)
         self.log('loss/val_loss', val_loss, prog_bar=True)
