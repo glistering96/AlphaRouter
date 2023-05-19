@@ -13,7 +13,6 @@ class TSPModel(nn.Module):
         super(TSPModel, self).__init__()
 
         self.model_params = model_params
-        self.device = model_params['device']
 
         self.policy_net = Policy(**model_params)
         self.value_net = Value(**model_params)
@@ -22,8 +21,8 @@ class TSPModel(nn.Module):
 
         self.encoding = None
 
-    def _get_obs(self, observations):
-        observations = _to_tensor(observations, self.device)
+    def _get_obs(self, observations, device):
+        observations = _to_tensor(observations, device)
 
         xy = observations['xy']
         # (N, 2), (N, 1)
@@ -45,7 +44,7 @@ class TSPModel(nn.Module):
         return xy, cur_node, available
 
     def forward(self, obs):
-        xy, cur_node, available = self._get_obs(obs)
+        xy, cur_node, available = self._get_obs(obs, self.device)
         # xy: (B, N, 2)
         # cur_node: (B, )
         # available: (B, N)
