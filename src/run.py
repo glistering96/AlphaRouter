@@ -52,6 +52,7 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate of ADAM optimizer")
     parser.add_argument("--ent_coef", type=float, default=0.01, help="Coefficient for entropy regularizer")
     parser.add_argument("--gpu_id", type=int, default=0, help="Id of gpu to use")
+    parser.add_argument("--grad_acc", type=int, default=0, help="Accumulations of gradients")
 
     # etc.
     parser.add_argument("--result_dir", type=str, default='result', help="Result folder directory.")
@@ -116,20 +117,20 @@ def run_pretrain(args):
         save_top_k=1
     )
 
-    trainer = pl.Trainer(
+    grad_acc = args.grad_acc if args.grad_acc > 1 else 1
 
-        accumulate_grad_batches=3,
+    trainer = pl.Trainer(
+        accumulate_grad_batches=grad_acc,
         logger=logger,
-        log_every_n_steps=100,
+        log_every_n_steps=4,
         check_val_every_n_epoch=0,
-        # max_steps=100,
         max_epochs=max_epochs,
         default_root_dir=default_root_dir,
         precision="16-mixed",
         callbacks=[score_cp_callback, val_cp_callback],
     )
 
-    dummy_dl = torch.utils.data.DataLoader(torch.zeros((100, 1, 1, 1)), batch_size=1)
+    dummy_dl = torch.utils.data.DataLoader(torch.zeros((4, 1, 1, 1)), batch_size=1)
     trainer.fit(model,
                 train_dataloaders=dummy_dl)
 
