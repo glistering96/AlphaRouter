@@ -10,6 +10,7 @@ from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 import warnings
 import lightning.pytorch as pl
 
+from src.common.lr_scheduler import CosineAnnealingWarmupRestarts
 from src.env.routing_env import RoutingEnv
 from src.models.routing_model import RoutingModel
 
@@ -28,6 +29,7 @@ class AMTrainer(pl.LightningModule):
 
         # etc
         self.ent_coef = run_params['ent_coef']
+        self.nn_train_epochs = run_params['nn_train_epochs']
         self.warm_up_epochs = 2000
 
     def training_step(self, batch, _):
@@ -87,13 +89,21 @@ class AMTrainer(pl.LightningModule):
         self.log('loss/p_loss', p_loss)
         self.log('loss/val_loss', val_loss, prog_bar=True)
         self.log('loss/entropy', entropy, prog_bar=True)
+        lr = self.trainer.lr_scheduler_configs[0].scheduler.get_lr()[0]
+        self.log('debug/lr', lr, prog_bar=True)
 
         return loss
 
     def configure_optimizers(self):
         optimizer = Optimizer(self.parameters(), **self.optimizer_params)
-        scheduler = CosineAnnealingWarmRestarts(
+
+        scheduler = CosineAnnealingWarmupRestarts(
             optimizer,
-            T_0=self.warm_up_epochs,
-            eta_min=1e-7)
+            first_cycle_steps=self.nn_train_epochs,
+            warmup_steps=self.warm_up_epochs,
+            max_lr=self.optimizer_params['lr'],
+            min_lr=1e-9)
         return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]
+
+    # def lr_scheduler_step(self, scheduler, metric):
+    #     scheduler.step(epoch=self.current_epoch)
