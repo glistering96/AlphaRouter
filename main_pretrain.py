@@ -54,8 +54,8 @@ def search_params(num_proc):
         'num_steps_in_epoch': [1],
         'grad_acc': [1],
         'model_save_interval': [100],
-        'nn_train_epochs': [100000],
-        'lr': [1e-3, 3e-4, 1e-4, 5e-5, 1e-5],
+        'nn_train_epochs': [1000000],
+        'lr': [3e-4],
 
     }
 
@@ -147,35 +147,34 @@ def ray_tune_search():
       trainer.fit(model)
 
 if __name__ == '__main__':
-    # params = {
-    # 'num_nodes' : 50,
-    # 'result_dir' : 'pretrained_result',
-    # 'name_prefix' : '',
-    # 'render_mode' : None,
-    # 'num_episode' : 1024,
-    # 'qkv_dim' : 32,
-    # 'load_from_the_latest' : False,
-    # 'env_type' : 'tsp',
-    # 'embedding_dim': 128,
-    # 'nn_train_epochs': 100000,
-    # 'model_save_interval': 10,
-    # 'num_parallel_env': 1024,
-    # 'lr': 3e-4,
-    # 'grad_acc': 2,
-    # 'num_steps_in_epoch': 100
-    #
-    # }
+    torch.set_float32_matmul_precision('high')
+    params = {
+        'num_nodes' : 20,
+        'result_dir' : 'pretrained_result',
+        'name_prefix' : 'fixed_model',
+        'render_mode' : None,
+        'num_episode' : 1024,
+        'qkv_dim' : 32,
+        'load_from_the_latest' : False,
+        'env_type' : 'tsp',
+        'embedding_dim': 128,
+        'nn_train_epochs': 100000,
+        'model_save_interval': 10,
+        'num_parallel_env': 1024,
+        'lr': 3e-4,
+        'grad_acc': 1,
+        'num_steps_in_epoch': 1
+    }
     # #
     # # for grad_acc, num_steps_in_epoch in itertools.product([1, 5, 10], [1, 10, 100]):
     # #     params['grad_acc'] = grad_acc
     # #     params['num_steps_in_epoch'] = num_steps_in_epoch
     # #     _work(**params)
     #
-    # torch.set_float32_matmul_precision('high')
     #
-    # _work(**params)
+    _work(**params)
     #
-    search_params(3)
+    # search_params(1)
     #
     # # for qkv_dim in [32, 64]:
     # #     for embedding_dim in [128, 256]:
