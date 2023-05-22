@@ -16,8 +16,14 @@ from src.models.routing_model import RoutingModel
 
 
 class AMTrainer(pl.LightningModule):
-    def __init__(self, env_params, model_params, optimizer_params, run_params):
+    def __init__(self, env_params, model_params, optimizer_params, run_params, config=None):
         super(AMTrainer, self).__init__()
+
+        if config is not None:
+            for key, value in config.items():
+                for params in [env_params, model_params, optimizer_params, run_params]:
+                    if key in params:
+                        setattr(params, key, value)
 
         # save arguments
         self.optimizer_params = optimizer_params

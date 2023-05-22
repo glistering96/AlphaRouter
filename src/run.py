@@ -53,6 +53,7 @@ def parse_args():
     parser.add_argument("--ent_coef", type=float, default=0.01, help="Coefficient for entropy regularizer")
     parser.add_argument("--gpu_id", type=int, default=0, help="Id of gpu to use")
     parser.add_argument("--grad_acc", type=int, default=0, help="Accumulations of gradients")
+    parser.add_argument("--num_steps_in_epoch", type=int, default=4, help="num_steps_in_epoch")
     parser.add_argument("--warm_up", type=int, default=1000, help="lr scheduler warm up steps")
 
     # etc.
@@ -88,6 +89,9 @@ def run_mcts_test(args):
 def run_pretrain(args):
     env_params, mcts_params, model_params, h_params, run_params, optimizer_params = get_param_dict(args)
 
+    grad_acc = args.grad_acc if args.grad_acc > 1 else 1
+    num_steps_in_epoch = args.num_steps_in_epoch
+
     model = AMTrainer(env_params=env_params,
                                model_params=model_params,
                                run_params=run_params,
@@ -119,8 +123,6 @@ def run_pretrain(args):
         save_top_k=1
     )
 
-    grad_acc = args.grad_acc if args.grad_acc > 1 else 1
-
     trainer = pl.Trainer(
         accumulate_grad_batches=grad_acc,
         logger=logger,
@@ -130,9 +132,10 @@ def run_pretrain(args):
         default_root_dir=default_root_dir,
         precision="16-mixed",
         callbacks=[score_cp_callback, val_cp_callback],
+        max_time={'hours': 1}
     )
 
-    dummy_dl = torch.utils.data.DataLoader(torch.zeros((4, 1, 1, 1)), batch_size=1)
+    dummy_dl = torch.utils.data.DataLoader(torch.zeros((num_steps_in_epoch, 1, 1, 1)), batch_size=1)
     trainer.fit(model,
                 train_dataloaders=dummy_dl)
 
