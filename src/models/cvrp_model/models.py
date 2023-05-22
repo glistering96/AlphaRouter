@@ -106,10 +106,9 @@ class Encoder(nn.Module):
         out = self.input_embedder(out)
 
         for layer in self.embedder:
-            out = layer(out)
+            out = layer(out) + out  # residual connection
 
         return out
-
 
 class Policy(nn.Module):
     def __init__(self, **model_params):

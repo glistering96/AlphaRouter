@@ -97,7 +97,7 @@ class Encoder(nn.Module):
         out = self.input_embedder(xy)
 
         for layer in self.embedder:
-            out = layer(out)
+            out = layer(out) + out
 
         return out
 

@@ -1,3 +1,5 @@
+import math
+
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -73,14 +75,13 @@ class EncoderLayer(nn.Module):
         self.Wv = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
         self.multi_head_combine = nn.Linear(self.head_num * self.qkv_dim, embedding_dim)
 
-        self.add_n_normalization_1 = AddAndInstanceNormalization(**model_params)
-        self.feed_forward = FeedForward(**model_params)
-        self.add_n_normalization_2 = AddAndInstanceNormalization(**model_params)
-
         self.scaled_dot_product_attention = ScaledDotProductAttention(**model_params)
 
+        self.normalizer = Normalization(embedding_dim)
+        self.feed_forward = FeedForward(**model_params)
+
     def forward(self, input1):
-        # input1.shape: (batch, problem+1, embedding)
+        # input1.shape: (batch, problem, embedding)
         B, N, E = input1.size()
         q = self.Wq(input1).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
         k = self.Wk(input1).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
@@ -93,35 +94,27 @@ class EncoderLayer(nn.Module):
         multi_head_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
         # shape: (batch, problem, embedding)
 
-        out1 = self.add_n_normalization_1(input1, multi_head_out)
-        out2 = self.feed_forward(out1)
-        out3 = self.add_n_normalization_2(out1, out2)
-
-        return out3
+        out1 = self.normalizer(input1 + multi_head_out)
+        out2 = self.feed_forward(out1) + out1
+        return self.normalizer(out2)
 
 
-class AddAndInstanceNormalization(nn.Module):
-    def __init__(self, **model_params):
-        super().__init__()
-        embedding_dim = model_params['embedding_dim']
-        self.norm = nn.InstanceNorm1d(embedding_dim, affine=True, track_running_stats=False)
+class Normalization(nn.Module):
+    def __init__(self, embed_dim):
+        super(Normalization, self).__init__()
 
-    def forward(self, input1, input2):
-        # input.shape: (batch, problem, embedding)
+        self.normalizer = nn.InstanceNorm1d(embed_dim, affine=True)
 
-        added = input1 + input2
-        # shape: (batch, problem, embedding)
+        # Normalization by default initializes affine parameters with bias 0 and weight unif(0,1) which is too large!
+        self.init_parameters()
 
-        transposed = added.transpose(1, 2)
-        # shape: (batch, embedding, problem)
+    def init_parameters(self):
+        for name, param in self.named_parameters():
+            stdv = 1. / math.sqrt(param.size(-1))
+            param.data.uniform_(-stdv, stdv)
 
-        normalized = self.norm(transposed)
-        # shape: (batch, embedding, problem)
-
-        back_trans = normalized.transpose(1, 2)
-        # shape: (batch, problem, embedding)
-
-        return back_trans
+    def forward(self, input):
+        return self.normalizer(input.permute(0, 2, 1)).permute(0, 2, 1)
 
 
 class FeedForward(nn.Module):
@@ -135,8 +128,8 @@ class FeedForward(nn.Module):
 
     def forward(self, input1):
         # input.shape: (batch, problem, embedding)
-
-        return self.W2(F.relu(self.W1(input1)))
+        out1 = F.relu(self.W1(input1))
+        return self.W2(out1)
 
 
 def multi_head_attention(q, k, v, mask=None):

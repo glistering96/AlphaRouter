@@ -51,7 +51,9 @@ class Decoder(nn.Module):
         out_concat = self.scaled_dot_product_attention(q, self.k, self.v, mask)
         # (batch, 1 or T, qkv*head_num)
 
-        mh_atten_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
+        attn_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
         # shape: (batch, 1 or T, embedding)
 
-        return mh_atten_out
+        mh_attn_out = attn_out + cur_node_encoding
+
+        return mh_attn_out
