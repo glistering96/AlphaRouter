@@ -107,7 +107,7 @@ class AMTrainer(pl.LightningModule):
 
         scheduler = CosineAnnealingWarmupRestarts(
             optimizer,
-            first_cycle_steps=self.nn_train_epochs,
+            first_cycle_steps=self.nn_train_epochs*1000,
             warmup_steps=self.warm_up_epochs,
             max_lr=self.optimizer_params['lr'],
             min_lr=1e-9)
