@@ -95,17 +95,17 @@ def search_params(num_proc):
 if __name__ == '__main__':
     torch.set_float32_matmul_precision('high')
     params = {
-        'num_nodes' : 20,
+        'num_nodes' : 100,
         'result_dir' : 'pretrained_result',
-        'name_prefix' : 'fixed_model',
+        'name_prefix' : 'pre-norm',
         'render_mode' : None,
         'num_episode' : 1024,
         'qkv_dim' : 32,
         'load_from_the_latest' : False,
         'env_type' : 'tsp',
         'embedding_dim': 128,
-        'nn_train_epochs': 100000,
-        'model_save_interval': 10,
+        'nn_train_epochs': 10000000,
+        'model_save_interval': 10000,
         'num_parallel_env': 1024,
         'lr': 3e-4,
         'grad_acc': 1,

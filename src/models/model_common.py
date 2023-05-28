@@ -103,19 +103,29 @@ class MHABlock(nn.Module):
         return multi_head_out
 
 
+class SwiGLU(nn.Module):
+    def forward(self, x):
+        x, gate = x.chunk(2, dim=-1)
+        return F.silu(gate) * x
+
+
 class FFBlock(nn.Module):
     def __init__(self, **model_params):
         super().__init__()
         embedding_dim = model_params['embedding_dim']
-        self.feed_forward = nn.Sequential(
-            nn.Linear(embedding_dim, embedding_dim*2),
-            nn.ReLU(),
-            nn.Linear(embedding_dim*2, embedding_dim)
-        )
+        self.l1 = nn.Linear(embedding_dim//2, embedding_dim)
+        self.act = SwiGLU()
+
+    def init_parameters(self):
+        for name, param in self.named_parameters():
+            stdv = 1. / math.sqrt(param.size(-1))
+            param.data.uniform_(-stdv, stdv)
 
     def forward(self, input1):
         # input1.shape: (batch, problem, embedding)
-        return self.feed_forward(input1)
+        out = self.act(input1)
+        out = self.l1(out)
+        return out + input1
 
 
 class Normalization(nn.Module):
@@ -140,13 +150,18 @@ class EncoderLayer(nn.Sequential):
     def __init__(self, **model_params):
         super().__init__(
             SkipConnection(
-                MHABlock(**model_params)
+                nn.Sequential(
+                    MHABlock(**model_params),
+                    Normalization(model_params['embedding_dim']),
+                )
             ),
-            Normalization(model_params['embedding_dim']),
+
             SkipConnection(
-                FFBlock(**model_params)
-            ),
-            Normalization(model_params['embedding_dim'])
+                nn.Sequential(
+                    FFBlock(**model_params),
+                    Normalization(model_params['embedding_dim']),
+                )
+            )
         )
 
 

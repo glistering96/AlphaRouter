@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
 
-from src.models.model_common import get_encoding, _to_tensor, EncoderLayer
+from src.models.model_common import get_encoding, _to_tensor, EncoderLayer, Normalization, SwiGLU
 from src.models.tsp_model.modules import *
 
 
@@ -92,12 +92,20 @@ class Encoder(nn.Module):
 
         self.input_embedder = nn.Linear(2, self.embedding_dim)
         self.embedder = nn.ModuleList([EncoderLayer(**model_params) for _ in range(model_params['encoder_layer_num'])])
+        self.last_norm = Normalization(self.embedding_dim)
+
+    def init_parameters(self):
+        for name, param in self.input_embedder.named_parameters():
+            stdv = 1. / math.sqrt(param.size(-1))
+            param.data.uniform_(-stdv, stdv)
 
     def forward(self, xy):
         out = self.input_embedder(xy)
 
         for layer in self.embedder:
             out = layer(out) + out
+
+        out = self.last_norm(out)
 
         return out
 
@@ -114,9 +122,7 @@ class Policy(nn.Module):
         score = torch.matmul(mh_attn_out, single_head_key)
         # shape: (batch, problem)
 
-        sqrt_embedding_dim = math.sqrt(self.embedding_dim)
-
-        score_scaled = score / sqrt_embedding_dim
+        score_scaled = score / math.sqrt(self.embedding_dim)
         # shape: (batch, problem)
 
         score_clipped = self.C * torch.tanh(score_scaled)
@@ -135,7 +141,11 @@ class Value(nn.Module):
     def __init__(self, **model_params):
         super(Value, self).__init__()
         self.embedding_dim = model_params['embedding_dim']
-        self.val = nn.Linear(self.embedding_dim, 1)
+        self.val = nn.Sequential(
+            nn.Linear(self.embedding_dim, self.embedding_dim*2),
+            SwiGLU(),
+            nn.Linear(self.embedding_dim, 1)
+        )
 
     def forward(self, mh_attn_out):
         val = self.val(mh_attn_out)

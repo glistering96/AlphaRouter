@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from gymnasium.wrappers import RecordVideo
 from torch.optim import Adam as Optimizer
 from torch.utils.tensorboard import SummaryWriter
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+from lightning.pytorch.utilities import grad_norm
 import warnings
 import lightning.pytorch as pl
 
@@ -115,3 +115,9 @@ class AMTrainer(pl.LightningModule):
 
     # def lr_scheduler_step(self, scheduler, metric):
     #     scheduler.step(epoch=self.current_epoch)
+
+    def on_before_optimizer_step(self, optimizer):
+        # Compute the 2-norm for each layer
+        # If using mixed precision, the gradients are already unscaled here
+        norms = grad_norm(self.model, norm_type=2)
+        self.log_dict(norms)
