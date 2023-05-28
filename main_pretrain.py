@@ -5,7 +5,6 @@ import time
 from pathlib import Path
 
 import torch
-from ray.train.lightning import LightningConfigBuilder, LightningTrainer
 
 from src.common.utils import dict_product
 from src.pretrain_model.pretrainer_module_pl import AMTrainer
@@ -92,59 +91,6 @@ def search_params(num_proc):
     pool.close()
     pool.join()
 
-
-from pytorch_lightning.loggers import TensorBoardLogger
-from ray import air, tune
-from ray.air.config import RunConfig, ScalingConfig, CheckpointConfig
-from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
-
-
-def ray_tune_search():
-    nn_train_epochs = 100000
-
-    params = {
-        'num_nodes' : 50,
-        'result_dir' : 'pretrained_result',
-        'name_prefix' : 'ray_tune',
-        'render_mode' : None,
-        'qkv_dim' : 32,
-        'load_from_the_latest' : False,
-        'env_type' : 'tsp',
-        'embedding_dim': 128,
-        'model_save_interval': 100,
-        'nn_train_epochs': nn_train_epochs,
-    }
-
-
-    config = {
-        'num_parallel_env' : tune.choice([512, 1024]),
-        'num_steps_in_epoch': tune.choice([1, 10, 100]),
-        'grad_acc': tune.choice([1, 2, 4, 10]),
-        'lr': tune.loguniform(1e-5, 3e-4),
-    }
-
-    args = parse_args()
-
-    for k, v in params.items():
-        setattr(args, k, v)
-
-    from ray.tune.integration.pytorch_lightning import TuneReportCallback
-    callback = TuneReportCallback(
-        {
-            "score": "train_score",
-        },
-        on="train_end")
-
-    import pytorch_lightning as pl
-
-    def train_tune(config, epochs=10, gpus=0):
-      model = AMTrainer(config)
-      trainer = pl.Trainer(
-        max_epochs=epochs,
-        gpus=gpus,
-        progress_bar_refresh_rate=0,
-        callbacks=[callback])
-      trainer.fit(model)
 
 if __name__ == '__main__':
     torch.set_float32_matmul_precision('high')
