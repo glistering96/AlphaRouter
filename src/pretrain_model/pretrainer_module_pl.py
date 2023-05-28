@@ -37,7 +37,7 @@ class AMTrainer(pl.LightningModule):
         # etc
         self.ent_coef = run_params['ent_coef']
         self.nn_train_epochs = run_params['nn_train_epochs']
-        self.warm_up_epochs = 4000
+        self.warm_up_epochs = 1000
 
     def training_step(self, batch, _):
         # TODO: need to add a batch input for training step. It means that environment rollout must be isolated

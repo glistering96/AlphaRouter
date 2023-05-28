@@ -62,7 +62,16 @@ def get_batch_tensor(obs: list):
     return tensor_obs
 
 
-class EncoderLayer(nn.Module):
+class SkipConnection(nn.Module):
+    def __init__(self, module):
+        super().__init__()
+        self.module = module
+
+    def forward(self, input):
+        return self.module(input) + input
+
+
+class MHABlock(nn.Module):
     def __init__(self, **model_params):
         super().__init__()
         self.model_params = model_params
@@ -76,9 +85,6 @@ class EncoderLayer(nn.Module):
         self.multi_head_combine = nn.Linear(self.head_num * self.qkv_dim, embedding_dim)
 
         self.scaled_dot_product_attention = ScaledDotProductAttention(**model_params)
-
-        self.normalizer = Normalization(embedding_dim)
-        self.feed_forward = FeedForward(**model_params)
 
     def forward(self, input1):
         # input1.shape: (batch, problem, embedding)
@@ -94,9 +100,22 @@ class EncoderLayer(nn.Module):
         multi_head_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
         # shape: (batch, problem, embedding)
 
-        out1 = self.normalizer(input1 + multi_head_out)
-        out2 = self.feed_forward(out1) + out1
-        return self.normalizer(out2)
+        return multi_head_out
+
+
+class FFBlock(nn.Module):
+    def __init__(self, **model_params):
+        super().__init__()
+        embedding_dim = model_params['embedding_dim']
+        self.feed_forward = nn.Sequential(
+            nn.Linear(embedding_dim, embedding_dim*2),
+            nn.ReLU(),
+            nn.Linear(embedding_dim*2, embedding_dim)
+        )
+
+    def forward(self, input1):
+        # input1.shape: (batch, problem, embedding)
+        return self.feed_forward(input1)
 
 
 class Normalization(nn.Module):
@@ -117,19 +136,18 @@ class Normalization(nn.Module):
         return self.normalizer(input.permute(0, 2, 1)).permute(0, 2, 1)
 
 
-class FeedForward(nn.Module):
+class EncoderLayer(nn.Sequential):
     def __init__(self, **model_params):
-        super().__init__()
-        embedding_dim = model_params['embedding_dim']
-        ff_hidden_dim = model_params['embedding_dim']*2
-
-        self.W1 = nn.Linear(embedding_dim, ff_hidden_dim)
-        self.W2 = nn.Linear(ff_hidden_dim, embedding_dim)
-
-    def forward(self, input1):
-        # input.shape: (batch, problem, embedding)
-        out1 = F.relu(self.W1(input1))
-        return self.W2(out1)
+        super().__init__(
+            SkipConnection(
+                MHABlock(**model_params)
+            ),
+            Normalization(model_params['embedding_dim']),
+            SkipConnection(
+                FFBlock(**model_params)
+            ),
+            Normalization(model_params['embedding_dim'])
+        )
 
 
 def multi_head_attention(q, k, v, mask=None):
