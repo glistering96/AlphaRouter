@@ -100,7 +100,13 @@ class MHABlock(nn.Module):
         multi_head_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
         # shape: (batch, problem, embedding)
 
-        return multi_head_out
+        return multi_head_out + input1
+
+
+class SwiGLU(nn.Module):
+    def forward(self, x):
+        x, gate = x.chunk(2, dim=-1)
+        return F.silu(gate) * x
 
 
 class FFBlock(nn.Module):
@@ -108,9 +114,9 @@ class FFBlock(nn.Module):
         super().__init__()
         embedding_dim = model_params['embedding_dim']
         self.feed_forward = nn.Sequential(
-            nn.Linear(embedding_dim, embedding_dim*2),
-            nn.ReLU(),
-            nn.Linear(embedding_dim*2, embedding_dim)
+            nn.Linear(embedding_dim, embedding_dim*4*2),
+            SwiGLU(),
+            nn.Linear(embedding_dim*4, embedding_dim)
         )
 
     def forward(self, input1):
