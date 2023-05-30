@@ -98,19 +98,20 @@ class Encoder(nn.Module):
         self.embedding_dim = model_params['embedding_dim']
 
         self.input_embedder = nn.Linear(2, self.embedding_dim)
-        self.embedder = nn.Sequential(
-            *[EncoderLayer(**model_params)
+        self.embedder = nn.ModuleList(
+            [EncoderLayer(**model_params)
               for _ in range(model_params['encoder_layer_num'])]
         )
-        self.norm = Normalization(self.embedding_dim)
+        # self.norm = Normalization(self.embedding_dim)
 
     def forward(self, xy):
         init_emb = self.input_embedder(xy)
         # (batch, problem, embedding_dim)
 
-        out = self.embedder(init_emb) + init_emb
+        for layer in self.embedder:
+            init_emb = layer(init_emb) + init_emb
 
-        return out
+        return init_emb
 
 
 class Policy(nn.Module):

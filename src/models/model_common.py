@@ -100,7 +100,7 @@ class MHABlock(nn.Module):
         multi_head_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
         # shape: (batch, problem, embedding)
 
-        return multi_head_out + input1
+        return multi_head_out
 
 
 class SwiGLU(nn.Module):
@@ -121,7 +121,7 @@ class FFBlock(nn.Module):
 
     def forward(self, input1):
         # input1.shape: (batch, problem, embedding)
-        return self.feed_forward(input1) + input1
+        return self.feed_forward(input1)
 
 
 class Normalization(nn.Module):
@@ -146,17 +146,13 @@ class EncoderLayer(nn.Sequential):
     def __init__(self, **model_params):
         super().__init__(
             SkipConnection(
-                nn.Sequential(
-                    SkipConnection(
-                        MHABlock(**model_params)
-                    ),
-                    Normalization(model_params['embedding_dim']),
-                    SkipConnection(
-                        FFBlock(**model_params)
-                    ),
-                    Normalization(model_params['embedding_dim'])
-                )
-            )
+                MHABlock(**model_params)
+            ),
+            Normalization(model_params['embedding_dim']),
+            SkipConnection(
+                FFBlock(**model_params)
+            ),
+            Normalization(model_params['embedding_dim'])
         )
 
 
