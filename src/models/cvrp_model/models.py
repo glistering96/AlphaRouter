@@ -3,7 +3,7 @@ import math
 from torch.distributions import Categorical
 
 from src.models.cvrp_model.modules import *
-from src.models.model_common import get_encoding, _to_tensor, EncoderLayer
+from src.models.model_common import get_encoding, _to_tensor, EncoderLayer, SwiGLU
 import torch.nn.functional as F
 
 
@@ -100,6 +100,12 @@ class Encoder(nn.Module):
 
         self.input_embedder = nn.Linear(3, self.embedding_dim)
         self.embedder = nn.ModuleList([EncoderLayer(**model_params) for _ in range(model_params['encoder_layer_num'])])
+        self.init_parameters()
+
+    def init_parameters(self):
+        for name, param in self.input_embedder.named_parameters():
+            stdv = 1. / math.sqrt(param.size(-1))
+            param.data.uniform_(-stdv, stdv)
 
     def forward(self, xy, demands):
         out = torch.cat([xy, demands], -1)
@@ -143,8 +149,13 @@ class Value(nn.Module):
     def __init__(self, **model_params):
         super(Value, self).__init__()
         self.embedding_dim = model_params['embedding_dim']
-        self.val = nn.Linear(self.embedding_dim, 1)
+        self.val = nn.Sequential(
+            nn.Linear(self.embedding_dim, self.embedding_dim*2),
+            SwiGLU(),
+            nn.Linear(self.embedding_dim, 1)
+        )
 
     def forward(self, mh_attn_out):
         val = self.val(mh_attn_out)
         return val
+

@@ -21,6 +21,13 @@ class TSPModel(nn.Module):
 
         self.encoding = None
 
+        self.init_parameters()
+
+    def init_parameters(self):
+        for name, param in self.named_parameters():
+            stdv = 1. / math.sqrt(param.size(-1))
+            param.data.uniform_(-stdv, stdv)
+
     def _get_obs(self, observations, device):
         observations = _to_tensor(observations, device)
 
@@ -94,11 +101,6 @@ class Encoder(nn.Module):
         self.embedder = nn.ModuleList([EncoderLayer(**model_params) for _ in range(model_params['encoder_layer_num'])])
 
         self.init_parameters()
-
-    def init_parameters(self):
-        for name, param in self.input_embedder.named_parameters():
-            stdv = 1. / math.sqrt(param.size(-1))
-            param.data.uniform_(-stdv, stdv)
 
     def forward(self, xy):
         out = self.input_embedder(xy)
