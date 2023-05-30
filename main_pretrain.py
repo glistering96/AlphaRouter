@@ -43,20 +43,13 @@ def _work(**kwargs):
     run_pretrain(args)
 
 
-def search_params(num_proc):
+def search_params(num_proc, **kwargs):
     hyper_param_dict = {
-        'env_type':  ['tsp'],
-        'num_nodes': [20],
-        'result_dir' : ['pretrained_result'],
-        'render_mode' : [None],
-        'num_parallel_env' : [1024],
-        'num_steps_in_epoch': [1],
-        'grad_acc': [1],
-        'model_save_interval': [100],
-        'nn_train_epochs': [1000000],
-        'lr': [3e-4],
-
+        'ent_coef' : [-0.1, 0, 1]
     }
+
+    for k, v in kwargs.items():
+        hyper_param_dict[k] = [v]
 
     # hyper_param_dict = {
     #     'env_type':  ['tsp'],
@@ -71,13 +64,6 @@ def search_params(num_proc):
     #     'lr': [3e-4, 1e-4, 5e-5, 1e-5],
     #
     # }
-    save_path = None
-
-    async_result = mp.Queue()
-
-    # def __callback(val):
-    #     async_result.put(val)
-
     pool = mp.Pool(num_proc)
 
     for params in dict_product(hyper_param_dict):
@@ -97,15 +83,15 @@ if __name__ == '__main__':
     params = {
         'num_nodes' : 20,
         'result_dir' : 'pretrained_result',
-        'name_prefix' : 'double_resi',
+        'name_prefix' : 'ent_coef_test',
         'render_mode' : None,
         'qkv_dim' : 32,
         'load_from_the_latest' : False,
         'env_type' : 'tsp',
         'embedding_dim': 128,
-        'nn_train_epochs': 100000,
-        'model_save_interval': 10,
-        'num_parallel_env': 1024,
+        'nn_train_epochs': 20000,
+        'model_save_interval': 10000,
+        'num_parallel_env': 512,
         'lr': 3e-4,
         'grad_acc': 1,
         'num_steps_in_epoch': 1
@@ -117,9 +103,11 @@ if __name__ == '__main__':
     # #     _work(**params)
     #
     #
+    # for ent_coef in [-0.1, 0, 1]:
+    #     params['ent_coef'] = ent_coef
     _work(**params)
     #
-    # search_params(1)
+    search_params(2)
     #
     # # for qkv_dim in [32, 64]:
     # #     for embedding_dim in [128, 256]:
