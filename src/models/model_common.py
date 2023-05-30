@@ -71,6 +71,58 @@ class SkipConnection(nn.Module):
         return self.module(input) + input
 
 
+def multi_head_attention(q, k, v, mask=None):
+    # q shape: (batch, head_num, N, key_dim)
+    # k,v shape: (batch, head_num, N, key_dim)
+    # mask.shape: (batch, N)
+
+    batch_s = q.size(0)
+    head_num = q.size(1)
+    n = q.size(2)
+    key_dim = q.size(3)
+    input_s = k.size(2)
+
+    score = torch.matmul(q, k.transpose(2, 3))
+    # shape: (batch, head_num, n, problem)
+
+    score_scaled = score / torch.sqrt(torch.tensor(key_dim, dtype=torch.float))
+
+    if mask is not None:
+        if mask.dim() == 2:
+            score_scaled = score_scaled + mask[:, None, None, :].expand(batch_s, head_num, n, input_s)
+
+        elif mask.dim() == 3:
+            score_scaled = score_scaled + mask[:, None, :, :].expand(batch_s, head_num, n, input_s)
+
+    weights = nn.Softmax(dim=-1)(score_scaled)
+    # shape: (batch, head_num, n, problem)
+
+    out = torch.matmul(weights, v)
+    # shape: (batch, head_num, n, key_dim)
+
+    out_transposed = out.transpose(1, 2)
+    # shape: (batch, n, head_num, key_dim)
+
+    out_concat = out_transposed.reshape(batch_s, n, head_num * key_dim)
+    # shape: (batch, n, head_num*key_dim)
+
+    return out_concat
+
+
+# This class if for compatibility with different torch versions
+class ScaledDotProductAttention(nn.Module):
+    def __init__(self, **kwargs):
+        super(ScaledDotProductAttention, self).__init__()
+
+    def forward(self, q, k, v, attn_mask=None):
+        if int(torch.__version__[0]) == 2:
+            # native scaled dot product attention is only available in torch >= 2.0
+            return F.scaled_dot_product_attention(q, k, v, attn_mask)
+
+        else:
+            return multi_head_attention(q, k, v, attn_mask)
+
+
 class MHABlock(nn.Module):
     def __init__(self, **model_params):
         super().__init__()
@@ -100,7 +152,7 @@ class MHABlock(nn.Module):
         multi_head_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
         # shape: (batch, problem, embedding)
 
-        return multi_head_out + input1
+        return multi_head_out
 
 
 class SwiGLU(nn.Module):
@@ -156,53 +208,138 @@ class EncoderLayer(nn.Sequential):
         )
 
 
-def multi_head_attention(q, k, v, mask=None):
-    # q shape: (batch, head_num, N, key_dim)
-    # k,v shape: (batch, head_num, N, key_dim)
-    # mask.shape: (batch, N)
+class Encoder(nn.Module):
+    def __init__(self, input_dim, **model_params):
+        super(Encoder, self).__init__()
 
-    batch_s = q.size(0)
-    head_num = q.size(1)
-    n = q.size(2)
-    key_dim = q.size(3)
-    input_s = k.size(2)
+        self.model_params = model_params
+        self.embedding_dim = model_params['embedding_dim']
 
-    score = torch.matmul(q, k.transpose(2, 3))
-    # shape: (batch, head_num, n, problem)
+        self.input_embedder = nn.Linear(input_dim, self.embedding_dim)
+        self.embedder = nn.ModuleList([EncoderLayer(**model_params) for _ in range(model_params['encoder_layer_num'])])
 
-    score_scaled = score / torch.sqrt(torch.tensor(key_dim, dtype=torch.float))
+        self.init_parameters()
 
-    if mask is not None:
-        if mask.dim() == 2:
-            score_scaled = score_scaled + mask[:, None, None, :].expand(batch_s, head_num, n, input_s)
+    def init_parameters(self):
+        for name, param in self.input_embedder.named_parameters():
+            stdv = 1. / math.sqrt(param.size(-1))
+            param.data.uniform_(-stdv, stdv)
 
-        elif mask.dim() == 3:
-            score_scaled = score_scaled + mask[:, None, :, :].expand(batch_s, head_num, n, input_s)
+    def forward(self, xy):
+        out = self.input_embedder(xy)
 
-    weights = nn.Softmax(dim=-1)(score_scaled)
-    # shape: (batch, head_num, n, problem)
+        for layer in self.embedder:
+            out = layer(out) + out
 
-    out = torch.matmul(weights, v)
-    # shape: (batch, head_num, n, key_dim)
-
-    out_transposed = out.transpose(1, 2)
-    # shape: (batch, n, head_num, key_dim)
-
-    out_concat = out_transposed.reshape(batch_s, n, head_num * key_dim)
-    # shape: (batch, n, head_num*key_dim)
-
-    return out_concat
+        return out
 
 
-# This class if for compatibility with different torch versions
-class ScaledDotProductAttention(nn.Module):
-    def __init__(self, **kwargs):
-        super(ScaledDotProductAttention, self).__init__()
+class Decoder(nn.Module):
+    def __init__(self, query_dim, **model_params):
+        super(Decoder, self).__init__()
+        self.model_params = model_params
+        embedding_dim = self.model_params['embedding_dim']
 
-    def forward(self, q, k, v, attn_mask=None):
-        if int(torch.__version__[0]) == 2:
-            # native scaled dot product attention is only available in torch >= 2.0
-            return F.scaled_dot_product_attention(q, k, v, attn_mask)
+        self.head_num = self.model_params['head_num']
+        self.qkv_dim = self.model_params['qkv_dim']
+
+        self.multi_head_combine = nn.Linear(self.head_num * self.qkv_dim, embedding_dim)
+
+        self.Wq_last = nn.Linear(query_dim, self.head_num * self.qkv_dim, bias=False)
+        self.Wk = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
+        self.Wv = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
+
+        self.scaled_dot_product_attention = ScaledDotProductAttention(**model_params)
+
+        self.k, self.v = None, None
+
+    def set_kv(self, encoding):
+        B, N, _ = encoding.shape
+
+        self.k = self.Wk(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        self.v = self.Wv(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        # shape: (batch, head_num, problem+1, qkv_dim)
+
+        self.single_head_key = encoding.transpose(1, 2)
+        # shape: (batch, embedding, problem+1)
+
+    def forward(self, cur_node_encoding, load=None, mask=None):
+        """
+        :param cur_node_encoding: (B, 1 or T, d)
+        :param load:   (B, 1 or T, 1)
+        :param encoding: (B, N, d)
+        :return:
+        """
+        B, N = cur_node_encoding.shape[:2]
+
+        if load is not None:
+            load_embedding = load
+            query_in = torch.cat([cur_node_encoding, load_embedding[..., None]], -1)
 
         else:
-            return multi_head_attention(q, k, v, attn_mask)
+            query_in = cur_node_encoding
+
+        q = self.Wq_last(query_in).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        # (batch, N, embedding)
+
+        if mask is not None and mask.dim() == 2:
+            mask = mask[:, None, None, :]
+
+        out_concat = self.scaled_dot_product_attention(q, self.k, self.v, mask)
+        # (batch, 1 or T, qkv*head_num)
+
+        attn_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
+        # shape: (batch, 1 or T, embedding)
+
+        # TODO: Is it working for CVRP as well?
+        mh_attn_out = attn_out + cur_node_encoding
+
+        return mh_attn_out
+
+
+class Policy(nn.Module):
+    def __init__(self, **model_params):
+        super(Policy, self).__init__()
+        self.C = model_params['C']
+        self.embedding_dim = model_params['embedding_dim']
+
+    def forward(self, mh_attn_out, single_head_key, mask):
+        # mh_attn_out: (batch, 1, embedding_dim)
+        # single_head_key: (batch, embedding_dim, problem)
+        # mask: (batch, problem)
+
+        #  Single-Head Attention, for probability calculation
+        #######################################################
+        score = torch.matmul(mh_attn_out, single_head_key)
+        # shape: (batch, 1, problem)
+
+        sqrt_embedding_dim = math.sqrt(self.embedding_dim)
+
+        score_scaled = score / sqrt_embedding_dim
+        # shape: (batch, problem)
+
+        score_clipped = self.C * torch.tanh(score_scaled)
+
+        if score_clipped.dim() != mask.dim():
+            mask = mask.reshape(score_clipped.shape)
+
+        score_masked = score_clipped + mask
+
+        probs = F.softmax(score_masked, dim=-1)
+
+        return probs
+
+
+class Value(nn.Module):
+    def __init__(self, **model_params):
+        super(Value, self).__init__()
+        self.embedding_dim = model_params['embedding_dim']
+        self.val = nn.Sequential(
+            nn.Linear(self.embedding_dim, self.embedding_dim*2),
+            SwiGLU(),
+            nn.Linear(self.embedding_dim, 1)
+        )
+
+    def forward(self, mh_attn_out):
+        val = self.val(mh_attn_out)
+        return val
