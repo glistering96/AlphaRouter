@@ -25,7 +25,7 @@ class TSPModel(nn.Module):
 
     def init_parameters(self):
         for name, param in self.named_parameters():
-            stdv = 1. / math.sqrt(param.size(-1))
+            stdv = 1. / math.sqrt(2*param.size(-1))
             param.data.uniform_(-stdv, stdv)
 
     def _get_obs(self, observations, device):
@@ -108,7 +108,7 @@ class Encoder(nn.Module):
         init_emb = self.input_embedder(xy)
         # (batch, problem, embedding_dim)
 
-        out = self.embedder(init_emb) + init_emb * 0.1
+        out = self.embedder(init_emb) + init_emb
 
         return out
 
