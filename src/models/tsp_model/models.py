@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from torch.distributions import Categorical
 
-from src.models.model_common import get_encoding, _to_tensor, EncoderLayer, SwiGLU
+from src.models.model_common import get_encoding, _to_tensor, EncoderLayer, SwiGLU, Normalization
 from src.models.tsp_model.modules import *
 
 
@@ -98,15 +98,17 @@ class Encoder(nn.Module):
         self.embedding_dim = model_params['embedding_dim']
 
         self.input_embedder = nn.Linear(2, self.embedding_dim)
-        self.embedder = nn.ModuleList([EncoderLayer(**model_params) for _ in range(model_params['encoder_layer_num'])])
-
-        self.init_parameters()
+        self.embedder = nn.Sequential(
+            *[EncoderLayer(**model_params)
+              for _ in range(model_params['encoder_layer_num'])]
+        )
+        self.norm = Normalization(self.embedding_dim)
 
     def forward(self, xy):
-        out = self.input_embedder(xy)
+        init_emb = self.input_embedder(xy)
+        # (batch, problem, embedding_dim)
 
-        for layer in self.embedder:
-            out = layer(out) + out
+        out = self.embedder(init_emb)
 
         return out
 

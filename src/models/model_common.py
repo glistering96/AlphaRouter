@@ -121,7 +121,7 @@ class FFBlock(nn.Module):
 
     def forward(self, input1):
         # input1.shape: (batch, problem, embedding)
-        return self.feed_forward(input1)
+        return self.feed_forward(input1) + input1
 
 
 class Normalization(nn.Module):
@@ -146,13 +146,17 @@ class EncoderLayer(nn.Sequential):
     def __init__(self, **model_params):
         super().__init__(
             SkipConnection(
-                MHABlock(**model_params)
-            ),
-            Normalization(model_params['embedding_dim']),
-            SkipConnection(
-                FFBlock(**model_params)
-            ),
-            Normalization(model_params['embedding_dim'])
+                nn.Sequential(
+                    SkipConnection(
+                        MHABlock(**model_params)
+                    ),
+                    Normalization(model_params['embedding_dim']),
+                    SkipConnection(
+                        FFBlock(**model_params)
+                    ),
+                    Normalization(model_params['embedding_dim'])
+                )
+            )
         )
 
 

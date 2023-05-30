@@ -50,7 +50,7 @@ def parse_args():
     parser.add_argument("--train_epochs", type=int, default=10, help="train epochs")
     parser.add_argument("--load_epoch", type=int, default=None, help="If value is not None, it will load the model")
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate of ADAM optimizer")
-    parser.add_argument("--ent_coef", type=float, default=0.01, help="Coefficient for entropy regularizer")
+    parser.add_argument("--ent_coef", type=float, default=0.1, help="Coefficient for entropy regularizer")
     parser.add_argument("--gpu_id", type=int, default=0, help="Id of gpu to use")
     parser.add_argument("--grad_acc", type=int, default=0, help="Accumulations of gradients")
     parser.add_argument("--num_steps_in_epoch", type=int, default=4, help="num_steps_in_epoch")
@@ -110,7 +110,7 @@ def run_pretrain(args):
         every_n_epochs=run_params['model_save_interval'],
         mode="min",
         filename="{epoch}-{train_score:.5f}",
-        save_on_train_epoch_end=True,
+        save_on_train_epoch_end=False,
         save_top_k=5
     )
 
@@ -136,8 +136,7 @@ def run_pretrain(args):
     )
 
     dummy_dl = torch.utils.data.DataLoader(torch.zeros((num_steps_in_epoch, 1, 1, 1)), batch_size=1)
-    trainer.fit(model,
-                train_dataloaders=dummy_dl)
+    trainer.fit(model, train_dataloaders=dummy_dl)
 
 
 def run_am_test(args):
