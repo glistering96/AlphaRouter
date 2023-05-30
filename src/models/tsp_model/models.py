@@ -108,7 +108,7 @@ class Encoder(nn.Module):
         init_emb = self.input_embedder(xy)
         # (batch, problem, embedding_dim)
 
-        out = self.embedder(init_emb)
+        out = self.embedder(init_emb) + init_emb * 0.1
 
         return out
 
