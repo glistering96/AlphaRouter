@@ -1,0 +1,8 @@
+1. Entropy: -0.1, 0, 0.1
+2. Single residual
+3. Doubled residual
+4. Tripled residual
+5. Initial embedding residual
+6. Initial embedding residual with normalization
+7. Initial embedding residual with normalization and dropout
+8. FF_inner dimension (x1, x2, x4)
