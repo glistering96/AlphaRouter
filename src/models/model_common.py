@@ -161,13 +161,25 @@ class SwiGLU(nn.Module):
         return F.silu(gate) * x
 
 
+class Activation(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        self.act = nn.ReLU()
+        # self.act = SwiGLU()
+        # self.act = nn.GELU()
+        # self.act = nn.SiLU()
+        
+    def forward(self, x):
+        return self.act(x)
+    
+
 class FFBlock(nn.Module):
     def __init__(self, **model_params):
         super().__init__()
         embedding_dim = model_params['embedding_dim']
         self.feed_forward = nn.Sequential(
-            nn.Linear(embedding_dim, embedding_dim*4*2),
-            SwiGLU(),
+            nn.Linear(embedding_dim, embedding_dim*4),
+            Activation(),
             nn.Linear(embedding_dim*4, embedding_dim)
         )
 
@@ -335,8 +347,8 @@ class Value(nn.Module):
         super(Value, self).__init__()
         self.embedding_dim = model_params['embedding_dim']
         self.val = nn.Sequential(
-            nn.Linear(self.embedding_dim, self.embedding_dim*2),
-            SwiGLU(),
+            nn.Linear(self.embedding_dim, self.embedding_dim),
+            Activation(),
             nn.Linear(self.embedding_dim, 1)
         )
 
