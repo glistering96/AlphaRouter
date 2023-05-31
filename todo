@@ -1,2 +1,2 @@
-1. ReLU FF and Val mlp working better?
+1. Activation function search (ReLU, SiLU, GELU, ELU, SwiGLU)
 2. Larger number of batch size working better?

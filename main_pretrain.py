@@ -97,35 +97,35 @@ if __name__ == '__main__':
     params = {
         'num_nodes' : 20,
         'result_dir' : 'pretrained_result',
-        'name_prefix' : 'SwiGLU-post_norm-head_resi-half_ff',
+        'name_prefix' : 'FF_ReLU-Val_ReLU',
         'render_mode' : None,
         'qkv_dim' : 32,
         'load_from_the_latest' : False,
         'env_type' : 'tsp',
         'embedding_dim': 256,
-        'nn_train_epochs': 100000,
+        'nn_train_epochs': 20000,
         'model_save_interval': 10,
         'num_parallel_env': 1024,
         'lr': 3e-4,
         'grad_acc': 1,
         'num_steps_in_epoch': 1
     }
-    # #
-    # # for grad_acc, num_steps_in_epoch in itertools.product([1, 5, 10], [1, 10, 100]):
-    # #     params['grad_acc'] = grad_acc
-    # #     params['num_steps_in_epoch'] = num_steps_in_epoch
-    # #     _work(**params)
     #
-    #
+    # for grad_acc, num_steps_in_epoch in itertools.product([1, 5, 10], [1, 10, 100]):
+    #     params['grad_acc'] = grad_acc
+    #     params['num_steps_in_epoch'] = num_steps_in_epoch
+    #     _work(**params)
+    
+    
     _work(**params)
     #
     # search_params(1)
     #
-    # # for qkv_dim in [32, 64]:
-    # #     for embedding_dim in [128, 256]:
-    # #         params['qkv_dim'] = qkv_dim
-    # #         params['embedding_dim'] = embedding_dim
-    # #         _work(**params)
+    # for qkv_dim in [32, 64]:
+    #     for embedding_dim in [128, 256]:
+    #         params['qkv_dim'] = qkv_dim
+    #         params['embedding_dim'] = embedding_dim
+    #         _work(**params)
 
     # ray_tune_search()
 
