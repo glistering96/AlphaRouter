@@ -97,7 +97,7 @@ if __name__ == '__main__':
     params = {
         'num_nodes' : 20,
         'result_dir' : 'pretrained_result',
-        'name_prefix' : 'FF_ReLU-Val_ReLU',
+        'name_prefix' : 'FF_SwiGLU-Val_SwiGLU-ff_x4',
         'render_mode' : None,
         'qkv_dim' : 32,
         'load_from_the_latest' : False,

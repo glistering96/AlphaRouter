@@ -5,6 +5,7 @@ import torch.nn.functional as F
 
 from src.common.scaler import *
 
+INNER_MULT = 2
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
@@ -164,8 +165,8 @@ class SwiGLU(nn.Module):
 class Activation(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.act = nn.ReLU()
-        # self.act = SwiGLU()
+        # self.act = nn.ReLU()
+        self.act = SwiGLU()
         # self.act = nn.GELU()
         # self.act = nn.SiLU()
         
@@ -177,10 +178,11 @@ class FFBlock(nn.Module):
     def __init__(self, **model_params):
         super().__init__()
         embedding_dim = model_params['embedding_dim']
+        ff_size = embedding_dim * INNER_MULT
         self.feed_forward = nn.Sequential(
-            nn.Linear(embedding_dim, embedding_dim*4),
+            nn.Linear(embedding_dim, ff_size*2),
             Activation(),
-            nn.Linear(embedding_dim*4, embedding_dim)
+            nn.Linear(ff_size, embedding_dim)
         )
 
     def forward(self, input1):
@@ -328,7 +330,7 @@ class Policy(nn.Module):
         sqrt_embedding_dim = math.sqrt(self.embedding_dim)
 
         score_scaled = score / sqrt_embedding_dim
-        # shape: (batch, problem)
+        # shape: (batch, 1, problem)
 
         score_clipped = self.C * torch.tanh(score_scaled)
 
@@ -346,10 +348,11 @@ class Value(nn.Module):
     def __init__(self, **model_params):
         super(Value, self).__init__()
         self.embedding_dim = model_params['embedding_dim']
+        inner_size = self.embedding_dim * INNER_MULT
         self.val = nn.Sequential(
-            nn.Linear(self.embedding_dim, self.embedding_dim),
+            nn.Linear(self.embedding_dim, inner_size*2),
             Activation(),
-            nn.Linear(self.embedding_dim, 1)
+            nn.Linear(inner_size, 1)
         )
 
     def forward(self, mh_attn_out):
