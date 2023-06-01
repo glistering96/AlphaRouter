@@ -106,7 +106,7 @@ class AMTrainer(pl.LightningModule):
 
     def log_gradients_in_model(self):
         for tag, value in self.model.named_parameters():
-            if value.grad is not None:
+            if value.grad is not None and not torch.isnan(value.grad).any():
                 self.logger.experiment.add_histogram(tag + "/grad", value.grad.cpu(), self.current_epoch)
                 
     def log_values_in_model(self):
