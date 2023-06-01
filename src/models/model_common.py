@@ -201,7 +201,7 @@ class Normalization(nn.Module):
 
     def init_parameters(self):
         for name, param in self.named_parameters():
-            stdv = 1. / math.sqrt(param.size(-1))
+            stdv = 1. / math.sqrt(param.size(0))
             param.data.uniform_(-stdv, stdv)
 
     def forward(self, input):
@@ -236,7 +236,7 @@ class Encoder(nn.Module):
 
     def init_parameters(self):
         for name, param in self.input_embedder.named_parameters():
-            stdv = 1. / math.sqrt(param.size(0))
+            stdv = 1. / math.sqrt(param.size(0) * 3)
             param.data.uniform_(-stdv, stdv)
 
     def forward(self, xy):

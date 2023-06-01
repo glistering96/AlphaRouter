@@ -99,8 +99,8 @@ class AMTrainer(pl.LightningModule):
         lr = self.trainer.lr_scheduler_configs[0].scheduler.get_lr()[0]
         self.log('debug/lr', lr, prog_bar=True)
         self.log('hp_metric', train_score)
-        self.log_gradients_in_model()
-        self.log_values_in_model()
+        # self.log_gradients_in_model()
+        # self.log_values_in_model()
         
         return loss
 
