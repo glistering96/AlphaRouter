@@ -231,12 +231,12 @@ class Encoder(nn.Module):
 
         self.input_embedder = nn.Linear(input_dim, self.embedding_dim)
         self.embedder = nn.ModuleList([EncoderLayer(**model_params) for _ in range(model_params['encoder_layer_num'])])
-
+        
         self.init_parameters()
 
     def init_parameters(self):
         for name, param in self.input_embedder.named_parameters():
-            stdv = 1. / math.sqrt(param.size(-1))
+            stdv = 1. / math.sqrt(param.size(0))
             param.data.uniform_(-stdv, stdv)
 
     def forward(self, xy):
@@ -244,7 +244,7 @@ class Encoder(nn.Module):
 
         for layer in self.embedder:
             out = layer(out) + out
-
+        
         return out
 
 
