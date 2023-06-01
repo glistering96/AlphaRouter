@@ -1,3 +1,5 @@
 1. Activation function search (ReLU, SiLU, GELU, ELU, SwiGLU) -> SwiGLU is the best
 2. Larger number of batch size working better? -> Yes, but the time is not so efficient
 3. Inner FF size for SwiGLU -> x2
+4. Compare Gaussian init vs Uniform init
+5. right method for initializing the weights correctly.
