@@ -99,20 +99,21 @@ class AMTrainer(pl.LightningModule):
         lr = self.trainer.lr_scheduler_configs[0].scheduler.get_lr()[0]
         self.log('debug/lr', lr, prog_bar=True)
         self.log('hp_metric', train_score)
-        # self.log_gradients_in_model()
-        # self.log_values_in_model()
+        self.log('debug/encoding_var', self.model.encoding.var())
+        self.log('debug/encoding_mean', self.model.encoding.mean())
+
+        # self.log_histograms()
         
         return loss
 
-    def log_gradients_in_model(self):
+    def log_histograms(self):
         for tag, value in self.model.named_parameters():
-            if value.grad is not None and not torch.isnan(value.grad).any():
-                self.logger.experiment.add_histogram(tag + "/grad", value.grad.cpu(), self.current_epoch)
-                
-    def log_values_in_model(self):
-        for tag, value in self.model.named_parameters():
-            self.logger.experiment.add_histogram(tag + "/value", value.cpu(), self.current_epoch)
-            
+            if 'weight' in tag:
+                if value.grad is not None and not torch.isnan(value.grad).any():
+                    self.logger.experiment.add_histogram(tag + "/grad", value.grad.cpu(), self.current_epoch)
+
+                self.logger.experiment.add_histogram(tag + "/value", value.cpu(), self.current_epoch)
+
     def configure_optimizers(self):
         optimizer = Optimizer(self.parameters(), **self.optimizer_params)
 
