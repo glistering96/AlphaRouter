@@ -3,3 +3,6 @@
 3. Inner FF size for SwiGLU -> x2
 4. Compare Gaussian init vs Uniform init
 5. right method for initializing the weights correctly.
+6. Residual in the initial embedding and the last embedding is horrible.
+4. Compare Gaussian init vs Uniform init
+5. right method for initializing the weights correctly.
