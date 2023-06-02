@@ -7,11 +7,6 @@ from src.common.scaler import *
 
 INNER_MULT = 2
 
-def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
-    torch.nn.init.orthogonal_(layer.weight, std)
-    torch.nn.init.constant_(layer.bias, bias_const)
-    return layer
-
 
 def get_encoding(encoded_nodes, node_index_to_pick, T=1):
     # encoded_nodes.shape: (batch, problem, embedding)
@@ -42,23 +37,6 @@ def _to_tensor(obs, device):
 
             elif isinstance(v, int):
                 tensor_obs[k] = torch.tensor([v], dtype=torch.long).to(device)
-
-    return tensor_obs
-
-
-def get_batch_tensor(obs: list):
-    if not obs:
-        return None
-
-    tensor_obs = {k: [] for k in obs[0].keys()}
-
-    for x in obs:
-        for k, v in x.items():
-            tensor_obs[k].append(v)
-
-    for k, v in tensor_obs.items():
-        cat = np.stack(v)
-        tensor_obs[k] = torch.tensor(cat)
 
     return tensor_obs
 
@@ -193,16 +171,7 @@ class FFBlock(nn.Module):
 class Normalization(nn.Module):
     def __init__(self, embed_dim):
         super(Normalization, self).__init__()
-
         self.normalizer = nn.InstanceNorm1d(embed_dim, affine=True)
-
-        # Normalization by default initializes affine parameters with bias 0 and weight unif(0,1) which is too large!
-        self.init_parameters()
-
-    def init_parameters(self):
-        for name, param in self.named_parameters():
-            stdv = 1. / math.sqrt(param.size(0))
-            param.data.uniform_(-stdv, stdv)
 
     def forward(self, input):
         return self.normalizer(input.permute(0, 2, 1)).permute(0, 2, 1)
@@ -231,13 +200,6 @@ class Encoder(nn.Module):
 
         self.input_embedder = nn.Linear(input_dim, self.embedding_dim)
         self.embedder = nn.ModuleList([EncoderLayer(**model_params) for _ in range(model_params['encoder_layer_num'])])
-        
-        self.init_parameters()
-
-    def init_parameters(self):
-        for name, param in self.input_embedder.named_parameters():
-            stdv = 1. / math.sqrt(param.size(0) * 3)
-            param.data.uniform_(-stdv, stdv)
 
     def forward(self, xy):
         out = self.input_embedder(xy)
@@ -316,6 +278,7 @@ class Policy(nn.Module):
         super(Policy, self).__init__()
         self.C = model_params['C']
         self.embedding_dim = model_params['embedding_dim']
+        self.qkv_dim = model_params['qkv_dim']
 
     def forward(self, mh_attn_out, single_head_key, mask):
         # mh_attn_out: (batch, 1, embedding_dim)
@@ -327,7 +290,7 @@ class Policy(nn.Module):
         score = torch.matmul(mh_attn_out, single_head_key)
         # shape: (batch, 1, problem)
 
-        sqrt_embedding_dim = math.sqrt(self.embedding_dim)
+        sqrt_embedding_dim = math.sqrt(self.qkv_dim)
 
         score_scaled = score / sqrt_embedding_dim
         # shape: (batch, 1, problem)
