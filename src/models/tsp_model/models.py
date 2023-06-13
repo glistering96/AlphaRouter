@@ -62,8 +62,7 @@ class TSPModel(nn.Module):
 
         if self.encoding is None:
             self.encoding = self.encoder(xy)
-
-        self.decoder.set_kv(self.encoding)
+            self.decoder.set_kv(self.encoding)  # decoder only needs to set kv once
 
         last_node = get_encoding(self.encoding, cur_node.long(), T)
 
