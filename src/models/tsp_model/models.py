@@ -52,28 +52,33 @@ class TSPModel(nn.Module):
     def forward(self, obs):
         xy, cur_node, available = self._get_obs(obs, self.device)
         # xy: (B, N, 2)
-        # cur_node: (B, )
-        # available: (B, N)
-
-        B, T = xy.size(0), 1
+        # cur_node: (B, pomo, )
+        # available: (B, pomo, N)
+        
+        batch_size = cur_node.size(0)
+        pomo_size = cur_node.size(1)
+        
+        T = 1
 
         mask = torch.zeros_like(available).type(torch.float32)
         mask[available == False] = float('-inf')
 
         if self.encoding is None:
             self.encoding = self.encoder(xy)
-
-        self.decoder.set_kv(self.encoding)
-
+            self.decoder.set_kv(self.encoding)
+        
         last_node = get_encoding(self.encoding, cur_node.long(), T)
+        
+        if obs['t'] == 0:
+            probs = torch.ones(size=(batch_size, pomo_size))
 
-        mh_attn_out = self.decoder(last_node, load=None, mask=mask)
-
-        probs = self.policy_net(mh_attn_out, self.decoder.single_head_key, mask)
-        probs = probs.reshape(-1, probs.size(-1))
+        else:
+            mh_attn_out = self.decoder(last_node, load=None, mask=mask)
+            probs = self.policy_net(mh_attn_out, self.decoder.single_head_key, mask)
+            probs = probs.reshape(-1, probs.size(-1))
 
         val = self.value_net(mh_attn_out)
-        val = val.reshape(-1, )
+        val = val.reshape(batch_size, pomo_size, 1)
 
         return probs, val
 

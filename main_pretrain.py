@@ -99,16 +99,16 @@ if __name__ == '__main__':
         'result_dir' : 'pretrained_result',
         'name_prefix' : 'FF_SwiGLU-Val_SwiGLU-ff_x4',
         'render_mode' : None,
-        'qkv_dim' : 32,
+        'qkv_dim' : 16,
         'load_from_the_latest' : False,
         'env_type' : 'tsp',
-        'embedding_dim': 256,
-        'nn_train_epochs': 20000,
+        'embedding_dim': 128,
+        'nn_train_epochs': 100,
         'model_save_interval': 10,
         'num_parallel_env': 1024,
         'lr': 3e-4,
         'grad_acc': 1,
-        'num_steps_in_epoch': 1
+        'num_steps_in_epoch': 100*1000
     }
     #
     # for grad_acc, num_steps_in_epoch in itertools.product([1, 5, 10], [1, 10, 100]):

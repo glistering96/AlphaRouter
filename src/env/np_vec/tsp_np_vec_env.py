@@ -21,9 +21,12 @@ class TSPNpVec:
         self.visiting_seq = None
         self.available = None
         self.t = 0
+        
+        self.pomo_size = self.num_nodes
+        
 
     def _get_obs(self):
-        return {"xy": self.xy, "pos": self.pos, "available": self.available}
+        return {"xy": self.xy, "pos": self.pos, "available": self.available, "t": self.t}
 
     def _make_problems(self, num_rollouts, num_nodes):
         xy = make_cord(num_rollouts, 0, num_nodes)
@@ -45,26 +48,25 @@ class TSPNpVec:
     def reset(self):
         self.xy = self._make_problems(self.num_env, self.num_nodes)
 
-        self.pos = np.zeros((self.num_env, 1), dtype=int)
-        self.visited = np.zeros((self.num_env, self.action_size), dtype=bool)
-        np.put_along_axis(self.visited, self.pos, True, axis=1)  # set the current pos as visited
+        self.pos = np.zeros((self.num_env, self.pomo_size, 1), dtype=int)
+        self.visited = np.zeros((self.num_env, self.pomo_size, self.action_size), dtype=bool)
+        np.put_along_axis(self.visited, self.pos, True, axis=2)  # set the current pos as visited
 
         self.visiting_seq = []
-        self.load = np.ones((self.num_env, 1), dtype=np.float32)  # all vehicles start with full load
 
         self.visiting_seq.append(self.pos)  # append the depot position
-        self.available = np.ones((self.num_env, self.action_size),
+        self.available = np.ones((self.num_env, self.pomo_size, self.action_size),
                                  dtype=bool)  # all nodes are available at the beginning
-        np.put_along_axis(self.available, self.pos, False, axis=1)  # set the current pos to False
+        np.put_along_axis(self.available, self.pos, False, axis=2)  # set the current pos to False
 
         obs = self._get_obs()
 
         return obs, {}
 
     def step(self, action):
-        # action: (num_env, 1)
-        if action.shape != (self.num_env, 1):
-            action = action.reshape(self.num_env, 1)
+        # action: (num_env, pomo_size, 1)
+        if action.shape != (self.num_env, self.pomo_size, 1):
+            action = action.reshape(self.num_env, self.pomo_size, 1)
 
         # update the current pos
         self.pos = action
@@ -73,7 +75,7 @@ class TSPNpVec:
         self.visiting_seq.append(action)
 
         # update visited nodes
-        np.put_along_axis(self.visited, action, True, axis=1)
+        np.put_along_axis(self.visited, action, True, axis=2)
 
         # assign avail to field
         self.available, done = self.get_avail_mask()
@@ -89,7 +91,7 @@ class TSPNpVec:
         return obs, reward, done, False, info
 
     def _is_done(self):
-        done_flag = (self.visited == True).all(-1)
+        done_flag = (self.visited == True).all()
         return done_flag
 
     def get_avail_mask(self):
@@ -99,3 +101,8 @@ class TSPNpVec:
         done = self._is_done()
 
         return avail, done
+
+
+if __name__ == '__main__':
+    tsp = TSPNpVec(20)
+    
