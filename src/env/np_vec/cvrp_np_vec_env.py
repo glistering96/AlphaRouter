@@ -33,6 +33,8 @@ class CVRPNpVec:
 
         self.test_data_type = kwargs.get('test_data_type')
         self._load_data_idx = 0
+        
+        self.pomo_size = self.num_nodes
 
     def _get_obs(self):
         return {"xy": self.xy, "demands": self.demand, "pos": self.pos, "load": self.load, "available": self.available}
@@ -59,18 +61,18 @@ class CVRPNpVec:
     def reset(self):
         self.xy, self.demand = self._make_problems(self.num_env, self.num_depots, self.num_nodes)
 
-        self.pos = np.zeros((self.num_env, 1), dtype=int)
-        self.visited = np.zeros((self.num_env, self.action_size), dtype=bool)
-        np.put_along_axis(self.visited, self.pos, True, axis=1)  # set the current pos as visited
+        self.pos = np.zeros((self.num_env, self.pomo_size, 1), dtype=int)
+        self.visited = np.zeros((self.num_env, self.pomo_size, self.action_size), dtype=bool)
+        np.put_along_axis(self.visited, self.pos, True, axis=2)  # set the current pos as visited
 
         self.visiting_seq = []
-        self.load = np.ones((self.num_env, 1), dtype=np.float32)  # all vehicles start with full load
 
         self.visiting_seq.append(self.pos)  # append the depot position
-        self.available = np.ones((self.num_env, self.action_size),
+        self.available = np.ones((self.num_env, self.pomo_size, self.action_size),
                                  dtype=bool)  # all nodes are available at the beginning
-        np.put_along_axis(self.available, self.pos, False, axis=1)  # set the current pos to False
-
+        np.put_along_axis(self.available, self.pos, False, axis=2)  # set the current pos to False
+        
+        self.load = np.ones((self.num_env, self.pomo_size, 1), dtype=np.float32)  # all vehicles start with full load
         obs = self._get_obs()
 
         return obs, {}
@@ -79,9 +81,9 @@ class CVRPNpVec:
         return (self.pos == 0).squeeze(-1)
 
     def step(self, action):
-        # action: (num_env, 1)
-        if action.shape != (self.num_env, 1):
-            action = action.reshape(self.num_env, 1)
+        # action: (num_env, pomo_size, 1)
+        if action.shape != (self.num_env, self.pomo_size, 1):
+            action = action.reshape(self.num_env, self.pomo_size, 1)
 
         # update the current pos
         self.pos = action
@@ -91,10 +93,10 @@ class CVRPNpVec:
 
         # check on depot
         on_depot = self._is_on_depot()
-        # on_depot: (num_env, 1)
+        # on_depot: (num_env, pomo_size, 1)
 
         # get the demands of the current node
-        demand = np.take_along_axis(self.demand, self.pos, axis=1)
+        demand = np.take_along_axis(self.demand, self.pos, axis=2)
 
         # update load
         self.load -= demand
@@ -103,7 +105,7 @@ class CVRPNpVec:
         self.load[on_depot, :] = 1
 
         # update visited nodes
-        np.put_along_axis(self.visited, action, True, axis=1)
+        np.put_along_axis(self.visited, action, True, axis=2)
 
         # depot is always set as not visited if the vehicle is not on the depot
         self.visited[~on_depot, 0] = False
@@ -122,7 +124,7 @@ class CVRPNpVec:
         return obs, reward, done, False, info
 
     def _is_done(self):
-        done_flag = (self.visited[:, :] == True).all(axis=1)
+        done_flag = (self.visited == True).all()
         return done_flag
 
     def get_avail_mask(self):

@@ -59,8 +59,6 @@ class TSPModel(nn.Module):
         pomo_size = cur_node.size(1)
         N = available.size(-1)
         
-        T = 1
-
         mask = torch.zeros_like(available).type(torch.float32)
         mask[available == False] = float('-inf')
 
@@ -78,6 +76,9 @@ class TSPModel(nn.Module):
             probs = self.policy_net(mh_attn_out, self.decoder.single_head_key, mask)
             probs = probs.reshape(batch_size, pomo_size, N)
 
+        # TODO: may be the order of poliy and value important? 
+        # mh_attn_out -> policy -> value but what about mh_attn_out -> value -> policy?
+        
         val = self.value_net(mh_attn_out)
         val = val.reshape(batch_size, pomo_size, 1)
 
