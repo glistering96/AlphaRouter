@@ -13,17 +13,16 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 
-def get_encoding(encoded_nodes, node_index_to_pick, T=1):
+def get_encoding(encoded_nodes, node_index_to_pick):
     # encoded_nodes.shape: (batch, problem, embedding)
-    # node_index_to_pick.shape: (batch, 1)
+    # node_index_to_pick.shape: (batch, pomo, 1)
 
     batch_size = node_index_to_pick.size(0)
+    pomo_size = node_index_to_pick.size(1)
     embedding_dim = encoded_nodes.size(-1)
 
-    _to_pick = node_index_to_pick.view(batch_size, T, 1)
-    desired_shape = (batch_size, T, embedding_dim)
-    gathering_index = torch.broadcast_to(_to_pick, desired_shape).reshape(batch_size, -1, embedding_dim)
-    picked_node_embedding = encoded_nodes.gather(dim=1, index=gathering_index)
+    _to_pick = torch.broadcast_to(node_index_to_pick, (batch_size, pomo_size, embedding_dim))
+    picked_node_embedding = encoded_nodes.gather(dim=1, index=_to_pick)
 
     return picked_node_embedding
 

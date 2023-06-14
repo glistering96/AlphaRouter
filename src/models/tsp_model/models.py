@@ -29,7 +29,7 @@ class TSPModel(nn.Module):
 
     def _get_obs(self, observations, device):
         observations = _to_tensor(observations, device)
-
+        
         xy = observations['xy']
         # (N, 2), (N, 1)
 
@@ -38,14 +38,14 @@ class TSPModel(nn.Module):
 
         available = observations['available']
         # (1, )
+        
+        batch_size, pomo_size, _ = cur_node.size()
 
-        B = xy.size(0) if xy.dim() == 3 else 1
+        xy = xy.reshape(batch_size, -1, 2)
 
-        xy = xy.reshape(B, -1, 2)
+        cur_node = cur_node.reshape(batch_size, pomo_size, 1)
 
-        cur_node = cur_node.reshape(B, 1)
-
-        available = available.reshape(B, -1)
+        available = available.reshape(batch_size, pomo_size, -1)
 
         return xy, cur_node, available
 
@@ -57,6 +57,7 @@ class TSPModel(nn.Module):
         
         batch_size = cur_node.size(0)
         pomo_size = cur_node.size(1)
+        N = available.size(-1)
         
         T = 1
 
@@ -67,15 +68,15 @@ class TSPModel(nn.Module):
             self.encoding = self.encoder(xy)
             self.decoder.set_kv(self.encoding)
         
-        last_node = get_encoding(self.encoding, cur_node.long(), T)
+        last_node = get_encoding(self.encoding, cur_node.long())
+        mh_attn_out = self.decoder(last_node, load=None, mask=mask)
         
         if obs['t'] == 0:
-            probs = torch.ones(size=(batch_size, pomo_size))
-
+            probs = torch.diag_embed(torch.ones(size=(pomo_size, N)))   # assign prob 1 to the pomo tensors
+            
         else:
-            mh_attn_out = self.decoder(last_node, load=None, mask=mask)
             probs = self.policy_net(mh_attn_out, self.decoder.single_head_key, mask)
-            probs = probs.reshape(-1, probs.size(-1))
+            probs = probs.reshape(batch_size, pomo_size, N)
 
         val = self.value_net(mh_attn_out)
         val = val.reshape(batch_size, pomo_size, 1)
