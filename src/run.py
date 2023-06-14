@@ -126,7 +126,6 @@ def run_pretrain(args):
     trainer = pl.Trainer(
         accumulate_grad_batches=grad_acc,
         logger=logger,
-        log_every_n_steps=4,
         check_val_every_n_epoch=0,
         max_epochs=max_epochs,
         default_root_dir=default_root_dir,

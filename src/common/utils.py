@@ -111,13 +111,13 @@ def cal_distance(xy, visiting_seq):
 
     """
     desired_shape = tuple(list(visiting_seq.shape) + [2])
-    gather_idx = np.broadcast_to(visiting_seq[:, :, None], desired_shape)
-
-    original_seq = np.take_along_axis(xy, gather_idx, 1)
+    gather_idx = np.broadcast_to(visiting_seq[:, :, :, None], desired_shape)
+    xy_broaded = np.broadcast_to(xy[:, None, :, :], desired_shape)
+    original_seq = np.take_along_axis(xy_broaded, gather_idx, 2)
     rolled_seq = np.roll(original_seq, -1, 1)
 
     segments = np.sqrt(((original_seq - rolled_seq) ** 2).sum(-1))
-    distance = segments.sum(1).astype(np.float16)
+    distance = segments.sum(2).astype(np.float16)
     return distance
 
 

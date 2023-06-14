@@ -38,7 +38,9 @@ class TSPNpVec:
 
     def get_reward(self):
         if self._is_done().all() or self.step_reward:
-            visitng_idx = np.hstack(self.visiting_seq, dtype=int)  # (num_env, num_nodes)
+            batch_size, pomo_size, _ = self.pos.shape
+            visitng_idx = np.hstack(self.visiting_seq, dtype=int).reshape(batch_size, pomo_size, -1)  
+            # (num_env, pomo_size, num_nodes): 
             dist = cal_distance(self.xy, visitng_idx)
             return -dist
 
@@ -50,14 +52,14 @@ class TSPNpVec:
 
         self.pos = np.zeros((self.num_env, self.pomo_size, 1), dtype=int)
         self.visited = np.zeros((self.num_env, self.pomo_size, self.action_size), dtype=bool)
-        np.put_along_axis(self.visited, self.pos, True, axis=2)  # set the current pos as visited
+        # np.put_along_axis(self.visited, self.pos, True, axis=2)  # set the current pos as visited
 
         self.visiting_seq = []
 
-        self.visiting_seq.append(self.pos)  # append the depot position
+        # self.visiting_seq.append(self.pos)  # append the depot position
         self.available = np.ones((self.num_env, self.pomo_size, self.action_size),
                                  dtype=bool)  # all nodes are available at the beginning
-        np.put_along_axis(self.available, self.pos, False, axis=2)  # set the current pos to False
+        # np.put_along_axis(self.available, self.pos, False, axis=2)  # set the current pos to False
 
         obs = self._get_obs()
 
@@ -66,7 +68,7 @@ class TSPNpVec:
     def step(self, action):
         # action: (num_env, pomo_size, 1)
         if action.shape != (self.num_env, self.pomo_size, 1):
-            action = action.reshape(self.num_env, self.pomo_size, 1)
+            action = action[:, :, None].reshape(self.num_env, self.pomo_size, 1)
 
         # update the current pos
         self.pos = action

@@ -117,6 +117,9 @@ class ScaledDotProductAttention(nn.Module):
     def forward(self, q, k, v, attn_mask=None):
         if int(torch.__version__[0]) == 2:
             # native scaled dot product attention is only available in torch >= 2.0
+            if attn_mask is not None and attn_mask.shape != q.shape:
+                attn_mask = attn_mask[:, None, :, :]
+            
             return F.scaled_dot_product_attention(q, k, v, attn_mask)
 
         else:

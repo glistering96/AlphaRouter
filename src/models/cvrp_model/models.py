@@ -78,8 +78,8 @@ class CVRPModel(nn.Module):
             probs[:, :, 0] = 1.0
             
         elif obs['t'] == 1:
-            probs = torch.diag_embed(torch.arange(start=1, end=pomo_size+1, size=(pomo_size, N)))   # assign prob 1 to the pomo tensors
-            
+            probs = torch.zeros(batch_size, pomo_size, N)
+            probs[:, torch.arange(pomo_size), torch.arange(N)] =  torch.arange(N) # assign prob 1 to the pomo tensors
         else:
             probs = self.policy_net(mh_attn_out, self.decoder.single_head_key, mask)
             probs = probs.reshape(batch_size, pomo_size, N)

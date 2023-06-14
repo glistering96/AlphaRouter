@@ -70,7 +70,8 @@ class TSPModel(nn.Module):
         mh_attn_out = self.decoder(last_node, load=None, mask=mask)
         
         if obs['t'] == 0:
-            probs = torch.diag_embed(torch.ones(size=(pomo_size, N)))   # assign prob 1 to the pomo tensors
+            probs = torch.zeros(batch_size, pomo_size, N).to(self.device)
+            probs[:, torch.arange(pomo_size), torch.arange(N)] = 1.0
             
         else:
             probs = self.policy_net(mh_attn_out, self.decoder.single_head_key, mask)

@@ -58,6 +58,8 @@ class AMTrainer(pl.LightningModule):
 
         while not done:
             action_probs, val = self.model(obs)
+            # action_probs: (batch, pomo, N)
+            # val: (batch, pomo, 1)
 
             probs = torch.distributions.Categorical(probs=action_probs)
             action = probs.sample()
@@ -66,28 +68,28 @@ class AMTrainer(pl.LightningModule):
 
             done = bool(np.all(dones == True))
 
-            prob_lst.append(probs.log_prob(action)[:, None])
-            entropy_lst.append(probs.entropy()[:, None])
-            val_lst.append(val[:, None])
+            logit = probs.log_prob(action)[:, :, None]
+            
+            prob_lst.append(logit)
+            entropy_lst.append(probs.entropy()[:, :, None])
+            val_lst.append(val)
 
         reward = -torch.as_tensor(reward, device=self.device, dtype=torch.float16)
-        val_tensor = torch.cat(val_lst, dim=-1)
+        val_tensor = torch.cat(val_lst, dim=2)
         # val_tensor: (batch, time)
+        
         baseline = val_tensor
-        adv = torch.broadcast_to(reward[:, None], val_tensor.shape) - baseline
+        reward_broadcasted = torch.broadcast_to(reward[:, :, None], baseline.shape)
+        
+        val_loss = torch.nn.functional.mse_loss(val_tensor, reward_broadcasted)
+        adv = reward_broadcasted - baseline.detach()
 
         log_prob = torch.cat(prob_lst, dim=-1)
-        p_loss = (adv.detach() * log_prob).sum(dim=-1).mean()
+        p_loss = (adv * log_prob).sum(dim=-1).sum(dim=-1).mean()
         entropy = -torch.cat(entropy_lst, dim=-1).mean()
+        loss = p_loss + val_loss 
 
-        with warnings.catch_warnings():
-            warnings.simplefilter(
-                "ignore")  # broad casting below line is intended. It is much faster than manual calculation
-            val_loss = 0.5 * F.mse_loss(val_tensor, reward.unsqueeze(-1).detach())
-
-        loss = p_loss + val_loss + self.ent_coef * entropy
-
-        train_score, loss, p_loss, val_loss, epi_len, entropy = reward.mean().item(), loss, p_loss, val_loss, len(prob_lst), entropy
+        train_score, loss, p_loss, val_loss, epi_len, entropy = reward.mean().item(), loss, p_loss, val_loss, len(prob_lst), -entropy
 
         self.log('score/train_score', train_score)
         self.log('train_score', train_score, prog_bar=True, logger=False)
