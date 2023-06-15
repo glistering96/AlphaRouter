@@ -73,7 +73,7 @@ class AMTrainer(pl.LightningModule):
             prob_lst.append(logit)
             entropy_lst.append(probs.entropy()[:, :, None])
             val_lst.append(val)
-
+    
         reward = -torch.as_tensor(reward, device=self.device, dtype=torch.float16)
         val_tensor = torch.cat(val_lst, dim=2)
         # val_tensor: (batch, time)
@@ -82,7 +82,7 @@ class AMTrainer(pl.LightningModule):
         reward_broadcasted = torch.broadcast_to(reward[:, :, None], baseline.shape)
         
         val_loss = torch.nn.functional.mse_loss(val_tensor, reward_broadcasted)
-        adv = reward_broadcasted - baseline.detach()
+        adv = reward_broadcasted - baseline
 
         log_prob = torch.cat(prob_lst, dim=-1)
         p_loss = (adv * log_prob).sum(dim=-1).sum(dim=-1).mean()
@@ -109,11 +109,11 @@ class AMTrainer(pl.LightningModule):
 
         scheduler = CosineAnnealingWarmupRestarts(
             optimizer,
-            first_cycle_steps=self.nn_train_epochs*1000,
+            first_cycle_steps=4000,
             warmup_steps=self.warm_up_epochs,
             max_lr=self.optimizer_params['lr'],
             min_lr=1e-9)
-        return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]
+        return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
 
     # def lr_scheduler_step(self, scheduler, metric):
     #     scheduler.step(epoch=self.current_epoch)

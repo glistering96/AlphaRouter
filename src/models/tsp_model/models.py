@@ -24,7 +24,7 @@ class TSPModel(nn.Module):
 
     def init_parameters(self):
         for name, param in self.named_parameters():
-            stdv = 1. / math.sqrt(param.size(-1))
+            stdv = 1. / math.sqrt(param.size(0))
             param.data.uniform_(-stdv, stdv)
 
     def _get_obs(self, observations, device):
@@ -64,7 +64,8 @@ class TSPModel(nn.Module):
 
         if self.encoding is None:
             self.encoding = self.encoder(xy)
-            self.decoder.set_kv(self.encoding)
+            
+        self.decoder.set_kv(self.encoding)
         
         last_node = get_encoding(self.encoding, cur_node.long())
         mh_attn_out = self.decoder(last_node, load=None, mask=mask)
