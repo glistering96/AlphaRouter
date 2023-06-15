@@ -55,7 +55,7 @@ class AMTrainer(pl.LightningModule):
         entropy_lst = []
         val_lst = []
         reward = 0
-
+                
         while not done:
             action_probs, val = self.model(obs)
             # action_probs: (batch, pomo, N)
@@ -68,27 +68,40 @@ class AMTrainer(pl.LightningModule):
 
             done = bool(np.all(dones == True))
 
-            logit = probs.log_prob(action)[:, :, None]
+            logit = probs.log_prob(action)[:, :, None] + 1e-10
+            # (batch, pomo, 1)
             
             prob_lst.append(logit)
             entropy_lst.append(probs.entropy()[:, :, None])
             val_lst.append(val)
     
         reward = -torch.as_tensor(reward, device=self.device, dtype=torch.float16)
-        val_tensor = torch.cat(val_lst, dim=2)
-        # val_tensor: (batch, time)
+        # (batch, pomo)
+        val_tensor = torch.cat(val_lst, dim=-1)
+        # val_tensor: (batch, pomo, T)
         
         baseline = val_tensor
         reward_broadcasted = torch.broadcast_to(reward[:, :, None], baseline.shape)
+        # (batch, pomo, T)
         
-        val_loss = torch.nn.functional.mse_loss(val_tensor, reward_broadcasted)
         adv = reward_broadcasted - baseline
 
-        log_prob = torch.cat(prob_lst, dim=-1)
-        p_loss = (adv * log_prob).sum(dim=-1).sum(dim=-1).mean()
+        log_prob = torch.cat(prob_lst, dim=-1).sum(dim=-1)
+        # (batch, pomo)
+        
+        p_loss = (adv * log_prob[:, :, None]).mean()
+        # ()
+        
+        val_loss = torch.nn.functional.mse_loss(val_tensor, reward_broadcasted)
+        
         entropy = -torch.cat(entropy_lst, dim=-1).mean()
-        loss = p_loss + val_loss 
+        loss = p_loss + val_loss
 
+        self.automatic_optimization = False
+        self.optimizers().zero_grad()
+        self.manual_backward(loss)
+        self.optimizers().step()
+        
         train_score, loss, p_loss, val_loss, epi_len, entropy = reward.mean().item(), loss, p_loss, val_loss, len(prob_lst), -entropy
 
         self.log('score/train_score', train_score)
@@ -102,7 +115,14 @@ class AMTrainer(pl.LightningModule):
         self.log('debug/lr', lr, prog_bar=True)
         self.log('hp_metric', train_score)
 
+        self.add_histogram()
         return loss
+    
+    def add_histogram(self):
+        for name, param in self.model.named_parameters():
+            if param.grad is not None:
+                self.logger.experiment.add_histogram(name, param.grad, self.current_epoch)
+            
 
     def configure_optimizers(self):
         optimizer = Optimizer(self.parameters(), **self.optimizer_params)
@@ -113,7 +133,7 @@ class AMTrainer(pl.LightningModule):
             warmup_steps=self.warm_up_epochs,
             max_lr=self.optimizer_params['lr'],
             min_lr=1e-9)
-        return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
+        return {"optimizer": optimizer, "lr_scheduler": scheduler}
 
     # def lr_scheduler_step(self, scheduler, metric):
     #     scheduler.step(epoch=self.current_epoch)

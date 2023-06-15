@@ -67,23 +67,28 @@ class TSPModel(nn.Module):
             
         self.decoder.set_kv(self.encoding)
         
-        last_node = get_encoding(self.encoding, cur_node.long())
-        mh_attn_out = self.decoder(last_node, load=None, mask=mask)
-        
         if obs['t'] == 0:
             probs = torch.zeros(batch_size, pomo_size, N).to(self.device)
             probs[:, torch.arange(pomo_size), torch.arange(N)] = 1.0
             
+            cur_node = torch.arange(pomo_size)[None, :, None].repeat(batch_size, 1, 1).to(self.device)
+            
+            cur_node_encoding = get_encoding(self.encoding, cur_node.long())
+            mh_attn_out = self.decoder(cur_node_encoding, load=None, mask=mask)
+            
+            val = self.value_net(mh_attn_out)
+            val = val.reshape(batch_size, pomo_size, 1)
+
         else:
+            cur_node_encoding = get_encoding(self.encoding, cur_node.long())
+            mh_attn_out = self.decoder(cur_node_encoding, load=None, mask=mask)
+            
             probs = self.policy_net(mh_attn_out, self.decoder.single_head_key, mask)
-            probs = probs.reshape(batch_size, pomo_size, N)
-
-        # TODO: may be the order of poliy and value important? 
-        # mh_attn_out -> policy -> value but what about mh_attn_out -> value -> policy?
-        
-        val = self.value_net(mh_attn_out)
-        val = val.reshape(batch_size, pomo_size, 1)
-
+            probs = probs.reshape(batch_size, pomo_size, N)        
+            
+            val = self.value_net(mh_attn_out)
+            val = val.reshape(batch_size, pomo_size, 1)
+            
         return probs, val
 
     def predict(self, obs, deterministic=False):

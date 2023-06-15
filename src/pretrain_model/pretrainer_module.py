@@ -187,6 +187,7 @@ class PreTrainerModule(RolloutBase):
         # The scenarios are trained in batched.
         done = False
         self.model.encoding = None
+        self.model.device = self.device
 
         obs, _ = self.env.reset()
         prob_lst = []
@@ -197,6 +198,8 @@ class PreTrainerModule(RolloutBase):
         with torch.autocast(device_type=self.device.type, dtype=torch.float16):
             while not done:
                 action_probs, val = self.model(obs)
+                # action_probs: (batch, pomo, N)
+                # val: (batch, pomo, 1)
 
                 probs = torch.distributions.Categorical(probs=action_probs)
                 action = probs.sample()
@@ -205,19 +208,26 @@ class PreTrainerModule(RolloutBase):
 
                 done = bool(np.all(dones == True))
 
-                prob_lst.append(probs.log_prob(action)[:, None])
-                entropy_lst.append(probs.entropy()[:, None])
-                val_lst.append(val[:, None])
+                logit = probs.log_prob(action)[:, :, None] + 1e-7
+                
+                prob_lst.append(logit)
+                entropy_lst.append(probs.entropy()[:, :, None])
+                val_lst.append(val[:, :, None, :])
 
             reward = -torch.as_tensor(reward, device=self.device, dtype=torch.float16)
-            val_tensor = torch.cat(val_lst, dim=-1)
-            # val_tensor: (batch, time)
+            val_tensor = torch.cat(val_lst, dim=-2)
+            # val_tensor: (batch, pomo, T)
+            
             baseline = val_tensor
-            adv = torch.broadcast_to(reward[:, None], val_tensor.shape) - baseline
+            reward_broadcasted = torch.broadcast_to(reward[:, :, None, None], baseline.shape)
+            
+            val_loss = torch.nn.functional.mse_loss(val_tensor, reward_broadcasted)
+            adv = reward_broadcasted - baseline
 
-            log_prob = torch.cat(prob_lst, dim=-1)
-            p_loss = (adv.detach() * log_prob).sum(dim=-1).mean()
+            log_prob = torch.cat(prob_lst, dim=-1).sum(dim=-1)
+            p_loss = (adv * log_prob[:, :, None, None]).mean()
             entropy = -torch.cat(entropy_lst, dim=-1).mean()
+            loss = p_loss + val_loss
 
             with warnings.catch_warnings():
                 warnings.simplefilter(

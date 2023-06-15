@@ -60,15 +60,15 @@ class TSPNpVec:
         self.available = np.ones((self.num_env, self.pomo_size, self.action_size),
                                  dtype=bool)  # all nodes are available at the beginning
         # np.put_along_axis(self.available, self.pos, False, axis=2)  # set the current pos to False
-
+        
+        self.t = 0
         obs = self._get_obs()
 
         return obs, {}
 
     def step(self, action):
-        # action: (num_env, pomo_size, 1)
-        if action.shape != (self.num_env, self.pomo_size, 1):
-            action = action[:, :, None].reshape(self.num_env, self.pomo_size, 1)
+        # action: (num_env, pomo_size)
+        action = action[:, :, None].reshape(self.num_env, self.pomo_size, 1)
 
         # update the current pos
         self.pos = action
