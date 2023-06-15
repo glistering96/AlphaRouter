@@ -20,12 +20,10 @@ class TSPModel(nn.Module):
 
         self.encoding = None
 
-        self.init_parameters()
-
-    def init_parameters(self):
-        for name, param in self.named_parameters():
-            stdv = 1. / math.sqrt(param.size(-1))
-            param.data.uniform_(-stdv, stdv)
+    def init_params(self):
+        for param in self.parameters():
+            std = 1.0 / math.sqrt(param.size(0))
+            nn.init.uniform_(param, -std, std)
 
     def _get_obs(self, observations, device):
         observations = _to_tensor(observations, device)
@@ -63,6 +61,9 @@ class TSPModel(nn.Module):
         if self.encoding is None:
             self.encoding = self.encoder(xy)
             self.decoder.set_kv(self.encoding)  # decoder only needs to set kv once
+
+            last_node = get_encoding(self.encoding, cur_node.long(), T)
+            self.decoder.set_first_node_query(last_node)
 
         last_node = get_encoding(self.encoding, cur_node.long(), T)
 

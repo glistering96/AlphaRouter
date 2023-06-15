@@ -259,6 +259,7 @@ class Decoder(nn.Module):
 
         self.multi_head_combine = nn.Linear(self.head_num * self.qkv_dim, embedding_dim)
 
+        self.Wq_first = nn.Linear(query_dim, self.head_num * self.qkv_dim, bias=False)
         self.Wq_last = nn.Linear(query_dim, self.head_num * self.qkv_dim, bias=False)
         self.Wk = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
         self.Wv = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
@@ -266,6 +267,12 @@ class Decoder(nn.Module):
         self.scaled_dot_product_attention = ScaledDotProductAttention(**model_params)
 
         self.k, self.v = None, None
+        self.q_first, self.q_last = None, None
+
+    def set_first_node_query(self, encoding_first_node):
+        # encoding_first_node.shape: (batch, embedding)
+        B = encoding_first_node.shape[0]
+        self.q_first = self.Wq_first(encoding_first_node).view(B, -1, self.head_num, self.qkv_dim).transpose(1, 2)
 
     def set_kv(self, encoding):
         B, N, _ = encoding.shape
@@ -293,8 +300,9 @@ class Decoder(nn.Module):
         else:
             query_in = cur_node_encoding
 
-        q = self.Wq_last(query_in).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        q_last = self.Wq_last(query_in).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
         # (batch, N, embedding)
+        q = self.q_first + q_last
 
         if mask is not None and mask.dim() == 2:
             mask = mask[:, None, None, :]

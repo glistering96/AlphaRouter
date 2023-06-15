@@ -13,6 +13,7 @@ import lightning.pytorch as pl
 from src.common.lr_scheduler import CosineAnnealingWarmupRestarts
 from src.env.routing_env import RoutingEnv
 from src.models.routing_model import RoutingModel
+from torch.optim.lr_scheduler import MultiStepLR as Scheduler
 
 
 class AMTrainer(pl.LightningModule):
@@ -89,29 +90,24 @@ class AMTrainer(pl.LightningModule):
 
         train_score, loss, p_loss, val_loss, epi_len, entropy = reward.mean().item(), loss, p_loss, val_loss, len(prob_lst), entropy
 
-        self.log('score/train_score', train_score)
-        self.log('train_score', train_score, prog_bar=True, logger=False)
+        self.log('score/train_score', train_score, on_step=True)
+        self.log('train_score', train_score, prog_bar=True, on_step=True, on_epoch=True, logger=False)
         self.log('score/episode_length', float(epi_len), prog_bar=True)
         self.log('loss/total_loss', loss)
         self.log('loss/p_loss', p_loss)
         self.log('loss/val_loss', val_loss, prog_bar=True)
         self.log('loss/entropy', entropy, prog_bar=True)
-        lr = self.trainer.lr_scheduler_configs[0].scheduler.get_lr()[0]
+        lr = self.trainer.lr_scheduler_configs[0].scheduler.get_last_lr()[0]
         self.log('debug/lr', lr, prog_bar=True)
         self.log('hp_metric', train_score)
 
         return loss
 
     def configure_optimizers(self):
-        optimizer = Optimizer(self.parameters(), **self.optimizer_params)
+        opt = Optimizer(self.model.parameters(), lr=self.optimizer_params['lr'], weight_decay=1e-8)
+        sch = Scheduler(opt, milestones=[3000])
 
-        scheduler = CosineAnnealingWarmupRestarts(
-            optimizer,
-            first_cycle_steps=self.nn_train_epochs*1000,
-            warmup_steps=self.warm_up_epochs,
-            max_lr=self.optimizer_params['lr'],
-            min_lr=1e-9)
-        return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]
+        return {'optimizer': opt, 'lr_scheduler': sch}
 
     # def lr_scheduler_step(self, scheduler, metric):
     #     scheduler.step(epoch=self.current_epoch)

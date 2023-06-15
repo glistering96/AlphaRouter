@@ -114,24 +114,15 @@ def run_pretrain(args):
         save_top_k=5
     )
 
-    val_cp_callback = pl.callbacks.ModelCheckpoint(
-        dirpath=default_root_dir,
-        monitor="loss/val_loss",
-        mode="min",
-        filename="best_val_loss",
-        save_on_train_epoch_end=False,
-        save_top_k=1
-    )
-
     trainer = pl.Trainer(
         accumulate_grad_batches=grad_acc,
         logger=logger,
-        log_every_n_steps=4,
+        # log_every_n_epoch=1,
         check_val_every_n_epoch=0,
         max_epochs=max_epochs,
         default_root_dir=default_root_dir,
         precision="16-mixed",
-        callbacks=[score_cp_callback, val_cp_callback],
+        callbacks=[score_cp_callback],
         gradient_clip_val=1.0
     )
 
