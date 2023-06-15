@@ -50,16 +50,13 @@ class TSPNpVec:
     def reset(self):
         self.xy = self._make_problems(self.num_env, self.num_nodes)
 
-        self.pos = np.zeros((self.num_env, self.pomo_size, 1), dtype=int)
+        self.pos = None
         self.visited = np.zeros((self.num_env, self.pomo_size, self.action_size), dtype=bool)
-        # np.put_along_axis(self.visited, self.pos, True, axis=2)  # set the current pos as visited
 
         self.visiting_seq = []
 
-        # self.visiting_seq.append(self.pos)  # append the depot position
         self.available = np.ones((self.num_env, self.pomo_size, self.action_size),
                                  dtype=bool)  # all nodes are available at the beginning
-        # np.put_along_axis(self.available, self.pos, False, axis=2)  # set the current pos to False
         
         self.t = 0
         obs = self._get_obs()

@@ -39,6 +39,9 @@ class AMTrainer(pl.LightningModule):
         self.nn_train_epochs = run_params['nn_train_epochs']
         self.warm_up_epochs = 1000
 
+    def _save_output(self, module, grad_input, grad_output):
+        print(module, grad_output)
+  
     def training_step(self, batch, _):
         # TODO: need to add a batch input for training step. It means that environment rollout must be isolated
         # from the training step.
@@ -57,22 +60,27 @@ class AMTrainer(pl.LightningModule):
         reward = 0
                 
         while not done:
-            action_probs, val = self.model(obs)
+            action, action_probs, val = self.model(obs)
             # action_probs: (batch, pomo, N)
             # val: (batch, pomo, 1)
-
-            probs = torch.distributions.Categorical(probs=action_probs)
-            action = probs.sample()
+                        
+            if action is None:
+                dist = torch.distributions.Categorical(probs=action_probs)
+                action = dist.sample()     
+                entropy_lst.append(dist.entropy()[:, :, None])
+                
+                logit = dist.log_prob(action)[:, :, None] + 1e-10
+                # (batch, pomo, 1)    
+            
+            else:
+                logit = action_probs.log()[:, :, None] + 1e-10
+                # (batch, pomo, 1)       
 
             obs, reward, dones, _, _ = self.env.step(action.detach().cpu().numpy())
 
             done = bool(np.all(dones == True))
 
-            logit = probs.log_prob(action)[:, :, None] + 1e-10
-            # (batch, pomo, 1)
-            
             prob_lst.append(logit)
-            entropy_lst.append(probs.entropy()[:, :, None])
             val_lst.append(val)
     
         reward = -torch.as_tensor(reward, device=self.device, dtype=torch.float16)
@@ -84,23 +92,26 @@ class AMTrainer(pl.LightningModule):
         reward_broadcasted = torch.broadcast_to(reward[:, :, None], baseline.shape)
         # (batch, pomo, T)
         
-        adv = reward_broadcasted - baseline
+        val_loss = torch.nn.functional.mse_loss(val_tensor, reward_broadcasted)
+        
+        adv = reward_broadcasted - baseline.detach()
+        # (batch, pomo, T)
 
         log_prob = torch.cat(prob_lst, dim=-1).sum(dim=-1)
         # (batch, pomo)
         
-        p_loss = (adv * log_prob[:, :, None]).mean()
-        # ()
-        
-        val_loss = torch.nn.functional.mse_loss(val_tensor, reward_broadcasted)
-        
-        entropy = -torch.cat(entropy_lst, dim=-1).mean()
-        loss = p_loss + val_loss
+        p_loss = (adv * log_prob[:, :, None]).mean()       
 
-        self.automatic_optimization = False
-        self.optimizers().zero_grad()
-        self.manual_backward(loss)
-        self.optimizers().step()
+        entropy = -torch.cat(entropy_lst, dim=-1).mean()
+        loss = p_loss + val_loss   
+        
+        # for module in self.model.modules():
+        #     module.register_full_backward_hook(self._save_output)
+
+        # self.automatic_optimization = False
+        # self.optimizers().zero_grad()
+        # self.manual_backward(loss)
+        # self.optimizers().step()
         
         train_score, loss, p_loss, val_loss, epi_len, entropy = reward.mean().item(), loss, p_loss, val_loss, len(prob_lst), -entropy
 
@@ -115,7 +126,7 @@ class AMTrainer(pl.LightningModule):
         self.log('debug/lr', lr, prog_bar=True)
         self.log('hp_metric', train_score)
 
-        self.add_histogram()
+        # self.add_histogram()
         return loss
     
     def add_histogram(self):

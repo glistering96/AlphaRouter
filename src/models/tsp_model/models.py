@@ -20,7 +20,7 @@ class TSPModel(nn.Module):
 
         self.encoding = None
 
-        self.init_parameters()
+        # self.init_parameters()
 
     def init_parameters(self):
         for name, param in self.named_parameters():
@@ -39,11 +39,12 @@ class TSPModel(nn.Module):
         available = observations['available']
         # (1, )
         
-        batch_size, pomo_size, _ = cur_node.size()
+        batch_size, pomo_size, _ = available.size()
 
         xy = xy.reshape(batch_size, -1, 2)
-
-        cur_node = cur_node.reshape(batch_size, pomo_size, 1)
+        
+        if cur_node is not None:
+            cur_node = cur_node.reshape(batch_size, pomo_size, 1)
 
         available = available.reshape(batch_size, pomo_size, -1)
 
@@ -55,9 +56,7 @@ class TSPModel(nn.Module):
         # cur_node: (B, pomo, )
         # available: (B, pomo, N)
         
-        batch_size = cur_node.size(0)
-        pomo_size = cur_node.size(1)
-        N = available.size(-1)
+        batch_size, pomo_size, N = available.size()
         
         mask = torch.zeros_like(available).type(torch.float32)
         mask[available == False] = float('-inf')
@@ -68,8 +67,8 @@ class TSPModel(nn.Module):
         self.decoder.set_kv(self.encoding)
         
         if obs['t'] == 0:
-            probs = torch.zeros(batch_size, pomo_size, N).to(self.device)
-            probs[:, torch.arange(pomo_size), torch.arange(N)] = 1.0
+            selected = torch.arange(pomo_size)[None, :].expand(batch_size, pomo_size)
+            probs = torch.ones(size=(batch_size, pomo_size)).to(self.device)
             
             cur_node = torch.arange(pomo_size)[None, :, None].repeat(batch_size, 1, 1).to(self.device)
             
@@ -80,6 +79,7 @@ class TSPModel(nn.Module):
             val = val.reshape(batch_size, pomo_size, 1)
 
         else:
+            selected = None
             cur_node_encoding = get_encoding(self.encoding, cur_node.long())
             mh_attn_out = self.decoder(cur_node_encoding, load=None, mask=mask)
             
@@ -89,7 +89,7 @@ class TSPModel(nn.Module):
             val = self.value_net(mh_attn_out)
             val = val.reshape(batch_size, pomo_size, 1)
             
-        return probs, val
+        return selected, probs, val
 
     def predict(self, obs, deterministic=False):
         probs, _ = self.forward(obs)

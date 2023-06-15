@@ -116,10 +116,7 @@ class ScaledDotProductAttention(nn.Module):
 
     def forward(self, q, k, v, attn_mask=None):
         if int(torch.__version__[0]) == 2:
-            # native scaled dot product attention is only available in torch >= 2.0
-            if attn_mask is not None and attn_mask.shape != q.shape:
-                attn_mask = attn_mask[:, None, :, :]
-            
+            # native scaled dot product attention is only available in torch >= 2.0            
             return F.scaled_dot_product_attention(q, k, v, attn_mask)
 
         else:
@@ -300,6 +297,9 @@ class Decoder(nn.Module):
 
         if mask is not None and mask.dim() == 2:
             mask = mask[:, None, None, :]
+            
+        if mask is not None and mask.dim() == 3:
+            mask = mask[:, None, :, :].expand(B, self.head_num, N, N)
 
         out_concat = self.scaled_dot_product_attention(q, self.k, self.v, mask)
         # (batch, 1 or T, qkv*head_num)
