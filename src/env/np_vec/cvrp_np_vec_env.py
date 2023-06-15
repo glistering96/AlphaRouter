@@ -72,7 +72,7 @@ class CVRPNpVec:
                                  dtype=bool)  # all nodes are available at the beginning
         np.put_along_axis(self.available, self.pos, False, axis=2)  # set the current pos to False
         
-        self.load = np.ones((self.num_env, self.pomo_size, 1), dtype=np.float32)  # all vehicles start with full load
+        self.load = np.ones((self.num_env, self.pomo_size, 1), dtype=np.float16)  # all vehicles start with full load
         obs = self._get_obs()
 
         return obs, {}

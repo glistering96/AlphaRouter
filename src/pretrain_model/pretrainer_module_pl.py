@@ -37,7 +37,7 @@ class AMTrainer(pl.LightningModule):
         # etc
         self.ent_coef = run_params['ent_coef']
         self.nn_train_epochs = run_params['nn_train_epochs']
-        self.warm_up_epochs = 1000
+        self.warm_up_epochs = 10
 
     def _save_output(self, module, grad_input, grad_output):
         print(module, grad_output)
@@ -140,10 +140,10 @@ class AMTrainer(pl.LightningModule):
 
         scheduler = CosineAnnealingWarmupRestarts(
             optimizer,
-            first_cycle_steps=4000,
+            first_cycle_steps=1000,
             warmup_steps=self.warm_up_epochs,
             max_lr=self.optimizer_params['lr'],
-            min_lr=1e-9)
+            min_lr=1e-5)
         return {"optimizer": optimizer, "lr_scheduler": scheduler}
 
     # def lr_scheduler_step(self, scheduler, metric):

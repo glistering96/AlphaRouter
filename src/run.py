@@ -113,16 +113,17 @@ def run_pretrain(args):
         save_on_train_epoch_end=True,
         save_top_k=5
     )
-    
+
     trainer = pl.Trainer(
         accumulate_grad_batches=grad_acc,
         logger=logger,
+        log_every_n_steps=4,
         check_val_every_n_epoch=0,
         max_epochs=max_epochs,
         default_root_dir=default_root_dir,
         precision="16-mixed",
         callbacks=[score_cp_callback],
-        gradient_clip_val=1.0,
+        # gradient_clip_val=1.0
         # detect_anomaly=True,
     )
 

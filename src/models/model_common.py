@@ -22,7 +22,7 @@ def get_encoding(encoded_nodes, node_index_to_pick):
     embedding_dim = encoded_nodes.size(-1)
 
     _to_pick = torch.broadcast_to(node_index_to_pick, (batch_size, pomo_size, embedding_dim))
-    picked_node_embedding = encoded_nodes.gather(dim=1, index=_to_pick)
+    picked_node_embedding = encoded_nodes.gather(dim=2, index=_to_pick)
 
     return picked_node_embedding
 

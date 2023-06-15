@@ -108,7 +108,7 @@ if __name__ == '__main__':
         'num_parallel_env': 64,
         'lr': 3e-4,
         'grad_acc': 1,
-        'num_steps_in_epoch': 1000
+        'num_steps_in_epoch': 5000
     }
     #
     # for grad_acc, num_steps_in_epoch in itertools.product([1, 5, 10], [1, 10, 100]):
