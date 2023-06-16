@@ -67,8 +67,9 @@ class TSPModel(nn.Module):
         self.decoder.set_kv(self.encoding)
         
         if obs['t'] == 0:
-            selected = torch.arange(pomo_size)[None, :].expand(batch_size, pomo_size).to(self.device)
-            probs = torch.ones(size=(batch_size, pomo_size)).to(self.device)
+            selected = torch.arange(pomo_size).repeat(batch_size, 1).to(self.device)
+            probs = torch.zeros(size=(batch_size, pomo_size, N)).to(self.device)
+            probs[:, torch.arange(pomo_size), torch.arange(N)] = 1.0
 
             cur_node_encoding = get_encoding(self.encoding, selected[:, :, None])
             mh_attn_out = self.decoder(cur_node_encoding, load=None, mask=mask)
@@ -77,7 +78,6 @@ class TSPModel(nn.Module):
             val = val.reshape(batch_size, pomo_size, 1)
 
         else:
-            selected = None
             cur_node_encoding = get_encoding(self.encoding, cur_node.long())
             mh_attn_out = self.decoder(cur_node_encoding, load=None, mask=mask)
             
@@ -87,10 +87,10 @@ class TSPModel(nn.Module):
             val = self.value_net(mh_attn_out)
             val = val.reshape(batch_size, pomo_size, 1)
             
-        return selected, probs, val
+        return probs, val
 
     def predict(self, obs, deterministic=False):
-        probs, _, _ = self.forward(obs)
+        probs, _, = self.forward(obs)
 
         if deterministic:
             action = probs.argmax(-1).item()

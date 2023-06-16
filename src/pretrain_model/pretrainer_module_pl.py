@@ -60,21 +60,16 @@ class AMTrainer(pl.LightningModule):
         reward = 0
                 
         while not done:
-            action, action_probs, val = self.model(obs)
+            action_probs, val = self.model(obs)
             # action_probs: (batch, pomo, N)
             # val: (batch, pomo, 1)
-                        
-            if action is None:
-                dist = torch.distributions.Categorical(probs=action_probs)
-                action = dist.sample()     
-                entropy_lst.append(dist.entropy()[:, :, None])
-                
-                logit = dist.log_prob(action)[:, :, None] + 1e-10
-                # (batch, pomo, 1)    
-            
-            else:
-                logit = action_probs.log()[:, :, None] + 1e-10
-                # (batch, pomo, 1)       
+
+            dist = torch.distributions.Categorical(probs=action_probs)
+            action = dist.sample()
+            entropy_lst.append(dist.entropy()[:, :, None])
+
+            logit = dist.log_prob(action)[:, :, None] + 1e-10
+            # (batch, pomo, 1)
 
             obs, reward, dones, _, _ = self.env.step(action.detach().cpu().numpy())
 
