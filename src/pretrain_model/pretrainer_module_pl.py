@@ -124,7 +124,7 @@ class AMTrainer(pl.LightningModule):
         self.log('debug/lr', lr, prog_bar=True)
         self.log('hp_metric', train_score)
 
-        self.add_histogram()
+        # self.add_histogram()
         return loss
     
     def add_histogram(self):

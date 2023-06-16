@@ -95,19 +95,19 @@ def search_params(num_proc):
 if __name__ == '__main__':
     torch.set_float32_matmul_precision('high')
     params = {
-        'num_nodes' : 10,
+        'num_nodes' : 20,
         'result_dir' : 'pretrained_result',
         'name_prefix' : 'POMO_test',
         'render_mode' : None,
         'qkv_dim' : 16,
         'load_from_the_latest' : False,
         'env_type' : 'tsp',
-        'embedding_dim': 128,
+        'embedding_dim': 256,
         'nn_train_epochs': 100,
         'model_save_interval': 10,
-        'num_parallel_env': 4,
+        'num_parallel_env': 64,
         'lr': 3e-4,
-        'grad_acc': 16,
+        'grad_acc': 1,
         'num_steps_in_epoch': 5000
     }
     #

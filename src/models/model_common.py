@@ -199,18 +199,27 @@ class Normalization(nn.Module):
         return self.normalizer(input.permute(0, 2, 1)).permute(0, 2, 1)
 
 
-class EncoderLayer(nn.Sequential):
+class EncoderLayer(nn.Module):
     def __init__(self, **model_params):
-        super().__init__(
-            SkipConnection(
-                MHABlock(**model_params)
-            ),
-            Normalization(model_params['embedding_dim']),
-            SkipConnection(
-                FFBlock(**model_params)
-            ),
-            Normalization(model_params['embedding_dim'])
-        )
+        super().__init__()
+
+        self.model_params = model_params
+        embedding_dim = self.model_params['embedding_dim']
+        self.head_num = self.model_params['head_num']
+        self.qkv_dim = self.model_params['qkv_dim']
+
+        self.mha_block = MHABlock(**model_params)
+        self.ff_block = FFBlock(**model_params)
+        self.layer_norm1 = Normalization(embedding_dim)
+        self.layer_norm2 = Normalization(embedding_dim)
+
+    def forward(self, input1):
+        attn_out = self.mha_block(input1)
+        attn_normalized = self.layer_norm1(attn_out + input1)
+        ff_out = self.ff_block(attn_normalized)
+        ff_normalized = self.layer_norm2(ff_out + attn_normalized)
+
+        return ff_normalized
 
 
 class Encoder(nn.Module):
@@ -227,7 +236,7 @@ class Encoder(nn.Module):
         out = self.input_embedder(xy)
 
         for layer in self.embedder:
-            out = layer(out) + out
+            out = layer(out)
 
         return out
 
@@ -251,6 +260,7 @@ class Decoder(nn.Module):
         self.scaled_dot_product_attention = ScaledDotProductAttention(**model_params)
 
         self.k, self.v = None, None
+        self.q_first, self.single_head_key = None, None
 
     def set_q1(self, encoding):
         B, N, embedding_dim = encoding.shape
@@ -296,7 +306,7 @@ class Decoder(nn.Module):
             mask = mask[:, None, :, :].expand(B, self.head_num, N, N)
 
         out_concat = self.scaled_dot_product_attention(q, self.k, self.v, mask)
-        # (batch, pomo, qkv*head_num)
+        # (batch, pomo, qkv, head_num)
 
         attn_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
         # shape: (batch, pomo, embedding)
