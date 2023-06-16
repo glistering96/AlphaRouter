@@ -123,8 +123,7 @@ def run_pretrain(args):
         default_root_dir=default_root_dir,
         precision="16-mixed",
         callbacks=[score_cp_callback],
-        # gradient_clip_val=1.0
-        # detect_anomaly=True,
+        gradient_clip_val=1.0
     )
 
     dummy_dl = torch.utils.data.DataLoader(torch.zeros((num_steps_in_epoch, 1, 1, 1)), batch_size=1)

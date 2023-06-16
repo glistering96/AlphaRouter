@@ -63,15 +63,15 @@ class TSPModel(nn.Module):
 
         if self.encoding is None:
             self.encoding = self.encoder(xy)
-            
-        self.decoder.set_kv(self.encoding)
+            self.decoder.set_kv(self.encoding)
         
-        if obs['t'] == 0:
-            selected = torch.arange(pomo_size).repeat(batch_size, 1).to(self.device)
+        if cur_node is None:
+            selected = torch.arange(pomo_size)[None, :].expand(batch_size, pomo_size).to(self.device)
             probs = torch.zeros(size=(batch_size, pomo_size, N)).to(self.device)
             probs[:, torch.arange(pomo_size), torch.arange(N)] = 1.0
 
             cur_node_encoding = get_encoding(self.encoding, selected[:, :, None])
+            self.decoder.set_q1(cur_node_encoding)
             mh_attn_out = self.decoder(cur_node_encoding, load=None, mask=mask)
             
             val = self.value_net(mh_attn_out)

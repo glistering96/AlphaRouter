@@ -258,6 +258,7 @@ class Decoder(nn.Module):
 
         self.multi_head_combine = nn.Linear(self.head_num * self.qkv_dim, embedding_dim)
 
+        self.Wq_first = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
         self.Wq_last = nn.Linear(query_dim, self.head_num * self.qkv_dim, bias=False)
         self.Wk = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
         self.Wv = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
@@ -266,15 +267,21 @@ class Decoder(nn.Module):
 
         self.k, self.v = None, None
 
+    def set_q1(self, encoding):
+        B, N, embedding_dim = encoding.shape
+
+        self.q_first = self.Wq_first(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        # shape: (batch, head_num, n, qkv_dim)
+
     def set_kv(self, encoding):
         B, N, _ = encoding.shape
 
         self.k = self.Wk(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
         self.v = self.Wv(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
-        # shape: (batch, head_num, problem+1, qkv_dim)
+        # shape: (batch, head_num, n, qkv_dim)
 
         self.single_head_key = encoding.transpose(1, 2)
-        # shape: (batch, embedding, problem+1)
+        # shape: (batch, embedding, problem)
 
     def forward(self, cur_node_encoding, load=None, mask=None):
         """
@@ -287,13 +294,15 @@ class Decoder(nn.Module):
 
         if load is not None:
             load_embedding = load
-            query_in = torch.cat([cur_node_encoding, load_embedding[..., None]], -1)
+            q_current = torch.cat([cur_node_encoding, load_embedding[..., None]], -1)
 
         else:
-            query_in = cur_node_encoding
+            q_current = cur_node_encoding
 
-        q = self.Wq_last(query_in).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        q_current_head = self.Wq_last(q_current).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
         # (batch, N, embedding)
+
+        q = q_current_head + self.q_first
 
         if mask is not None and mask.dim() == 2:
             mask = mask[:, None, None, :]
@@ -302,13 +311,13 @@ class Decoder(nn.Module):
             mask = mask[:, None, :, :].expand(B, self.head_num, N, N)
 
         out_concat = self.scaled_dot_product_attention(q, self.k, self.v, mask)
-        # (batch, 1 or T, qkv*head_num)
+        # (batch, pomo, qkv*head_num)
 
         attn_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
-        # shape: (batch, 1 or T, embedding)
+        # shape: (batch, pomo, embedding)
 
         # TODO: Is it working for CVRP as well?
-        mh_attn_out = attn_out + cur_node_encoding
+        mh_attn_out = attn_out
 
         return mh_attn_out
 

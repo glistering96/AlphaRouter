@@ -105,9 +105,9 @@ if __name__ == '__main__':
         'embedding_dim': 128,
         'nn_train_epochs': 100,
         'model_save_interval': 10,
-        'num_parallel_env': 8,
+        'num_parallel_env': 4,
         'lr': 3e-4,
-        'grad_acc': 1,
+        'grad_acc': 16,
         'num_steps_in_epoch': 5000
     }
     #

@@ -92,16 +92,19 @@ class AMTrainer(pl.LightningModule):
         adv = reward_broadcasted - baseline.detach()
         # (batch, pomo, T)
 
-        log_prob = torch.cat(prob_lst, dim=-1).sum(dim=-1)
+        log_prob = torch.cat(prob_lst, dim=-1).sum(dim=-1, keepdim=True)
         # (batch, pomo)
         
-        p_loss = (adv * log_prob[:, :, None]).mean()       
+        p_loss = adv * log_prob
 
         entropy = -torch.cat(entropy_lst, dim=-1).mean()
-        loss = p_loss + val_loss   
+        loss = (p_loss + 0.5*val_loss).mean()
         
         # for module in self.model.modules():
         #     module.register_full_backward_hook(self._save_output)
+
+        max_pomo_reward, _ = reward.max(dim=1)  # get best results from pomo
+        score_mean = max_pomo_reward.float().mean()  # negative sign to make positive value
 
         # self.automatic_optimization = False
         # self.optimizers().zero_grad()
@@ -110,24 +113,26 @@ class AMTrainer(pl.LightningModule):
         
         train_score, loss, p_loss, val_loss, epi_len, entropy = reward.mean().item(), loss, p_loss, val_loss, len(prob_lst), -entropy
 
-        self.log('score/train_score', train_score)
-        self.log('train_score', train_score, prog_bar=True, logger=False)
+        self.log('score/train_score', score_mean)
+        self.log('train_score', score_mean, prog_bar=True, logger=False)
         self.log('score/episode_length', float(epi_len), prog_bar=True)
         self.log('loss/total_loss', loss)
-        self.log('loss/p_loss', p_loss)
+        self.log('loss/p_loss', p_loss.mean().item())
         self.log('loss/val_loss', val_loss, prog_bar=True)
         self.log('loss/entropy', entropy, prog_bar=True)
         lr = self.trainer.lr_scheduler_configs[0].scheduler.get_lr()[0]
         self.log('debug/lr', lr, prog_bar=True)
         self.log('hp_metric', train_score)
 
-        # self.add_histogram()
+        self.add_histogram()
         return loss
     
     def add_histogram(self):
         for name, param in self.model.named_parameters():
-            if param.grad is not None:
-                self.logger.experiment.add_histogram(name, param.grad, self.current_epoch)
+            self.logger.experiment.add_histogram(f"{name}/weight", param, self.current_epoch)
+
+            if param.grad is not None and not torch.isinf(param.grad).any() and not torch.isnan(param.grad).any():
+                self.logger.experiment.add_histogram(f"{name}/grad", param.grad, self.current_epoch)
             
 
     def configure_optimizers(self):
@@ -138,7 +143,7 @@ class AMTrainer(pl.LightningModule):
             first_cycle_steps=1000,
             warmup_steps=self.warm_up_epochs,
             max_lr=self.optimizer_params['lr'],
-            min_lr=1e-5)
+            min_lr=self.optimizer_params['lr'])
         return {"optimizer": optimizer, "lr_scheduler": scheduler}
 
     # def lr_scheduler_step(self, scheduler, metric):
