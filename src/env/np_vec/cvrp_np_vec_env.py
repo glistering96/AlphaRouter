@@ -51,7 +51,7 @@ class CVRPNpVec:
 
     def get_reward(self):
         if self._is_done().all() or self.step_reward:
-            visitng_idx = np.hstack(self.visiting_seq, dtype=int)  # (num_env, num_nodes)
+            visitng_idx = np.concatenate(self.visiting_seq, axis=2)  # (num_env, num_nodes)
             dist = cal_distance(self.xy, visitng_idx)
             return -dist
 

@@ -20,13 +20,6 @@ class TSPModel(nn.Module):
 
         self.encoding = None
 
-        self.init_parameters()
-
-    def init_parameters(self):
-        for name, param in self.named_parameters():
-            stdv = 1. / math.sqrt(param.size(0))
-            param.data.uniform_(-stdv, stdv)
-
     def _get_obs(self, observations, device):
         observations = _to_tensor(observations, device)
         

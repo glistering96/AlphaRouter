@@ -38,8 +38,8 @@ class TSPNpVec:
 
     def get_reward(self):
         if self._is_done().all() or self.step_reward:
-            batch_size, pomo_size, _ = self.pos.shape
-            visitng_idx = np.hstack(self.visiting_seq, dtype=int).reshape(batch_size, pomo_size, -1)  
+            batch_size, pomo_size = self.pos.shape
+            visitng_idx = np.concatenate(self.visiting_seq, axis=2)
             # (num_env, pomo_size, num_nodes): 
             dist = cal_distance(self.xy, visitng_idx)
             return -dist
@@ -64,11 +64,12 @@ class TSPNpVec:
         return obs, {}
 
     def step(self, action):
-        # action: (num_env, pomo_size)
-        action = action[:, :, None].reshape(self.num_env, self.pomo_size, 1)
+        action = action[:, :, None]
+        # action: (num_env, pomo_size, 1)
+        self.t += 1
 
         # update the current pos
-        self.pos = action
+        self.pos = action.reshape(self.num_env, self.pomo_size)
 
         # append the visited node idx
         self.visiting_seq.append(action)
@@ -82,8 +83,6 @@ class TSPNpVec:
         reward = self.get_reward()
 
         info = {}
-
-        self.t += 1
 
         obs = self._get_obs()
 
