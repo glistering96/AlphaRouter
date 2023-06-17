@@ -23,7 +23,6 @@ class TSPNpVec:
         self.t = 0
         
         self.pomo_size = self.num_nodes
-        
 
     def _get_obs(self):
         return {"xy": self.xy, "pos": self.pos, "available": self.available, "t": self.t}
@@ -42,7 +41,7 @@ class TSPNpVec:
             visitng_idx = np.concatenate(self.visiting_seq, axis=2)
             # (num_env, pomo_size, num_nodes): 
             dist = cal_distance(self.xy, visitng_idx)
-            return -dist
+            return dist
 
         else:
             return 0

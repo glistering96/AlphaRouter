@@ -78,7 +78,7 @@ class AMTrainer(pl.LightningModule):
             prob_lst.append(logit)
             val_lst.append(val)
     
-        reward = -torch.as_tensor(reward, device=self.device, dtype=torch.float16)
+        reward = torch.as_tensor(reward, device=self.device, dtype=torch.float16)
         # (batch, pomo)
         val_tensor = torch.cat(val_lst, dim=-1)
         # val_tensor: (batch, pomo, T)
@@ -103,8 +103,8 @@ class AMTrainer(pl.LightningModule):
         # for module in self.model.modules():
         #     module.register_full_backward_hook(self._save_output)
 
-        max_pomo_reward, _ = reward.max(dim=1)  # get best results from pomo
-        score_mean = max_pomo_reward.float().mean()  # negative sign to make positive value
+        min_pomo_reward, _ = reward.min(dim=1)  # get best results from pomo
+        score_mean = min_pomo_reward.float().mean()  # negative sign to make positive value
 
         # self.automatic_optimization = False
         # self.optimizers().zero_grad()
@@ -113,7 +113,7 @@ class AMTrainer(pl.LightningModule):
         
         train_score, loss, p_loss, val_loss, epi_len, entropy = reward.mean().item(), loss, p_loss, val_loss, len(prob_lst), -entropy
 
-        self.log('score/train_score', score_mean)
+        self.log('score/train_score', score_mean, on_step=True, on_epoch=True)
         self.log('train_score', score_mean, prog_bar=True, logger=False)
         self.log('score/episode_length', float(epi_len), prog_bar=True)
         self.log('loss/total_loss', loss)
@@ -133,7 +133,6 @@ class AMTrainer(pl.LightningModule):
 
             if param.grad is not None and not torch.isinf(param.grad).any() and not torch.isnan(param.grad).any():
                 self.logger.experiment.add_histogram(f"{name}/grad", param.grad, self.current_epoch)
-            
 
     def configure_optimizers(self):
         optimizer = Optimizer(self.parameters(), **self.optimizer_params)
