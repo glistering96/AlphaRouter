@@ -12,7 +12,6 @@ class TSPModel(nn.Module):
         super(TSPModel, self).__init__()
 
         self.model_params = model_params
-
         self.policy_net = Policy(**model_params)
         self.value_net = Value(**model_params)
         self.encoder = Encoder(2, **model_params)
@@ -20,10 +19,6 @@ class TSPModel(nn.Module):
 
         self.encoding = None
 
-    def init_params(self):
-        for param in self.parameters():
-            std = 1.0 / math.sqrt(param.size(0))
-            nn.init.uniform_(param, -std, std)
 
     def _get_obs(self, observations, device):
         observations = _to_tensor(observations, device)

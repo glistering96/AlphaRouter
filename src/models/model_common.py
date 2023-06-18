@@ -7,11 +7,6 @@ from src.common.scaler import *
 
 INNER_MULT = 2
 
-def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
-    torch.nn.init.orthogonal_(layer.weight, std)
-    torch.nn.init.constant_(layer.bias, bias_const)
-    return layer
-
 
 def get_encoding(encoded_nodes, node_index_to_pick, T=1):
     # encoded_nodes.shape: (batch, problem, embedding)
@@ -88,12 +83,7 @@ def multi_head_attention(q, k, v, mask=None):
 
     score_scaled = score / torch.sqrt(torch.tensor(key_dim, dtype=torch.float))
 
-    if mask is not None:
-        if mask.dim() == 2:
-            score_scaled = score_scaled + mask[:, None, None, :].expand(batch_s, head_num, n, input_s)
-
-        elif mask.dim() == 3:
-            score_scaled = score_scaled + mask[:, None, :, :].expand(batch_s, head_num, n, input_s)
+    score_scaled = score_scaled + mask
 
     weights = nn.Softmax(dim=-1)(score_scaled)
     # shape: (batch, head_num, n, problem)
@@ -116,12 +106,12 @@ class ScaledDotProductAttention(nn.Module):
         super(ScaledDotProductAttention, self).__init__()
 
     def forward(self, q, k, v, attn_mask=None):
-        if int(torch.__version__[0]) == 2:
-            # native scaled dot product attention is only available in torch >= 2.0
-            return F.scaled_dot_product_attention(q, k, v, attn_mask)
-
-        else:
-            return multi_head_attention(q, k, v, attn_mask)
+        # if int(torch.__version__[0]) == 2:
+        #     # native scaled dot product attention is only available in torch >= 2.0
+        #     return F.scaled_dot_product_attention(q, k, v, attn_mask)
+        #
+        # else:
+        return multi_head_attention(q, k, v, attn_mask)
 
 
 class MHABlock(nn.Module):
@@ -193,16 +183,7 @@ class FFBlock(nn.Module):
 class Normalization(nn.Module):
     def __init__(self, embed_dim):
         super(Normalization, self).__init__()
-
         self.normalizer = nn.InstanceNorm1d(embed_dim, affine=True)
-
-        # Normalization by default initializes affine parameters with bias 0 and weight unif(0,1) which is too large!
-        self.init_parameters()
-
-    def init_parameters(self):
-        for name, param in self.named_parameters():
-            stdv = 1. / math.sqrt(param.size(-1))
-            param.data.uniform_(-stdv, stdv)
 
     def forward(self, input):
         return self.normalizer(input.permute(0, 2, 1)).permute(0, 2, 1)
@@ -212,13 +193,13 @@ class EncoderLayer(nn.Sequential):
     def __init__(self, **model_params):
         super().__init__(
             SkipConnection(
-                MHABlock(**model_params)
+                MHABlock(**model_params) +
+                Normalization(model_params['embedding_dim']),
             ),
-            Normalization(model_params['embedding_dim']),
             SkipConnection(
-                FFBlock(**model_params)
+                FFBlock(**model_params) +
+                Normalization(model_params['embedding_dim'])
             ),
-            Normalization(model_params['embedding_dim'])
         )
 
 
@@ -232,18 +213,11 @@ class Encoder(nn.Module):
         self.input_embedder = nn.Linear(input_dim, self.embedding_dim)
         self.embedder = nn.ModuleList([EncoderLayer(**model_params) for _ in range(model_params['encoder_layer_num'])])
 
-        self.init_parameters()
-
-    def init_parameters(self):
-        for name, param in self.input_embedder.named_parameters():
-            stdv = 1. / math.sqrt(param.size(-1))
-            param.data.uniform_(-stdv, stdv)
-
     def forward(self, xy):
         out = self.input_embedder(xy)
 
         for layer in self.embedder:
-            out = layer(out) + out
+            out = layer(out)
 
         return out
 
@@ -305,16 +279,13 @@ class Decoder(nn.Module):
         q = self.q_first + q_last
 
         if mask is not None and mask.dim() == 2:
-            mask = mask[:, None, None, :]
+            mask = mask[:, None, None, :].expand(B, self.head_num, N, N)
 
         out_concat = self.scaled_dot_product_attention(q, self.k, self.v, mask)
         # (batch, 1 or T, qkv*head_num)
 
-        attn_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
+        mh_attn_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
         # shape: (batch, 1 or T, embedding)
-
-        # TODO: Is it working for CVRP as well?
-        mh_attn_out = attn_out + cur_node_encoding
 
         return mh_attn_out
 
@@ -341,9 +312,6 @@ class Policy(nn.Module):
         # shape: (batch, 1, problem)
 
         score_clipped = self.C * torch.tanh(score_scaled)
-
-        if score_clipped.dim() != mask.dim():
-            mask = mask.reshape(score_clipped.shape)
 
         score_masked = score_clipped + mask
 
