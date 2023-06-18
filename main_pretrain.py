@@ -93,11 +93,11 @@ def search_params(num_proc):
 
 
 if __name__ == '__main__':
-    torch.set_float32_matmul_precision('medium')
+    torch.set_float32_matmul_precision('high')
     params = {
         'num_nodes' : 100,
         'result_dir' : 'pretrained_result',
-        'name_prefix' : 'POMO/no-residual/no-small_init_var_encoder/no-high_precision/manual_attention',
+        'name_prefix' : 'POMO/no-residual/no-small_init_var_encoder/medium-high_precision/manual_attention',
         'render_mode' : None,
         'qkv_dim' : 16,
         'num_heads': 8,
@@ -105,7 +105,7 @@ if __name__ == '__main__':
         'env_type' : 'tsp',
         'embedding_dim': 128,
         'encoder_layer_num': 6,
-        'nn_train_epochs': 1,
+        'nn_train_epochs': 100,
         'model_save_interval': 10,
         'num_parallel_env': 64,
         'lr': 1e-4,
