@@ -40,52 +40,66 @@ def _to_tensor(obs, device):
     return tensor_obs
 
 
-def multi_head_attention(q, k, v, mask=None):
-    # q shape: (batch, head_num, N, key_dim)
-    # k,v shape: (batch, head_num, N, key_dim)
-    # mask.shape: (batch, N)
-
-    batch_s = q.size(0)
-    head_num = q.size(1)
-    n = q.size(2)
-    key_dim = q.size(3)
-    input_s = k.size(2)
-
-    score = torch.matmul(q, k.transpose(2, 3))
-    # shape: (batch, head_num, n, problem)
-
-    score_scaled = score / torch.sqrt(torch.tensor(key_dim, dtype=torch.float))
-
-    if mask is not None:
-        score_scaled = score_scaled + mask
-
-    weights = nn.Softmax(dim=-1)(score_scaled)
-    # shape: (batch, head_num, n, problem)
-
-    out = torch.matmul(weights, v)
-    # shape: (batch, head_num, n, key_dim)
-
-    out_transposed = out.transpose(1, 2)
-    # shape: (batch, n, head_num, key_dim)
-
-    out_concat = out_transposed.reshape(batch_s, n, head_num * key_dim)
-    # shape: (batch, n, head_num*key_dim)
-
-    return out_concat
 
 
 # This class if for compatibility with different torch versions
 class ScaledDotProductAttention(nn.Module):
-    def __init__(self, **kwargs):
+    def __init__(self, **model_params):
         super(ScaledDotProductAttention, self).__init__()
+        self.embedding_dim = model_params['embedding_dim']
 
     def forward(self, q, k, v, attn_mask=None):
-        # if int(torch.__version__[0]) == 2:
-        #     # native scaled dot product attention is only available in torch >= 2.0
-        #     return F.scaled_dot_product_attention(q, k, v, attn_mask)
-        #
-        # else:
-        return multi_head_attention(q, k, v, attn_mask)
+        B = q.size(0)
+        head_num = q.size(1)
+        n = q.size(2)
+        key_dim = q.size(3)
+        input_s = k.size(2)
+
+        if attn_mask is not None and attn_mask.dim() == 2:
+            attn_mask = attn_mask[:, None, None, :].expand(B, head_num, n, input_s)
+
+        if attn_mask is not None and attn_mask.dim() == 3:
+            attn_mask = attn_mask[:, None, :, :].expand(B, head_num, n, input_s)
+
+        if int(torch.__version__[0]) == 2:
+            # native scaled dot product attention is only available in torch >= 2.0
+            return F.scaled_dot_product_attention(q, k, v, attn_mask)
+
+        else:
+            return self.multi_head_attention(q, k, v, attn_mask)
+
+    def multi_head_attention(self, q, k, v, mask=None):
+        # q shape: (batch, head_num, N, key_dim)
+        # k,v shape: (batch, head_num, N, key_dim)
+        # mask.shape: (batch, N)
+
+        batch_s = q.size(0)
+        head_num = q.size(1)
+        n = q.size(2)
+        key_dim = q.size(3)
+        input_s = k.size(2)
+
+        score = torch.matmul(q, k.transpose(2, 3))
+        # shape: (batch, head_num, n, problem)
+
+        score_scaled = score / torch.sqrt(torch.tensor(key_dim, dtype=torch.float))
+
+        if mask is not None:
+            score_scaled = score_scaled + mask
+
+        weights = nn.Softmax(dim=-1)(score_scaled)
+        # shape: (batch, head_num, n, problem)
+
+        out = torch.matmul(weights, v)
+        # shape: (batch, head_num, n, key_dim)
+
+        out_transposed = out.transpose(1, 2)
+        # shape: (batch, n, head_num, key_dim)
+
+        out_concat = out_transposed.reshape(batch_s, n, head_num * key_dim)
+        # shape: (batch, n, head_num*key_dim)
+
+        return out_concat
 
 
 class MHABlock(nn.Module):
@@ -197,7 +211,7 @@ class EncoderLayer(nn.Module):
         ff_out = self.ff_block(attn_normalized)
         # (batch, problem, embedding)
 
-        ff_normalized = self.layer_norm2(ff_out + attn_normalized)
+        ff_normalized = self.layer_norm2(attn_normalized + ff_out)
         # (batch, problem, embedding)
 
         return ff_normalized
@@ -212,13 +226,6 @@ class Encoder(nn.Module):
 
         self.input_embedder = nn.Linear(input_dim, self.embedding_dim)
         self.embedder = nn.ModuleList([EncoderLayer(**model_params) for _ in range(model_params['encoder_layer_num'])])
-
-        # self.init_with_small_variance()
-
-    # def init_with_small_variance(self):
-    #     for p in self.input_embedder.parameters():
-    #         std = 1 / math.sqrt(p.shape[0])
-    #         p.data.uniform_(-std, std)
 
     def forward(self, xy):
         input_emb = self.input_embedder(xy)
@@ -289,12 +296,6 @@ class Decoder(nn.Module):
 
         q = q_current_head + self.q_first
 
-        if mask is not None and mask.dim() == 2:
-            mask = mask[:, None, None, :]
-            
-        if mask is not None and mask.dim() == 3:
-            mask = mask[:, None, :, :].expand(B, self.head_num, N, N)
-
         out_concat = self.scaled_dot_product_attention(q, self.k, self.v, mask)
         # (batch, pomo, qkv, head_num)
 
@@ -328,10 +329,8 @@ class Policy(nn.Module):
         score_clipped = self.C * torch.tanh(score_scaled)
         # shape: (batch, pomo, N)
 
-        if score_clipped.dim() != mask.dim():
-            mask = mask.reshape(score_clipped.shape)
-
         score_masked = score_clipped + mask
+        # shape: (batch, pomo, N)
 
         probs = F.softmax(score_masked, dim=-1)
 
