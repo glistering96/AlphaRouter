@@ -40,7 +40,7 @@ class TSPNpVec:
             batch_size, pomo_size = self.pos.shape
             visitng_idx = np.concatenate(self.visiting_seq, axis=2)
             # (num_env, pomo_size, num_nodes): 
-            dist = cal_distance(self.xy, visitng_idx)
+            dist = cal_distance(self.xy, visitng_idx, axis=2)
             return dist
 
         else:

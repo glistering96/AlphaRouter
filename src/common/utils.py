@@ -98,10 +98,10 @@ def explained_variance(y_pred: np.ndarray, y_true: np.ndarray) -> np.ndarray:
     return np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
 
-def cal_distance(xy, visiting_seq):
+def cal_distance(xy, visiting_seq, axis=1):
     """
-    :param xy: coordinates of nodes
-    :param visiting_seq: sequence of visiting node idx
+    :param xy: coordinates of nodes, (batch, N, 2)
+    :param visiting_seq: sequence of visiting node idx, (batch, pomo, seq_len)
     :return:
 
     1. Gather coordinates on a given sequence of nodes
@@ -114,7 +114,7 @@ def cal_distance(xy, visiting_seq):
     gather_idx = np.broadcast_to(visiting_seq[:, :, :, None], desired_shape)
     xy_broaded = np.broadcast_to(xy[:, None, :, :], desired_shape)
     original_seq = np.take_along_axis(xy_broaded, gather_idx, 2)
-    rolled_seq = np.roll(original_seq, -1, 1)
+    rolled_seq = np.roll(original_seq, -1, axis=axis)
 
     segments = np.sqrt(((original_seq - rolled_seq) ** 2).sum(-1))
     distance = segments.sum(2).astype(np.float32)
