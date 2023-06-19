@@ -55,6 +55,7 @@ def parse_args():
     parser.add_argument("--grad_acc", type=int, default=0, help="Accumulations of gradients")
     parser.add_argument("--num_steps_in_epoch", type=int, default=4, help="num_steps_in_epoch")
     parser.add_argument("--warm_up", type=int, default=1000, help="lr scheduler warm up steps")
+    parser.add_argument("--baseline", type=str, default='val', help="baseline function for policy update")
 
     # etc.
     parser.add_argument("--result_dir", type=str, default='result', help="Result folder directory.")

@@ -39,6 +39,8 @@ class AMTrainer(pl.LightningModule):
         self.nn_train_epochs = run_params['nn_train_epochs']
         self.warm_up_epochs = 10
 
+        self.baseline = run_params['baseline']
+
     def _save_output(self, module, grad_input, grad_output):
         print(module, grad_output)
   
@@ -68,7 +70,7 @@ class AMTrainer(pl.LightningModule):
             action = dist.sample()
             entropy_lst.append(dist.entropy()[:, :, None])
 
-            logit = dist.log_prob(action)[:, :, None] + 1e-10
+            logit = dist.log_prob(action)[:, :, None]
             # (batch, pomo, 1)
 
             obs, reward, dones, _, _ = self.env.step(action.detach().cpu().numpy())
@@ -77,34 +79,38 @@ class AMTrainer(pl.LightningModule):
 
             prob_lst.append(logit)
             val_lst.append(val)
-    
-        reward = torch.as_tensor(reward, device=self.device, dtype=torch.float16)
+
+        reward = torch.as_tensor(reward, device=self.device, dtype=torch.float32)
         # (batch, pomo)
+
         val_tensor = torch.cat(val_lst, dim=-1)
         # val_tensor: (batch, pomo, T)
-        
-        baseline = val_tensor
-        reward_broadcasted = torch.broadcast_to(reward[:, :, None], baseline.shape)
-        # (batch, pomo, T)
-        
-        val_loss = torch.nn.functional.mse_loss(val_tensor, reward_broadcasted)
-        
-        adv = reward_broadcasted - baseline.detach()
-        # (batch, pomo, T)
 
         log_prob = torch.cat(prob_lst, dim=-1).sum(dim=-1, keepdim=True)
         # (batch, pomo)
-        
-        p_loss = adv * log_prob
 
+        if self.baseline == 'val':
+            baseline = val_tensor
+            reward_broadcasted = torch.broadcast_to(reward[:, :, None], baseline.shape)
+            val_loss = torch.nn.functional.mse_loss(val_tensor, reward_broadcasted)
+            advantage = reward_broadcasted - baseline.detach()
+            p_loss = advantage * log_prob.expand_as(advantage)
+
+        else:
+            baseline = reward.mean(dim=1, keepdim=True)
+            # shape: (batch, 1)
+            advantage = reward - baseline.detach()
+            # shape: (batch, pomo)
+            p_loss = advantage * log_prob.squeeze(-1)
+            # shape: (batch, pomo)
+            reward_broadcasted = torch.broadcast_to(reward[:, :, None], val_tensor.shape)
+            val_loss = torch.nn.functional.mse_loss(val_tensor, reward_broadcasted)
+
+        loss = p_loss + 0.5 * val_loss  # Minus Sign: To Increase REWARD
+        loss = loss.mean()
         entropy = -torch.cat(entropy_lst, dim=-1).mean()
-        loss = (p_loss + 0.5*val_loss).mean()
-        
-        # for module in self.model.modules():
-        #     module.register_full_backward_hook(self._save_output)
-
         min_pomo_reward, _ = reward.min(dim=1)  # get best results from pomo
-        score_mean = min_pomo_reward.float().mean()  # negative sign to make positive value
+        score_mean = min_pomo_reward.mean()
 
         # self.automatic_optimization = False
         # self.optimizers().zero_grad()

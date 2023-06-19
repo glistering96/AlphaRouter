@@ -5,7 +5,7 @@ class DirParser:
     def __init__(self, args):
         self._env_param_nm = f"{args.env_type}/N_{args.num_nodes}-B_{args.num_parallel_env}"
         self._model_param_nm = f"{args.nn}-{args.embedding_dim}-{args.encoder_layer_num}-{args.qkv_dim}-{args.head_num}-{args.C}-{args.lr}"
-        self._run_confg = f"{args.num_steps_in_epoch}-{args.grad_acc}"
+        self._run_confg = f"{args.num_steps_in_epoch}-{args.grad_acc}-{args.baseline}"
         self._mcts_param_nm = f"ns_{args.num_simulations}-temp_{args.temp_threshold}-cpuct_{args.cpuct}-" \
                               f"norm_{args.normalize_value}-rollout_{args.rollout_game}-ec_{args.ent_coef:.4f}"
 

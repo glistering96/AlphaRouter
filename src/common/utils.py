@@ -15,7 +15,42 @@ import pytz
 import torch
 from torch.utils.tensorboard.summary import hparams
 
-from src.common.dataclass import StepState
+
+class TimeEstimator:
+    def __init__(self):
+        self.logger = logging.getLogger('TimeEstimator')
+        self.start_time = time.time()
+        self.count_zero = 0
+
+    def reset(self, count=1):
+        self.start_time = time.time()
+        self.count_zero = count - 1
+
+    def get_est(self, count, total):
+        curr_time = time.time()
+        elapsed_time = curr_time - self.start_time
+        remain = total - count
+        remain_time = elapsed_time * remain / (count - self.count_zero)
+
+        elapsed_time /= 3600.0
+        remain_time /= 3600.0
+
+        return elapsed_time, remain_time
+
+    def get_est_string(self, count, total):
+        elapsed_time, remain_time = self.get_est(count, total)
+
+        elapsed_time_str = "{:.2f}h".format(elapsed_time) if elapsed_time > 1.0 else "{:.2f}m".format(elapsed_time * 60)
+        remain_time_str = "{:.2f}h".format(remain_time) if remain_time > 1.0 else "{:.2f}m".format(remain_time * 60)
+
+        return elapsed_time_str, remain_time_str
+
+    def print_est_time(self, count, total):
+        elapsed_time_str, remain_time_str = self.get_est_string(count, total)
+
+        self.logger.info("Epoch {:3d}/{:3d}: Time Est.: Elapsed[{}], Remain[{}]".format(
+            count, total, elapsed_time_str, remain_time_str))
+
 
 
 def get_result_folder(desc, result_dir, date_prefix=True):
@@ -64,15 +99,6 @@ def create_logger(filepath):
     root_logger.addHandler(console)
 
 
-def deepcopy_state(state):
-    to = StepState()
-
-    for field in fields(StepState):
-        setattr(to, field.name, deepcopy(getattr(state, field.name)))
-
-    return to
-
-
 def explained_variance(y_pred: np.ndarray, y_true: np.ndarray) -> np.ndarray:
     """
     Computes fraction of variance that ypred explains about y.
@@ -119,70 +145,6 @@ def cal_distance(xy, visiting_seq, axis=1):
     segments = np.sqrt(((original_seq - rolled_seq) ** 2).sum(-1))
     distance = segments.sum(2).astype(np.float32)
     return distance
-
-
-class TimeEstimator:
-    def __init__(self):
-        self.logger = logging.getLogger('TimeEstimator')
-        self.start_time = time.time()
-        self.count_zero = 0
-
-    def reset(self, count=1):
-        self.start_time = time.time()
-        self.count_zero = count - 1
-
-    def get_est(self, count, total):
-        curr_time = time.time()
-        elapsed_time = curr_time - self.start_time
-        remain = total - count
-        remain_time = elapsed_time * remain / (count - self.count_zero)
-
-        elapsed_time /= 3600.0
-        remain_time /= 3600.0
-
-        return elapsed_time, remain_time
-
-    def get_est_string(self, count, total):
-        elapsed_time, remain_time = self.get_est(count, total)
-
-        elapsed_time_str = "{:.2f}h".format(elapsed_time) if elapsed_time > 1.0 else "{:.2f}m".format(elapsed_time * 60)
-        remain_time_str = "{:.2f}h".format(remain_time) if remain_time > 1.0 else "{:.2f}m".format(remain_time * 60)
-
-        return elapsed_time_str, remain_time_str
-
-    def print_est_time(self, count, total):
-        elapsed_time_str, remain_time_str = self.get_est_string(count, total)
-
-        self.logger.info("Epoch {:3d}/{:3d}: Time Est.: Elapsed[{}], Remain[{}]".format(
-            count, total, elapsed_time_str, remain_time_str))
-
-
-def copy_all_src(dst_root):
-    # execution dir
-    if os.path.basename(sys.argv[0]).startswith('ipykernel_launcher'):
-        execution_path = os.getcwd()
-    else:
-        execution_path = os.path.dirname(sys.argv[0])
-
-    # home dir setting
-    tmp_dir1 = os.path.abspath(os.path.join(execution_path, sys.path[0]))
-    tmp_dir2 = os.path.abspath(os.path.join(execution_path, sys.path[1]))
-
-    if len(tmp_dir1) > len(tmp_dir2) and os.path.exists(tmp_dir2):
-        home_dir = tmp_dir2
-    else:
-        home_dir = tmp_dir1
-
-    if 'src' not in home_dir:
-        home_dir = os.path.join(home_dir, 'src')
-
-    # make target directory
-    dst_path = os.path.join(dst_root, 'src')
-    #
-    # if not os.path.exists(dst_path):
-    #     os.makedirs(dst_path)
-
-    shutil.copytree(home_dir, dst_path, dirs_exist_ok=True)
 
 
 def check_debug():
@@ -307,13 +269,14 @@ def get_param_dict(args, copy_src=True):
         'model_load': {
             'enable': load_model,
             'epoch': args.load_epoch
-        }
+        },
+        'baseline': args.baseline
     }
 
 
     optimizer_params = {
         'lr': args.lr,
-        'eps': 1e-5,
+        'eps': 1e-7,
         'betas': (0.9, 0.95)
     }
 
