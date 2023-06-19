@@ -40,8 +40,6 @@ def _to_tensor(obs, device):
     return tensor_obs
 
 
-
-
 # This class if for compatibility with different torch versions
 class ScaledDotProductAttention(nn.Module):
     def __init__(self, **model_params):
@@ -143,8 +141,8 @@ class SwiGLU(nn.Module):
 class Activation(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        # self.act = nn.ReLU()
-        self.act = SwiGLU()
+        self.act = nn.ReLU()
+        # self.act = SwiGLU()
         # self.act = nn.GELU()
         # self.act = nn.SiLU()
         
@@ -157,8 +155,9 @@ class FFBlock(nn.Module):
         super().__init__()
         embedding_dim = model_params['embedding_dim']
         ff_size = embedding_dim * INNER_MULT
+        mult_factor = 2 if Activation().act.__class__.__name__ == 'SwiGLU' else 1
         self.feed_forward = nn.Sequential(
-            nn.Linear(embedding_dim, ff_size*2),
+            nn.Linear(embedding_dim, ff_size*mult_factor),
             Activation(),
             nn.Linear(ff_size, embedding_dim)
         )
@@ -342,10 +341,11 @@ class Value(nn.Module):
         super(Value, self).__init__()
         self.embedding_dim = model_params['embedding_dim']
         inner_size = self.embedding_dim
+        mult_factor = 2 if Activation().act.__class__.__name__ == 'SwiGLU' else 1
         self.val = nn.Sequential(
-            nn.Linear(self.embedding_dim, inner_size*2),
+            nn.Linear(self.embedding_dim, inner_size*mult_factor),
             Activation(),
-            nn.Linear(inner_size, 1)
+            nn.Linear(inner_size*2, 1)
         )
 
     def forward(self, mh_attn_out):
