@@ -41,13 +41,7 @@ class AMTrainer(pl.LightningModule):
 
         self.baseline = run_params['baseline']
 
-    def _save_output(self, module, grad_input, grad_output):
-        print(module, grad_output)
-  
     def training_step(self, batch, _):
-        # TODO: need to add a batch input for training step. It means that environment rollout must be isolated
-        # from the training step.
-
         # train for one epoch.
         # In one epoch, the policy_net trains over given number of scenarios from tester parameters
         # The scenarios are trained in batched.
@@ -89,10 +83,11 @@ class AMTrainer(pl.LightningModule):
         log_prob = torch.cat(prob_lst, dim=-1).sum(dim=-1, keepdim=True)
         # (batch, pomo)
 
+        reward_broadcasted = torch.broadcast_to(reward[:, :, None], val_tensor.shape)
+        val_loss = torch.nn.functional.mse_loss(val_tensor, reward_broadcasted)
+
         if self.baseline == 'val':
             baseline = val_tensor
-            reward_broadcasted = torch.broadcast_to(reward[:, :, None], baseline.shape)
-            val_loss = torch.nn.functional.mse_loss(val_tensor, reward_broadcasted)
             advantage = reward_broadcasted - baseline.detach()
             p_loss = advantage * log_prob.expand_as(advantage)
 
@@ -103,8 +98,6 @@ class AMTrainer(pl.LightningModule):
             # shape: (batch, pomo)
             p_loss = advantage * log_prob.squeeze(-1)
             # shape: (batch, pomo)
-            reward_broadcasted = torch.broadcast_to(reward[:, :, None], val_tensor.shape)
-            val_loss = torch.nn.functional.mse_loss(val_tensor, reward_broadcasted)
 
         loss = p_loss + 0.5 * val_loss  # Minus Sign: To Increase REWARD
         loss = loss.mean()
