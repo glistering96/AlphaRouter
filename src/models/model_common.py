@@ -198,7 +198,7 @@ class EncoderLayer(nn.Module):
         self.layer_norm2 = Normalization(embedding_dim)
 
     def forward(self, input1):
-        attn_out = self.mha_block(input1) + input1      # only adding residual connection here results in better performance
+        attn_out = self.mha_block(input1)
         # (batch, problem, embedding)
 
         attn_normalized = self.layer_norm1(attn_out + input1)
