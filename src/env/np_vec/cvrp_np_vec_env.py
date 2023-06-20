@@ -52,7 +52,7 @@ class CVRPNpVec:
     def get_reward(self):
         if self._is_done().all() or self.step_reward:
             visitng_idx = np.concatenate(self.visiting_seq, axis=2)  # (num_env, num_nodes)
-            dist = cal_distance(self.xy, visitng_idx)
+            dist = cal_distance(self.xy, visitng_idx, axis=2)
             return -dist
 
         else:
@@ -61,29 +61,24 @@ class CVRPNpVec:
     def reset(self):
         self.xy, self.demand = self._make_problems(self.num_env, self.num_depots, self.num_nodes)
 
-        self.pos = np.zeros((self.num_env, self.pomo_size, 1), dtype=int)
+        self.pos = None
         self.visited = np.zeros((self.num_env, self.pomo_size, self.action_size), dtype=bool)
-        np.put_along_axis(self.visited, self.pos, True, axis=2)  # set the current pos as visited
 
         self.visiting_seq = []
 
-        self.visiting_seq.append(self.pos)  # append the depot position
         self.available = np.ones((self.num_env, self.pomo_size, self.action_size),
                                  dtype=bool)  # all nodes are available at the beginning
-        np.put_along_axis(self.available, self.pos, False, axis=2)  # set the current pos to False
         
-        self.load = np.ones((self.num_env, self.pomo_size, 1), dtype=np.float16)  # all vehicles start with full load
+        self.load = np.ones((self.num_env, self.pomo_size), dtype=np.float16)  # all vehicles start with full load
         obs = self._get_obs()
 
         return obs, {}
 
     def _is_on_depot(self):
-        return (self.pos == 0).squeeze(-1)
+        return self.pos == 0
 
     def step(self, action):
-        # action: (num_env, pomo_size, 1)
-        if action.shape != (self.num_env, self.pomo_size, 1):
-            action = action.reshape(self.num_env, self.pomo_size, 1)
+        action = action[:, :, None]
 
         # update the current pos
         self.pos = action
@@ -96,7 +91,7 @@ class CVRPNpVec:
         # on_depot: (num_env, pomo_size, 1)
 
         # get the demands of the current node
-        demand = np.take_along_axis(self.demand, self.pos, axis=2)
+        demand = np.take_along_axis(self.demand, self.pos, axis=2).squeeze(2)
 
         # update load
         self.load -= demand

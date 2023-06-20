@@ -226,8 +226,9 @@ class Encoder(nn.Module):
         self.input_embedder = nn.Linear(input_dim, self.embedding_dim)
         self.embedder = nn.ModuleList([EncoderLayer(**model_params) for _ in range(model_params['encoder_layer_num'])])
 
-    def forward(self, xy):
-        input_emb = self.input_embedder(xy)
+    def forward(self, xy, demand=None):
+        encoder_input = torch.cat([xy, demand], dim=-1) if demand is not None else xy
+        input_emb = self.input_embedder(encoder_input)
 
         out = input_emb
 

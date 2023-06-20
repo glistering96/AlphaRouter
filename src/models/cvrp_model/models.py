@@ -37,7 +37,7 @@ class CVRPModel(nn.Module):
         available = observations['available']
         # (1, )
         
-        batch_size, pomo_size, _ = cur_node.size()
+        batch_size, pomo_size, _ = available.size()
 
         xy = xy.reshape(batch_size, -1, 2)
 
@@ -45,23 +45,19 @@ class CVRPModel(nn.Module):
 
         load = load.reshape(batch_size, pomo_size, 1)
 
-        cur_node = cur_node.reshape(batch_size, pomo_size, 1)
-
         available = available.reshape(batch_size, pomo_size, -1)
 
         return load, cur_node, available, xy, demands
 
     def forward(self, obs):
         load, cur_node, available, xy, demands = self._get_obs(obs, self.device)
-        # load: (B, 1)
-        # cur_node: (B, )
-        # available: (B, N)
+        # load: (B, pomo, 1)
+        # cur_node: (B, pomo, 1)
+        # available: (B, pomo, N)
         # xy: (B, N, 2)
         # demands: (B, N, 1)
 
-        batch_size = cur_node.size(0)
-        pomo_size = cur_node.size(1)
-        N = available.size(-1)
+        batch_size, pomo_size, N = available.size()
 
         mask = torch.zeros_like(available).type(torch.float32)
         mask[available == False] = float('-inf')
@@ -69,24 +65,32 @@ class CVRPModel(nn.Module):
         if self.encoding is None:
             self.encoding = self.encoder(xy, demands)
             self.decoder.set_kv(self.encoding)
-
-        last_node = get_encoding(self.encoding, cur_node.long())
-        mh_attn_out = self.decoder(last_node, load=None, mask=mask)
         
         if obs['t'] == 0:
+            selected = torch.zeros(size=(batch_size, pomo_size), dtype=torch.long)
             probs = torch.zeros((batch_size, pomo_size, N))   # assign prob 1 to the depots
             probs[:, :, 0] = 1.0
-            
+
+            cur_node_encoding = get_encoding(self.encoding, selected[:, :, None])
+            self.decoder.set_q1(cur_node_encoding)
+            mh_attn_out = self.decoder(cur_node_encoding, load=load, mask=mask)
+
         elif obs['t'] == 1:
+            selected = torch.arange(start=1, end=pomo_size+1)[None, :].expand(batch_size, pomo_size)
             probs = torch.zeros(batch_size, pomo_size, N)
-            probs[:, torch.arange(pomo_size), torch.arange(N)] =  torch.arange(N) # assign prob 1 to the pomo tensors
+            probs[:, torch.arange(pomo_size), torch.arange(N)] = torch.arange(N) # assign prob 1 to the pomo tensors
+
+            cur_node_encoding = get_encoding(self.encoding, selected[:, :, None])
+            self.decoder.set_q1(cur_node_encoding)
+            mh_attn_out = self.decoder(cur_node_encoding, load=load, mask=mask)
+
         else:
+            cur_node_encoding = get_encoding(self.encoding, cur_node)
+            mh_attn_out = self.decoder(cur_node_encoding, load=load, mask=mask)
+
             probs = self.policy_net(mh_attn_out, self.decoder.single_head_key, mask)
             probs = probs.reshape(batch_size, pomo_size, N)
-            
-        # TODO: may be the order of poliy and value important? 
-        # mh_attn_out -> policy -> value but what about mh_attn_out -> value -> policy?
-        
+
         val = self.value_net(mh_attn_out)
         val = val.reshape(batch_size, pomo_size, 1)
 
