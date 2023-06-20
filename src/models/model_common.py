@@ -5,8 +5,6 @@ import torch.nn.functional as F
 import torch
 import numpy as np
 
-INNER_MULT = 2
-
 
 def get_encoding(encoded_nodes, node_index_to_pick):
     # encoded_nodes.shape: (batch, problem, embedding)
@@ -17,7 +15,7 @@ def get_encoding(encoded_nodes, node_index_to_pick):
     embedding_dim = encoded_nodes.size(-1)
 
     _to_pick = torch.broadcast_to(node_index_to_pick, (batch_size, pomo_size, embedding_dim))
-    picked_node_embedding = encoded_nodes.gather(dim=2, index=_to_pick)
+    picked_node_embedding = encoded_nodes.gather(dim=1, index=_to_pick)
 
     return picked_node_embedding
 
@@ -59,12 +57,12 @@ class ScaledDotProductAttention(nn.Module):
         if attn_mask is not None and attn_mask.dim() == 3:
             attn_mask = attn_mask[:, None, :, :].expand(B, head_num, n, input_s)
 
-        if int(torch.__version__[0]) == 2:
-            # native scaled dot product attention is only available in torch >= 2.0
-            return F.scaled_dot_product_attention(q, k, v, attn_mask)
-
-        else:
-            return self.multi_head_attention(q, k, v, attn_mask)
+        # if int(torch.__version__[0]) == 2:
+        #     # native scaled dot product attention is only available in torch >= 2.0
+        #     return F.scaled_dot_product_attention(q, k, v, attn_mask)
+        #
+        # else:
+        return self.multi_head_attention(q, k, v, attn_mask)
 
     def multi_head_attention(self, q, k, v, mask=None):
         # q shape: (batch, head_num, N, key_dim)
@@ -75,7 +73,6 @@ class ScaledDotProductAttention(nn.Module):
         head_num = q.size(1)
         n = q.size(2)
         key_dim = q.size(3)
-        input_s = k.size(2)
 
         score = torch.matmul(q, k.transpose(2, 3))
         # shape: (batch, head_num, n, problem)
@@ -126,7 +123,7 @@ class MHABlock(nn.Module):
         out_concat = self.scaled_dot_product_attention(q, k, v)
         # shape: (batch, problem, head_num*qkv_dim)
 
-        multi_head_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
+        multi_head_out = self.multi_head_combine(out_concat)
         # shape: (batch, problem, embedding)
 
         return multi_head_out
@@ -141,8 +138,8 @@ class SwiGLU(nn.Module):
 class Activation(nn.Module):
     def __init__(self) -> None:
         super().__init__()
-        self.act = nn.ReLU()
-        # self.act = SwiGLU()
+        # self.act = nn.ReLU()
+        self.act = SwiGLU()
         # self.act = nn.GELU()
         # self.act = nn.SiLU()
         
@@ -154,7 +151,7 @@ class FFBlock(nn.Module):
     def __init__(self, **model_params):
         super().__init__()
         embedding_dim = model_params['embedding_dim']
-        ff_size = embedding_dim * INNER_MULT
+        ff_size = embedding_dim * 2
         mult_factor = 2 if Activation().act.__class__.__name__ == 'SwiGLU' else 1
         self.feed_forward = nn.Sequential(
             nn.Linear(embedding_dim, ff_size*mult_factor),
@@ -201,7 +198,7 @@ class EncoderLayer(nn.Module):
         self.layer_norm2 = Normalization(embedding_dim)
 
     def forward(self, input1):
-        attn_out = self.mha_block(input1)
+        attn_out = self.mha_block(input1) + input1      # only adding residual connection here results in better performance
         # (batch, problem, embedding)
 
         attn_normalized = self.layer_norm1(attn_out + input1)
@@ -248,21 +245,14 @@ class Decoder(nn.Module):
 
         self.multi_head_combine = nn.Linear(self.head_num * self.qkv_dim, embedding_dim)
 
-        self.Wq_first = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
-        self.Wq_last = nn.Linear(query_dim, self.head_num * self.qkv_dim, bias=False)
+        self.Wq = nn.Linear(query_dim, self.head_num * self.qkv_dim, bias=False)
         self.Wk = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
         self.Wv = nn.Linear(embedding_dim, self.head_num * self.qkv_dim, bias=False)
 
         self.scaled_dot_product_attention = ScaledDotProductAttention(**model_params)
 
         self.k, self.v = None, None
-        self.q_first, self.single_head_key = None, None
-
-    def set_q1(self, encoding):
-        B, N, embedding_dim = encoding.shape
-
-        self.q_first = self.Wq_first(encoding).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
-        # shape: (batch, head_num, n, qkv_dim)
+        self.single_head_key = None
 
     def set_kv(self, encoding):
         B, N, _ = encoding.shape
@@ -290,15 +280,13 @@ class Decoder(nn.Module):
         else:
             q_current = cur_node_encoding
 
-        q_current_head = self.Wq_last(q_current).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
-        # (batch, N, embedding)
+        q_current_head = self.Wq(q_current).view(B, N, self.head_num, self.qkv_dim).transpose(1, 2)
+        # (batch, self.head_num, N, embedding)
 
-        q = q_current_head + self.q_first
+        out_concat = self.scaled_dot_product_attention(q_current_head, self.k, self.v, mask)
+        # (batch, pomo, qkv * head_num)
 
-        out_concat = self.scaled_dot_product_attention(q, self.k, self.v, mask)
-        # (batch, pomo, qkv, head_num)
-
-        mh_attn_out = self.multi_head_combine(out_concat.reshape(B, N, -1))
+        mh_attn_out = self.multi_head_combine(out_concat)
         # shape: (batch, pomo, embedding)
 
         return mh_attn_out
