@@ -345,7 +345,7 @@ class Value(nn.Module):
         self.val = nn.Sequential(
             nn.Linear(self.embedding_dim, inner_size*mult_factor),
             Activation(),
-            nn.Linear(inner_size*2, 1)
+            nn.Linear(inner_size, 1)
         )
 
     def forward(self, mh_attn_out):
