@@ -64,9 +64,10 @@ class TSPModel(nn.Module):
             probs[:, torch.arange(pomo_size), torch.arange(N)] = 1.0
 
             cur_node_encoding = get_encoding(self.encoding, selected[:, :, None])
-            self.decoder.set_q1(cur_node_encoding)
+            self.decoder.set_q_first_node(cur_node_encoding)
+
             mh_attn_out = self.decoder(cur_node_encoding, load=None, mask=mask)
-            
+
             val = self.value_net(mh_attn_out)
             val = val.reshape(batch_size, pomo_size, 1)
 

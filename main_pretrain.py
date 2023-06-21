@@ -13,6 +13,7 @@ from src.run import parse_args, run_pretrain
 import torch.multiprocessing as mp
 from src.common.dir_parser import DirParser
 
+
 def _work(**kwargs):
     if 'load_from_the_latest' in kwargs:
         load_from_the_latest = kwargs.pop('load_from_the_latest')
@@ -96,21 +97,22 @@ if __name__ == '__main__':
     torch.set_float32_matmul_precision('high')
     params = {
         'num_nodes' : 100,
-        'result_dir' : 'pretrained_result',
-        'name_prefix' : 'POMO/no-residual/no-small_init_var_encoder/medium-high_precision/manual_attention',
+        'result_dir' : 'POMO',
+        'name_prefix' : "SwiGLU",
         'render_mode' : None,
         'qkv_dim' : 16,
-        'num_heads': 8,
+        'num_heads': 4,
         'load_from_the_latest' : False,
         'env_type' : 'tsp',
         'embedding_dim': 128,
         'encoder_layer_num': 6,
-        'nn_train_epochs': 100,
-        'model_save_interval': 10,
+        'nn_train_epochs': 50,
+        'model_save_interval': 2,
         'num_parallel_env': 64,
         'lr': 1e-4,
         'grad_acc': 1,
         'num_steps_in_epoch': 100*1000 // 64,
+        'baseline': 'val',
     }
     #
     # for grad_acc, num_steps_in_epoch in itertools.product([1, 5, 10], [1, 10, 100]):
