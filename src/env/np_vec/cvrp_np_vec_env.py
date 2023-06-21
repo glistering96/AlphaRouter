@@ -101,8 +101,10 @@ class CVRPNpVec:
         # update load
         self.load -= demand
 
-        # reload the vehicles that are on depot
-        self.load = np.where(on_depot[:, :, None], self.load, 1)
+        # reload the vehicles that are o
+        # depot
+        # self.load = np.where(on_depot[:, :, None], self.load, 1)
+        self.load[on_depot] = 1
 
         # update visited nodes
         np.put_along_axis(self.visited, action, True, axis=2)
@@ -142,6 +144,6 @@ class CVRPNpVec:
         done = self._is_done()
 
         # for done episodes, set the depot as available
-        avail[:, :, 0] = np.where(done, avail[:, :, 0], True)
+        avail[done, 0] = True
 
         return avail, done
