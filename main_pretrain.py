@@ -96,19 +96,19 @@ def search_params(num_proc):
 if __name__ == '__main__':
     torch.set_float32_matmul_precision('high')
     params = {
-        'num_nodes' : 100,
+        'num_nodes' : 10,
         'result_dir' : 'POMO',
         'name_prefix' : "SwiGLU",
         'render_mode' : None,
         'qkv_dim' : 16,
         'num_heads': 4,
         'load_from_the_latest' : False,
-        'env_type' : 'tsp',
+        'env_type' : 'cvrp',
         'embedding_dim': 128,
         'encoder_layer_num': 6,
         'nn_train_epochs': 50,
         'model_save_interval': 2,
-        'num_parallel_env': 64,
+        'num_parallel_env': 4,
         'lr': 1e-4,
         'grad_acc': 1,
         'num_steps_in_epoch': 100*1000 // 64,

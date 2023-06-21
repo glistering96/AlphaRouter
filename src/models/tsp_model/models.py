@@ -61,7 +61,8 @@ class TSPModel(nn.Module):
         if cur_node is None:
             selected = torch.arange(pomo_size)[None, :].expand(batch_size, pomo_size).to(self.device)
             probs = torch.zeros(size=(batch_size, pomo_size, N)).to(self.device)
-            probs[:, torch.arange(pomo_size), torch.arange(N)] = 1.0
+            probs = probs.scatter(2, selected[:, :, None], 1)
+            # assign prob 1 to the next nodes for each pomo
 
             cur_node_encoding = get_encoding(self.encoding, selected[:, :, None])
             self.decoder.set_q_first_node(cur_node_encoding)

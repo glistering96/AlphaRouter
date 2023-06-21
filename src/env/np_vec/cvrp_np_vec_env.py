@@ -37,7 +37,8 @@ class CVRPNpVec:
         self.pomo_size = self.num_nodes
 
     def _get_obs(self):
-        return {"xy": self.xy, "demands": self.demand, "pos": self.pos, "load": self.load, "available": self.available}
+        return {"xy": self.xy, "demands": self.demand, "pos": self.pos, "load": self.load,
+                "available": self.available, "t": self.t}
 
     def _make_problems(self, num_rollouts, num_depots, num_nodes):
         xy = make_cord(num_rollouts, num_depots, num_nodes)
@@ -52,7 +53,7 @@ class CVRPNpVec:
     def get_reward(self):
         if self._is_done().all() or self.step_reward:
             visitng_idx = np.concatenate(self.visiting_seq, axis=2)  # (num_env, num_nodes)
-            dist = cal_distance(self.xy, visitng_idx)
+            dist = cal_distance(self.xy, visitng_idx, axis=2)
             return -dist
 
         else:
@@ -61,19 +62,18 @@ class CVRPNpVec:
     def reset(self):
         self.xy, self.demand = self._make_problems(self.num_env, self.num_depots, self.num_nodes)
 
-        self.pos = np.zeros((self.num_env, self.pomo_size, 1), dtype=int)
+        self.pos = None
         self.visited = np.zeros((self.num_env, self.pomo_size, self.action_size), dtype=bool)
-        np.put_along_axis(self.visited, self.pos, True, axis=2)  # set the current pos as visited
 
         self.visiting_seq = []
 
         self.visiting_seq.append(self.pos)  # append the depot position
         self.available = np.ones((self.num_env, self.pomo_size, self.action_size),
                                  dtype=bool)  # all nodes are available at the beginning
-        np.put_along_axis(self.available, self.pos, False, axis=2)  # set the current pos to False
         
         self.load = np.ones((self.num_env, self.pomo_size, 1), dtype=np.float16)  # all vehicles start with full load
         obs = self._get_obs()
+        self.t = 0
 
         return obs, {}
 
@@ -81,9 +81,8 @@ class CVRPNpVec:
         return (self.pos == 0).squeeze(-1)
 
     def step(self, action):
-        # action: (num_env, pomo_size, 1)
-        if action.shape != (self.num_env, self.pomo_size, 1):
-            action = action.reshape(self.num_env, self.pomo_size, 1)
+        # action: (num_env, pomo_size)
+        action = action[:, :, None]
 
         # update the current pos
         self.pos = action
@@ -96,19 +95,21 @@ class CVRPNpVec:
         # on_depot: (num_env, pomo_size, 1)
 
         # get the demands of the current node
-        demand = np.take_along_axis(self.demand, self.pos, axis=2)
+        demand = np.take_along_axis(self.demand[:, None, :], self.pos, axis=2)
+        # demand: (num_env, pomo_size, 1)
 
         # update load
         self.load -= demand
 
         # reload the vehicles that are on depot
-        self.load[on_depot, :] = 1
+        self.load = np.where(on_depot[:, :, None], self.load, 1)
 
         # update visited nodes
         np.put_along_axis(self.visited, action, True, axis=2)
 
         # depot is always set as not visited if the vehicle is not on the depot
-        self.visited[~on_depot, 0] = False
+        # here 0 is the depot idx
+        self.visited = np.where(~on_depot[:, :, None], self.visited, False)
 
         # assign avail to field
         self.available, done = self.get_avail_mask()
@@ -124,7 +125,8 @@ class CVRPNpVec:
         return obs, reward, done, False, info
 
     def _is_done(self):
-        done_flag = (self.visited == True).all()
+        # here 1 is depot
+        done_flag = (self.visited[:, :, 1:] == True).all(axis=-1)
         return done_flag
 
     def get_avail_mask(self):
@@ -132,7 +134,7 @@ class CVRPNpVec:
         avail = ~self.visited.copy()
 
         # mark unavail for nodes where the demands are larger than the current load
-        unreachable = self.load + 1e-6 < self.demand
+        unreachable = self.load + 1e-6 < self.demand[:, None, :]
 
         # mark unavail for nodes in which the demands cannot be fulfilled
         avail = avail & ~unreachable
@@ -140,6 +142,6 @@ class CVRPNpVec:
         done = self._is_done()
 
         # for done episodes, set the depot as available
-        avail[done, 0] = True
+        avail[:, :, 0] = np.where(done, avail[:, :, 0], True)
 
         return avail, done

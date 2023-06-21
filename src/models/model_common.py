@@ -223,8 +223,9 @@ class Encoder(nn.Module):
         self.input_embedder = nn.Linear(input_dim, self.embedding_dim)
         self.embedder = nn.ModuleList([EncoderLayer(**model_params) for _ in range(model_params['encoder_layer_num'])])
 
-    def forward(self, xy):
-        input_emb = self.input_embedder(xy)
+    def forward(self, xy, demand=None):
+        _input = xy if demand is None else torch.cat([xy, demand], dim=-1)
+        input_emb = self.input_embedder(_input)
 
         out = input_emb
 
@@ -253,7 +254,7 @@ class Decoder(nn.Module):
         self.scaled_dot_product_attention = ScaledDotProductAttention(**model_params)
 
         self.k, self.v = None, None
-        self.q_first, self.single_head_key = None, None
+        self.q_first, self.single_head_key = 0, None
 
     def set_kv(self, encoding):
         B, N, _ = encoding.shape
@@ -280,8 +281,7 @@ class Decoder(nn.Module):
         B, N = cur_node_encoding.shape[:2]
 
         if load is not None:
-            load_embedding = load
-            q_current = torch.cat([cur_node_encoding, load_embedding[..., None]], -1)
+            q_current = torch.cat([cur_node_encoding, load], -1)
 
         else:
             q_current = cur_node_encoding
