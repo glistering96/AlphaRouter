@@ -25,7 +25,7 @@ class CVRPNpVec:
 
         # observation fields
         self.xy, self.demand, self.pos, self.visited = None, None, None, None
-        self.visiting_seq = None
+        self.visiting_seq = []
         self.load = None
         self.available = None
 
@@ -54,7 +54,7 @@ class CVRPNpVec:
         if self._is_done().all() or self.step_reward:
             visitng_idx = np.concatenate(self.visiting_seq, axis=2)  # (num_env, num_nodes)
             dist = cal_distance(self.xy, visitng_idx, axis=2)
-            return -dist
+            return dist
 
         else:
             return 0
@@ -67,13 +67,13 @@ class CVRPNpVec:
 
         self.visiting_seq = []
 
-        self.visiting_seq.append(self.pos)  # append the depot position
         self.available = np.ones((self.num_env, self.pomo_size, self.action_size),
                                  dtype=bool)  # all nodes are available at the beginning
         
         self.load = np.ones((self.num_env, self.pomo_size, 1), dtype=np.float16)  # all vehicles start with full load
-        obs = self._get_obs()
         self.t = 0
+
+        obs = self._get_obs()   # this must come after resetting all the fields
 
         return obs, {}
 
@@ -107,11 +107,13 @@ class CVRPNpVec:
         self.load[on_depot] = 1
 
         # update visited nodes
+        # self.visited[action] = True
         np.put_along_axis(self.visited, action, True, axis=2)
 
         # depot is always set as not visited if the vehicle is not on the depot
         # here 0 is the depot idx
-        self.visited = np.where(~on_depot[:, :, None], self.visited, False)
+        self.visited[~on_depot, 0] = False
+        # self.visited = np.where(~on_depot[:, :, None], self.visited, False)
 
         # assign avail to field
         self.available, done = self.get_avail_mask()
