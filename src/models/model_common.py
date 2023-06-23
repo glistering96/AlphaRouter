@@ -136,12 +136,14 @@ class SwiGLU(nn.Module):
 
 
 class Activation(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, **model_params) -> None:
         super().__init__()
-        # self.act = nn.ReLU()
-        self.act = SwiGLU()
-        # self.act = nn.GELU()
-        # self.act = nn.SiLU()
+
+        activation = model_params['activation']
+        if activation == 'relu' or activation == 'ReLU':
+            self.act = nn.ReLU()
+        elif activation == 'swiglu' or activation == 'SwiGLU':
+            self.act = SwiGLU()
         
     def forward(self, x):
         return self.act(x)
@@ -152,10 +154,12 @@ class FFBlock(nn.Module):
         super().__init__()
         embedding_dim = model_params['embedding_dim']
         ff_size = embedding_dim * 2
-        mult_factor = 2 if Activation().act.__class__.__name__ == 'SwiGLU' else 1
+        self.activation = Activation(**model_params)
+
+        mult_factor = 2 if self.activation.act.__class__.__name__ == 'SwiGLU' else 1
         self.feed_forward = nn.Sequential(
             nn.Linear(embedding_dim, ff_size*mult_factor),
-            Activation(),
+            self.activation,
             nn.Linear(ff_size, embedding_dim)
         )
 
@@ -337,10 +341,12 @@ class Value(nn.Module):
         super(Value, self).__init__()
         self.embedding_dim = model_params['embedding_dim']
         inner_size = self.embedding_dim
-        mult_factor = 2 if Activation().act.__class__.__name__ == 'SwiGLU' else 1
+        self.activation = Activation(**model_params)
+
+        mult_factor = 2 if self.activation.act.__class__.__name__ == 'SwiGLU' else 1
         self.val = nn.Sequential(
             nn.Linear(self.embedding_dim, inner_size*mult_factor),
-            Activation(),
+            self.activation,
             nn.Linear(inner_size, 1)
         )
 

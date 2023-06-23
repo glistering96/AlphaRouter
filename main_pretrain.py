@@ -44,93 +44,33 @@ def _work(**kwargs):
     run_pretrain(args)
 
 
-def search_params(num_proc):
-    hyper_param_dict = {
-        'env_type':  ['tsp'],
-        'num_nodes': [20],
-        'result_dir' : ['pretrained_result'],
-        'render_mode' : [None],
-        'num_parallel_env' : [1024],
-        'num_steps_in_epoch': [1],
-        'grad_acc': [1],
-        'model_save_interval': [100],
-        'nn_train_epochs': [1000000],
-        'lr': [3e-4],
-
-    }
-
-    # hyper_param_dict = {
-    #     'env_type':  ['tsp'],
-    #     'num_nodes': [20],
-    #     'result_dir' : ['pretrained_result'],
-    #     'render_mode' : [None],
-    #     'num_parallel_env' : [512, 1024],
-    #     'num_steps_in_epoch': [1, 10, 100],
-    #     'grad_acc': [1, 2, 4, 10],
-    #     'model_save_interval': [100],
-    #     'nn_train_epochs': [100000],
-    #     'lr': [3e-4, 1e-4, 5e-5, 1e-5],
-    #
-    # }
-    save_path = None
-
-    async_result = mp.Queue()
-
-    # def __callback(val):
-    #     async_result.put(val)
-
-    pool = mp.Pool(num_proc)
-
-    for params in dict_product(hyper_param_dict):
-        if params['num_steps_in_epoch'] < params['grad_acc']:
-            continue
-
-        pool.apply_async(_work, kwds=params,
-                         # callback=__callback
-                         )
-
-    pool.close()
-    pool.join()
-
-
 if __name__ == '__main__':
     torch.set_float32_matmul_precision('high')
     params = {
-        'num_nodes' : 20,
+        'num_nodes' : 100,
         'result_dir' : 'POMO',
-        'name_prefix' : "SwiGLU",
+        'name_prefix' : "",
         'render_mode' : None,
         'qkv_dim' : 16,
         'num_heads': 4,
         'load_from_the_latest' : False,
-        'env_type' : 'tsp',
+        'env_type' : 'cvrp',
         'embedding_dim': 128,
-        'encoder_layer_num': 6,
-        'nn_train_epochs': 50,
+        'encoder_layer_num': 4,
+        'nn_train_epochs': 1,
         'model_save_interval': 2,
         'num_parallel_env': 64,
         'lr': 1e-4,
         'grad_acc': 1,
         'num_steps_in_epoch': 100*1000 // 64,
         'baseline': 'val',
+        'activation': 'relu',
     }
-    #
-    # for grad_acc, num_steps_in_epoch in itertools.product([1, 5, 10], [1, 10, 100]):
-    #     params['grad_acc'] = grad_acc
-    #     params['num_steps_in_epoch'] = num_steps_in_epoch
-    #     _work(**params)
-    
-    
-    _work(**params)
-    #
-    # search_params(1)
-    #
-    # for qkv_dim in [32, 64]:
-    #     for embedding_dim in [128, 256]:
-    #         params['qkv_dim'] = qkv_dim
-    #         params['embedding_dim'] = embedding_dim
-    #         _work(**params)
 
-    # ray_tune_search()
+    
+    for _baseline in ['val', 'mean']:
+        params['baseline'] = _baseline
+        _work(**params)
+
 
 
