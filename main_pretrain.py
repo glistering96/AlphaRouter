@@ -51,13 +51,13 @@ if __name__ == '__main__':
         'result_dir' : 'POMO',
         'name_prefix' : "",
         'render_mode' : None,
-        'qkv_dim' : 16,
+        'qkv_dim' : 32,
         'num_heads': 4,
         'load_from_the_latest' : False,
         'env_type' : 'cvrp',
         'embedding_dim': 128,
-        'encoder_layer_num': 4,
-        'nn_train_epochs': 1,
+        'encoder_layer_num': 6,
+        'nn_train_epochs': 200,
         'model_save_interval': 2,
         'num_parallel_env': 64,
         'lr': 1e-4,
@@ -67,10 +67,13 @@ if __name__ == '__main__':
         'activation': 'relu',
     }
 
-    
-    for _baseline in ['val', 'mean']:
-        params['baseline'] = _baseline
-        _work(**params)
+    for _num_nodes in [20, 50, 100]:
+        for _activation in ['relu', 'swiglu']:
+            for _baseline in ['val', 'mean']:
+                params['baseline'] = _baseline
+                params['num_nodes'] = _num_nodes
+                params['activation'] = _activation
+                _work(**params)
 
 
 
