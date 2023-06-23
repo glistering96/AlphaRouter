@@ -96,7 +96,7 @@ def search_params(num_proc):
 if __name__ == '__main__':
     torch.set_float32_matmul_precision('high')
     params = {
-        'num_nodes' : 100,
+        'num_nodes' : 20,
         'result_dir' : 'POMO',
         'name_prefix' : "SwiGLU",
         'render_mode' : None,

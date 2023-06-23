@@ -136,9 +136,14 @@ def cal_distance(xy, visiting_seq, axis=1):
     4. return distance
 
     """
-    desired_shape = tuple(list(visiting_seq.shape) + [2])
-    gather_idx = np.broadcast_to(visiting_seq[:, :, :, None], desired_shape)
-    xy_broaded = np.broadcast_to(xy[:, None, :, :], desired_shape)
+    batch_size, pomo, seq_len = visiting_seq.shape
+    N = xy.shape[1]
+
+    gather_idx_shape = [batch_size, pomo, seq_len, 2]
+    xy_broad_shape = [batch_size, pomo, N, 2]
+
+    gather_idx = np.broadcast_to(visiting_seq[:, :, :, None], gather_idx_shape)
+    xy_broaded = np.broadcast_to(xy[:, None, :, :], xy_broad_shape)
     original_seq = np.take_along_axis(xy_broaded, gather_idx, 2)
     rolled_seq = np.roll(original_seq, -1, axis=axis)
 

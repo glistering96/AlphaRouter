@@ -51,9 +51,9 @@ class CVRPModel(nn.Module):
 
     def forward(self, obs):
         load, cur_node, available, xy, demands = self._get_obs(obs, self.device)
-        # load: (B, pomo, 1)
-        # cur_node: (B, pomo, 1)
-        # available: (B, pomo, N)
+        # load: (B, 1)
+        # cur_node: (B, )
+        # available: (B, N)
         # xy: (B, N, 2)
         # demands: (B, N, 1)
 
@@ -65,23 +65,21 @@ class CVRPModel(nn.Module):
         if self.encoding is None:
             self.encoding = self.encoder(xy, demands)
             self.decoder.set_kv(self.encoding)
-        
+
         if obs['t'] == 0:
-            selected = torch.zeros(size=(batch_size, pomo_size), dtype=torch.long)
-            probs = torch.zeros((batch_size, pomo_size, N))   # assign prob 1 to the depots
-            probs[:, :, 0] = 1.0
+            selected = torch.zeros(size=(batch_size, pomo_size), dtype=torch.long).to(self.device)
+            probs = torch.zeros((batch_size, pomo_size, N)).to(self.device)   # assign prob 1 to the depots
+            probs = probs.scatter(2, selected[:, :, None], 1)  # assign prob 1 to the next nodes for each pomo
 
             cur_node_encoding = get_encoding(self.encoding, selected[:, :, None])
-            self.decoder.set_q1(cur_node_encoding)
             mh_attn_out = self.decoder(cur_node_encoding, load=load, mask=mask)
-
+            
         elif obs['t'] == 1:
-            selected = torch.arange(start=1, end=pomo_size+1)[None, :].expand(batch_size, pomo_size)
-            probs = torch.zeros(batch_size, pomo_size, N)
-            probs[:, torch.arange(pomo_size), torch.arange(N)] = torch.arange(N) # assign prob 1 to the pomo tensors
+            selected = torch.arange(start=1, end=pomo_size + 1)[None, :].expand(batch_size, pomo_size).to(self.device)
+            probs = torch.zeros(batch_size, pomo_size, N).to(self.device)
+            probs = probs.scatter(2, selected[:, :, None], 1)   # assign prob 1 to the next nodes for each pomo
 
             cur_node_encoding = get_encoding(self.encoding, selected[:, :, None])
-            self.decoder.set_q1(cur_node_encoding)
             mh_attn_out = self.decoder(cur_node_encoding, load=load, mask=mask)
 
         else:

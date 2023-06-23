@@ -25,7 +25,7 @@ class CVRPNpVec:
 
         # observation fields
         self.xy, self.demand, self.pos, self.visited = None, None, None, None
-        self.visiting_seq = None
+        self.visiting_seq = []
         self.load = None
         self.available = None
 
@@ -37,7 +37,8 @@ class CVRPNpVec:
         self.pomo_size = self.num_nodes
 
     def _get_obs(self):
-        return {"xy": self.xy, "demands": self.demand, "pos": self.pos, "load": self.load, "available": self.available}
+        return {"xy": self.xy, "demands": self.demand, "pos": self.pos, "load": self.load,
+                "available": self.available, "t": self.t}
 
     def _make_problems(self, num_rollouts, num_depots, num_nodes):
         xy = make_cord(num_rollouts, num_depots, num_nodes)
@@ -53,7 +54,7 @@ class CVRPNpVec:
         if self._is_done().all() or self.step_reward:
             visitng_idx = np.concatenate(self.visiting_seq, axis=2)  # (num_env, num_nodes)
             dist = cal_distance(self.xy, visitng_idx, axis=2)
-            return -dist
+            return dist
 
         else:
             return 0
@@ -69,15 +70,18 @@ class CVRPNpVec:
         self.available = np.ones((self.num_env, self.pomo_size, self.action_size),
                                  dtype=bool)  # all nodes are available at the beginning
         
-        self.load = np.ones((self.num_env, self.pomo_size), dtype=np.float16)  # all vehicles start with full load
-        obs = self._get_obs()
+        self.load = np.ones((self.num_env, self.pomo_size, 1), dtype=np.float16)  # all vehicles start with full load
+        self.t = 0
+
+        obs = self._get_obs()   # this must come after resetting all the fields
 
         return obs, {}
 
     def _is_on_depot(self):
-        return self.pos == 0
+        return (self.pos == 0).squeeze(-1)
 
     def step(self, action):
+        # action: (num_env, pomo_size)
         action = action[:, :, None]
 
         # update the current pos
@@ -91,19 +95,25 @@ class CVRPNpVec:
         # on_depot: (num_env, pomo_size, 1)
 
         # get the demands of the current node
-        demand = np.take_along_axis(self.demand, self.pos, axis=2).squeeze(2)
+        demand = np.take_along_axis(self.demand[:, None, :], self.pos, axis=2)
+        # demand: (num_env, pomo_size, 1)
 
         # update load
         self.load -= demand
 
-        # reload the vehicles that are on depot
-        self.load[on_depot, :] = 1
+        # reload the vehicles that are o
+        # depot
+        # self.load = np.where(on_depot[:, :, None], self.load, 1)
+        self.load[on_depot] = 1
 
         # update visited nodes
+        # self.visited[action] = True
         np.put_along_axis(self.visited, action, True, axis=2)
 
         # depot is always set as not visited if the vehicle is not on the depot
+        # here 0 is the depot idx
         self.visited[~on_depot, 0] = False
+        # self.visited = np.where(~on_depot[:, :, None], self.visited, False)
 
         # assign avail to field
         self.available, done = self.get_avail_mask()
@@ -119,7 +129,8 @@ class CVRPNpVec:
         return obs, reward, done, False, info
 
     def _is_done(self):
-        done_flag = (self.visited == True).all()
+        # here 1 is depot
+        done_flag = (self.visited[:, :, 1:] == True).all(axis=-1)
         return done_flag
 
     def get_avail_mask(self):
@@ -127,7 +138,7 @@ class CVRPNpVec:
         avail = ~self.visited.copy()
 
         # mark unavail for nodes where the demands are larger than the current load
-        unreachable = self.load + 1e-6 < self.demand
+        unreachable = self.load + 1e-6 < self.demand[:, None, :]
 
         # mark unavail for nodes in which the demands cannot be fulfilled
         avail = avail & ~unreachable
