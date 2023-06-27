@@ -35,6 +35,7 @@ def parse_args():
     parser.add_argument("--head_num", type=int, default=4, help="attention head dim")
     parser.add_argument("--C", type=int, default=10, help="C parameter that is applied to the tanh activation on the"
                                                           " last layer output of policy network")
+    parser.add_argument("--activation", type=str, default='swiglu', choices=['swiglu', 'relu'], help="activation function")
 
     # mcts params
     parser.add_argument("--num_simulations", type=int, default=50, help="Number of simulations")
@@ -64,6 +65,7 @@ def parse_args():
     parser.add_argument("--log_interval", type=int, default=10000, help="interval for model logging")
     parser.add_argument("--name_prefix", type=str, default='', help="name prefix")
     parser.add_argument("--seed", type=int, default=1, help="values smaller than 1 will not set any seeds")
+
 
     args = parser.parse_args()
 

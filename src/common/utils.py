@@ -201,7 +201,7 @@ class NpEncoder(json.JSONEncoder):
             return super(NpEncoder, self).default(obj)
 
 
-def get_param_dict(args, copy_src=True):
+def get_param_dict(args):
     # env_params
     num_demand_nodes = args.num_nodes
     num_depots = args.num_depots
@@ -256,6 +256,7 @@ def get_param_dict(args, copy_src=True):
         'encoder_layer_num': args.encoder_layer_num,
         'qkv_dim': args.qkv_dim,
         'head_num': args.head_num,
+        'activation': args.activation,
         'C': args.C,
     }
 
