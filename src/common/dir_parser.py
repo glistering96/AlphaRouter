@@ -23,13 +23,13 @@ class DirParser:
         main_dir = "pretrained_result" if not check_debug() else "debug"
         return f"./{main_dir}/{self._common_part}"
 
-    def get_model_checkpoint(self, target_epoch=None):
+    def get_model_checkpoint(self, ckpt_name=None):
         main_dir = "pretrained_result"
-        if target_epoch is not None:
-            return f"./{main_dir}/{self._common_part}/saved_models/checkpoint-{target_epoch}.pt"
+        if ckpt_name is not None:
+            return f"./{main_dir}/{self._common_part}/{ckpt_name}.ckpt"
 
         else:
-            return f"./{main_dir}/{self._common_part}/saved_models"
+            return f"./{main_dir}/{self._common_part}"
 
     def get_result_dir(self, mcts=False):
         if mcts:

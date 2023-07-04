@@ -1,6 +1,8 @@
 import json
+from glob import glob
 from pathlib import Path
 
+from src.common.dir_parser import DirParser
 from src.common.utils import dict_product, check_debug
 from src.run import parse_args
 import torch.multiprocessing as mp
@@ -111,23 +113,81 @@ def run_cross_test():
     print(avg_result)
 
 
+def collect_all_checkpoints(run_param_dict):
+    all_files = []
+
+    for params in dict_product(run_param_dict):
+        args = parse_args()
+
+        for k, v in params.items():
+            setattr(args, k, v)
+
+        ckpt_root = DirParser(args).get_model_checkpoint()
+
+        all_files = glob(ckpt_root + '/*.ckpt')
+
+        # get the checkpoint with minimum train_score from the all_files
+        all_files = list(sorted(all_files, key=lambda x: float(x.split('train_score=')[1].split('.ckpt')[0])))
+
+    return all_files
+
+
 if __name__ == '__main__':
     problem_size = 20
     num_problems = 100
+    num_env = 64
 
     run_param_dict = {
         'test_data_type': ['pkl'],
         'env_type': ['tsp'],
         'num_nodes': [problem_size],
-        'num_episode': [1024],
-        'test_data_idx': [0],
+        'num_parallel_env': [num_env],
+        'test_data_idx': list(range(num_problems)),
         'num_simulations': [problem_size*2],
-        # 'render_mode': ["rgb_array"],
-        'load_epoch': ['best', 5000],
-    }
+        'data_path': ['./data'],
+        'activation': ['swiglu'],
+        'baseline': ['val'],
+        'encoder_layer_num': [6],
+        'qkv_dim': [32],
+        'num_heads': [4],
+        'embedding_dim': [128],
+        'grad_acc': [1],
+        'num_steps_in_epoch': [100 * 1000 // num_env],
+        'load_epoch': ['epoch=1-train_score=3.79818']
 
-    for params in dict_product(run_param_dict):
-        run_test(**params)
+    }
+    result = {}
+    all_files = collect_all_checkpoints(run_param_dict)
+
+    for k in range(len(all_files)):
+        load_epoch = all_files[k]
+        result = {}
+
+        for params in dict_product(run_param_dict):
+            args = parse_args()
+
+            for k, v in params.items():
+                setattr(args, k, v)
+
+            ckpt_root = DirParser(args).get_model_checkpoint()
+
+            params['load_epoch'] = load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]
+
+            score, runtime, args.test_data_idx = run_test(**params)
+            result[args.test_data_idx] = {'score': score, 'runtime': runtime}
+
+        # average score
+        avg_score = sum([result[i]['score'] for i in range(num_problems)]) / num_problems
+        avg_runtime = sum([result[i]['runtime'] for i in range(num_problems)]) / num_problems
+
+        std_score = sum([(result[i]['score'] - avg_score) ** 2 for i in range(num_problems)]) / num_problems
+        std_runtime = sum([(result[i]['runtime'] - avg_runtime) ** 2 for i in range(num_problems)]) / num_problems
+
+        result['average'] = {'score': avg_score, 'runtime': avg_runtime}
+        result['std'] = {'score': std_score, 'runtime': std_runtime}
+
+        print(f"{load_epoch}: {result['average']}")
+
 
     # result_dict = {}
     #

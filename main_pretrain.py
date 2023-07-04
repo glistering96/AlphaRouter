@@ -47,33 +47,35 @@ def _work(**kwargs):
 if __name__ == '__main__':
     torch.set_float32_matmul_precision('high')
     params = {
-        'num_nodes' : 100,
+        'num_nodes' : 20,
         'result_dir' : 'POMO',
         'name_prefix' : "",
         'render_mode' : None,
         'qkv_dim' : 32,
         'num_heads': 4,
         'load_from_the_latest' : False,
-        'env_type' : 'cvrp',
+        'env_type' : 'tsp',
         'embedding_dim': 128,
         'encoder_layer_num': 6,
-        'nn_train_epochs': 200,
-        'model_save_interval': 2,
+        'nn_train_epochs': 50,
+        'model_save_interval': 1,
         'num_parallel_env': 64,
         'lr': 1e-4,
         'grad_acc': 1,
         'num_steps_in_epoch': 100*1000 // 64,
         'baseline': 'val',
-        'activation': 'relu',
+        'activation': 'swiglu',
     }
 
-    for _num_nodes in [20, 50, 100]:
-        for _activation in ['relu', 'swiglu']:
-            for _baseline in ['val', 'mean']:
-                params['baseline'] = _baseline
-                params['num_nodes'] = _num_nodes
-                params['activation'] = _activation
-                _work(**params)
+    _work(**params)
+
+    # for _num_nodes in [20, 50, 100]:
+    #     for _activation in ['relu', 'swiglu']:
+    #         for _baseline in ['val', 'mean']:
+    #             params['baseline'] = _baseline
+    #             params['num_nodes'] = _num_nodes
+    #             params['activation'] = _activation
+    #             _work(**params)
 
 
 

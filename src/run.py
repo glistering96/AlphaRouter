@@ -66,7 +66,6 @@ def parse_args():
     parser.add_argument("--name_prefix", type=str, default='', help="name prefix")
     parser.add_argument("--seed", type=int, default=1, help="values smaller than 1 will not set any seeds")
 
-
     args = parser.parse_args()
 
     if args.test_num is None:
@@ -76,7 +75,7 @@ def parse_args():
 
 
 def run_mcts_test(args):
-    env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args)
+    env_params, mcts_params, model_params, h_params, run_params, optimizer_params, logger_params = get_param_dict(args, return_logger=True)
 
     tester = MCTSTesterModule(env_params=env_params,
                               model_params=model_params,
@@ -110,7 +109,7 @@ def run_pretrain(args):
     score_cp_callback = pl.callbacks.ModelCheckpoint(
         dirpath=default_root_dir,
         monitor="train_score",
-        every_n_epochs=run_params['model_save_interval'],
+        every_n_epochs=1,
         mode="min",
         filename="{epoch}-{train_score:.5f}",
         save_on_train_epoch_end=True,

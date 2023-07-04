@@ -55,7 +55,8 @@ class RolloutBase:
         # Model
         self.model_params['device'] = device
 
-        self.model = RoutingModel(self.model_params, self.env_params).create_model(self.env_params['env_type'])
+        self.model = RoutingModel(model_params, env_params).create_model(env_params['env_type'])
+        self.model.device = device
 
         # optimizer
         self.optimizer = None
@@ -65,41 +66,22 @@ class RolloutBase:
         self.best_score = float('inf')
         self.time_estimator = TimeEstimator()
 
-    def _save_checkpoints(self, epoch, is_best=False):
-        file_name = 'best' if is_best else epoch
-
-        checkpoint_dict = {
-            'epoch': epoch,
-            'model_params': self.model_params,
-            'best_score': self.best_score,
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict()
-        }
-
-        path = self.dir_parser.get_model_checkpoint(target_epoch=None)
-
-        if not Path(path).exists():
-            Path(path).mkdir(parents=True, exist_ok=False)
-
-        model_checkpoint = self.dir_parser.get_model_checkpoint(target_epoch=file_name)
-        torch.save(checkpoint_dict, model_checkpoint)
-
-    def _load_model(self, epoch):
+    def _load_model(self, ckpt_name):
         # if on debug mode, remove the debug prefix on the self.result_folder
-        checkpoint_fullname = self.dir_parser.get_model_checkpoint(target_epoch=epoch)
+        checkpoint_fullname = self.dir_parser.get_model_checkpoint(ckpt_name=ckpt_name)
         checkpoint = torch.load(checkpoint_fullname, map_location=self.device)
 
         self.start_epoch = checkpoint['epoch'] + 1
         self.epochs = self.run_params['nn_train_epochs'] - self.start_epoch + 1
-        self.best_score = checkpoint['best_score']
 
-        loaded_state_dict = checkpoint['model_state_dict']
+        loaded_state_dict = checkpoint['state_dict']
+        loaded_state_dict = {k[6:]: v for k, v in loaded_state_dict.items() if k.startswith('model.')}
         self.model.load_state_dict(loaded_state_dict)
 
         if self.optimizer is not None:
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
 
-        self.logger.info(f"Successfully loaded pre-trained policy_net from {checkpoint_fullname}")
+        # self.logger.info(f"Successfully loaded pre-trained policy_net from {checkpoint_fullname}")
 
     def _log_info(self, epoch, train_score, total_loss, p_loss, val_loss, elapsed_time_str,
                   remain_time_str):

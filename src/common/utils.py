@@ -201,7 +201,7 @@ class NpEncoder(json.JSONEncoder):
             return super(NpEncoder, self).default(obj)
 
 
-def get_param_dict(args):
+def get_param_dict(args, return_logger=False):
     # env_params
     num_demand_nodes = args.num_nodes
     num_depots = args.num_depots
@@ -222,7 +222,6 @@ def get_param_dict(args):
         torch.cuda.manual_seed(seed)
         torch.backends.cudnn.deterministic = True  # type: ignore
         torch.backends.cudnn.benchmark = True  # type: ignore
-        # args.num_episode = 2
 
     # allocating hyper-parameters
     env_params = {
@@ -279,6 +278,11 @@ def get_param_dict(args):
         'baseline': args.baseline
     }
 
+    try:
+        run_params['data_path'] = args.data_path
+
+    except:
+        pass
 
     optimizer_params = {
         'lr': args.lr,
@@ -300,11 +304,22 @@ def get_param_dict(args):
         'warm_up': args.warm_up,
     }
 
+    logger_params = {
+        'log_file': {
+            'filename': 'log.txt',
+            'date_prefix': False
+        },
+    }
+
     # TODO: result folder src copy needs to be managed
     # if copy_src:
     #     copy_all_src(result_folder_name)
 
-    return env_params, mcts_params, model_params, h_params, run_params, optimizer_params
+    if return_logger:
+        return env_params, mcts_params, model_params, h_params, run_params, optimizer_params, logger_params
+
+    else:
+        return env_params, mcts_params, model_params, h_params, run_params, optimizer_params
 
 
 def dict_product(dicts):

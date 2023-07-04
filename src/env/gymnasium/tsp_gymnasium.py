@@ -136,10 +136,12 @@ class TSPEnv(gym.Env):
             # Define font
 
     def get_reward(self):
-        if self._is_done() or self.step_reward:
-            visitng_idx = np.array(self.visiting_seq, dtype=int)[None, :]
-            dist = cal_distance(self.xy[None, :], visitng_idx)
-            return -float(dist)
+        if self._is_done() or self.step_reward or self.t > 0:
+            # batch_size, pomo_size = self.pos.shape
+            visitng_idx = np.concatenate(self.visiting_seq, axis=2)
+            # (num_env, pomo_size, num_nodes):
+            dist = cal_distance(self.xy, visitng_idx, axis=2)
+            return -float(dist.reshape(-1))
 
         else:
             return 0
@@ -153,36 +155,37 @@ class TSPEnv(gym.Env):
         else:
             self.xy = self._load_problem()
 
-        init_depot = 0
-        self.pos = init_depot
-        self.visited = np.zeros(self.action_size, dtype=bool)
-        self.visited[self.pos] = True
+        if self.xy.ndim == 2:
+            self.xy = self.xy.reshape(1, -1, 2)
+
+        self.pos = None
+        self.visited = np.zeros((1, 1, self.action_size), dtype=bool)
+
         self.visiting_seq = []
 
-        self.visiting_seq.append(init_depot)
-        self.available = np.ones(self.action_size, dtype=bool)
-        self.available[init_depot] = False  # for the initial depot
+        self.available = np.ones((1, 1, self.action_size), dtype=bool)  # all nodes are available at the beginning
+
+        self.t = 0
 
         self._init_rendering()
-        self.t = 0
 
         obs = self._get_obs()
 
         return obs, {}
 
     def step(self, action):
-        # action: (1, )
-
-        assert action not in self.visiting_seq, f"visited nodes: {self.visiting_seq}, selected node: {action}"
+        action = np.array([[[action]]])
+        # action: (1, 1, 1)
+        self.t += 1
 
         # update the current pos
-        self.pos = action
+        self.pos = action.reshape(1, 1)
 
         # append the visited node idx
         self.visiting_seq.append(action)
 
         # update visited nodes
-        self.visited[action] = True
+        np.put_along_axis(self.visited, action, True, axis=2)
 
         # assign avail to field
         self.available, done = self.get_avail_mask()
@@ -191,15 +194,13 @@ class TSPEnv(gym.Env):
 
         info = {}
 
-        self.t += 1
-
         obs = self._get_obs()
 
         return obs, reward, done, False, info
 
     def _is_done(self):
-        done_flag = (self.visited[:] == True).all()
-        return bool(done_flag)
+        done_flag = (self.visited == True).all()
+        return done_flag
 
     def get_avail_mask(self):
         # get a copy of avail

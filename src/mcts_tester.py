@@ -29,10 +29,10 @@ class MCTSTesterModule(RolloutBase):
 
         test_score, runtime = test_one_episode(self.env, self.model, self.mcts_params, 1)
 
-        self.logger.info(f"Test score: {test_score: .5f}")
-        self.logger.info(" *** Testing Done *** ")
+        # self.logger.info(f"Test score: {test_score: .5f}")
+        # self.logger.info(" *** Testing Done *** ")
 
-        self.record_video()
+        # self.record_video()
 
         return test_score, runtime
 

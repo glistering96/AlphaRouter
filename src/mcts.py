@@ -80,7 +80,7 @@ class MCTS():
         # argmin (Q-U), since the reward concept becomes the loss in this MCTS
         # originally, argmax (Q+U) is true but to fit into minimization, argmin (-Q+U) is selected
         s = state['t']
-        avail_mask = state['available']
+        avail_mask = state['available'].reshape(-1, )
         ucb_scores = {}
 
         # pick the action with the lowest upper confidence bound
