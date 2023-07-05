@@ -63,4 +63,4 @@ def test_one_episode(env, agent, mcts_params, temp):
             debug += 1
 
             if done:
-                return -reward, time.time() - start
+                return reward, time.time() - start

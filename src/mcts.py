@@ -37,7 +37,7 @@ class MCTS():
         self.N = {}  # stores #times edge s,a was visited
         self.P = {}  # stores initial policy (returned by neural net), dtype: numpy ndarray
 
-        self.max_q_val = float('-inf')
+        self.max_q_val = -float('inf')
         self.min_q_val = float('inf')
 
         if isinstance(self.env, RecordVideo):
@@ -94,13 +94,10 @@ class MCTS():
 
             Q_val = self.Q[(s, a)]
 
-            diff = self.max_q_val - self.min_q_val
+            normalizable = self.max_q_val > self.min_q_val
 
-            if Q_val != 0 and self.normalize_q_value:
-                Q_val = (self.Q[(s, a)] - self.min_q_val) / (self.max_q_val - self.min_q_val + 1e-8)
-
-            if diff < 1e-8:
-                Q_val = 0
+            if self.normalize_q_value and normalizable:
+                Q_val = (Q_val - self.min_q_val) / (self.max_q_val - self.min_q_val + 1e-8)
 
             score = -Q_val + ucb
             ucb_scores[a] = score
@@ -115,6 +112,7 @@ class MCTS():
         prob_dist, val = self.model(state)
         probs = prob_dist.view(-1, ).cpu().numpy()
         avail, _ = self.env.get_avail_mask()
+        avail = avail.reshape(-1, )
 
         self.Ns[s] = 1
 
@@ -172,11 +170,8 @@ class MCTS():
         for i, (s, a) in enumerate(reversed(path)):
             Q_val = self.W[(s, a)] / self.N[(s, a)]
 
-            if Q_val < self.min_q_val:
-                self.min_q_val = Q_val
-
-            elif Q_val >= self.max_q_val:
-                self.max_q_val = Q_val
+            self.min_q_val = min(self.min_q_val, Q_val)
+            self.max_q_val = max(self.max_q_val, Q_val)
 
             self.Q[(s, a)] = Q_val
 
@@ -245,7 +240,7 @@ class MCTS():
 
             else:
                 # terminal node reached
-                v = -reward
+                v = reward
 
         self._back_propagate(path, v)
 
@@ -260,4 +255,4 @@ class MCTS():
             a, _ = self.model.predict(obs)
             obs, reward, done, _, _ = _env.step(a)
 
-        return -reward
+        return reward

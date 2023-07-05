@@ -48,6 +48,9 @@ def run_parallel_test(param_ranges, num_proc=4):
         score, runtime, test_data_idx = async_result.get()
         result_dict[test_data_idx] = {'score': score, 'runtime': runtime}
 
+    # sort the result_dict by test_data_idx
+    result_dict = dict(sorted(result_dict.items(), key=lambda x: x[0]))
+
     avg_score = sum([result_dict[i]['score'] for i in range(num_problems)]) / num_problems
     avg_runtime = sum([result_dict[i]['runtime'] for i in range(num_problems)]) / num_problems
 
@@ -57,13 +60,7 @@ def run_parallel_test(param_ranges, num_proc=4):
     result_dict['average'] = {'score': avg_score, 'runtime': avg_runtime}
     result_dict['std'] = {'score': std_score, 'runtime': std_runtime}
 
-    path = f"./result_summary/mcts/{run_param_dict['env_type'][0]}_{problem_size}"
-    if not Path(path).exists():
-        Path(path).mkdir(parents=True, exist_ok=False)
-
-    # write the result_dict to a json file
-    with open(f"{path}/{run_param_dict['load_epoch'][0]}.json", 'w') as f:
-        json.dump(result_dict, f, indent=4)
+    return result_dict
 
 
 def run_cross_test():
@@ -128,84 +125,80 @@ def collect_all_checkpoints(run_param_dict):
 
         # get the checkpoint with minimum train_score from the all_files
         all_files = list(sorted(all_files, key=lambda x: float(x.split('train_score=')[1].split('.ckpt')[0])))
+        break
 
     return all_files, ckpt_root
 
 
+def get_result_dir(run_param_dict):
+    for params in dict_product(run_param_dict):
+        args = parse_args()
+
+        for k, v in params.items():
+            setattr(args, k, v)
+
+        dir = DirParser(args).get_result_dir(mcts=True)
+        break
+
+    return dir
+
+
 if __name__ == '__main__':
     problem_size = 20
-    num_problems = 100 // 20
+    num_problems = 100
     num_env = 64
 
-    run_param_dict = {
-        'test_data_type': ['pkl'],
-        'env_type': ['tsp'],
-        'num_nodes': [problem_size],
-        'num_parallel_env': [num_env],
-        'test_data_idx': list(range(num_problems)),
-        'num_simulations': [problem_size*2],
-        'data_path': ['./data'],
-        'activation': ['swiglu'],
-        'baseline': ['val'],
-        'encoder_layer_num': [6],
-        'qkv_dim': [32],
-        'num_heads': [4],
-        'embedding_dim': [128],
-        'grad_acc': [1],
-        'num_steps_in_epoch': [100 * 1000 // num_env],
-        'load_epoch': ['epoch=1-train_score=3.79818']
+    for env_type in ['tsp']:
+        for problem_size in [20, 50, 100]:
+            for activation in ['relu', 'swiglu']:
+                for baseline in ['val', 'mean']:
+                    run_param_dict = {
+                        'test_data_type': ['pkl'],
+                        'env_type': [env_type],
+                        'num_nodes': [problem_size],
+                        'num_parallel_env': [num_env],
+                        'test_data_idx': list(range(num_problems)),
+                        'num_simulations': [problem_size*2],
+                        'data_path': ['./data'],
+                        'activation': [activation],
+                        'baseline': [baseline],
+                        'encoder_layer_num': [6],
+                        'qkv_dim': [32],
+                        'num_heads': [4],
+                        'embedding_dim': [128],
+                        'grad_acc': [1],
+                        'num_steps_in_epoch': [100 * 1000 // num_env],
+                        # 'load_epoch': ['epoch=1-train_score=3.79818']
+                    }
 
-    }
+                    all_result = {}
+                    all_files, ckpt_root = collect_all_checkpoints(run_param_dict)
+                    result_dir = get_result_dir(run_param_dict)
 
-    all_result = {}
-    all_files, ckpt_root = collect_all_checkpoints(run_param_dict)
+                    for k in range(len(all_files)):
+                        load_epoch = all_files[k]
+                        run_param_dict['load_epoch'] = [load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]]
 
-    for k in range(len(all_files)):
-        load_epoch = all_files[k]
-        result = {}
+                        result = run_parallel_test(run_param_dict, 4)
 
-        for params in dict_product(run_param_dict):
-            args = parse_args()
+                        # save the result as json file
+                        print(f"{load_epoch}: {result['average']}")
+                        path = f"./result_summary/{result_dir}"
 
-            for k, v in params.items():
-                setattr(args, k, v)
+                        if not Path(path).exists():
+                            Path(path).mkdir(parents=True, exist_ok=False)
 
-            ckpt_root = DirParser(args).get_model_checkpoint()
+                        # write the result_dict to a json file
+                        file_nm = load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]
 
-            params['load_epoch'] = load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]
+                        with open(f"{path}/{file_nm}.json", 'w') as f:
+                            json.dump(result, f, indent=4)
 
-            score, runtime, args.test_data_idx = run_test(**params)
-            result[args.test_data_idx] = {'score': score, 'runtime': runtime}
+                        all_result[file_nm] = result
 
-        # average score
-        avg_score = sum([result[i]['score'] for i in range(num_problems)]) / num_problems
-        avg_runtime = sum([result[i]['runtime'] for i in range(num_problems)]) / num_problems
-
-        std_score = sum([(result[i]['score'] - avg_score) ** 2 for i in range(num_problems)]) / num_problems
-        std_runtime = sum([(result[i]['runtime'] - avg_runtime) ** 2 for i in range(num_problems)]) / num_problems
-
-        result['average'] = {'score': avg_score, 'runtime': avg_runtime}
-        result['std'] = {'score': std_score, 'runtime': std_runtime}
-
-        # save the result as json file
-        print(f"{load_epoch}: {result['average']}")
-        path = f"./result_summary/{ckpt_root[1:]}"
-
-        if not Path(path).exists():
-            Path(path).mkdir(parents=True, exist_ok=False)
-
-        # write the result_dict to a json file
-        file_nm = load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]
-
-        with open(f"{path}/{file_nm}.json", 'w') as f:
-            json.dump(result, f, indent=4)
-
-        all_result[file_nm] = result
-
-    path = f"./result_summary/{ckpt_root[1:]}"
-    # write the result_dict to a json file
-    with open(f"{path}/all_result.json", 'w') as f:
-        json.dump(all_result, f, indent=4)
+                    # write the result_dict to a json file
+                    with open(f"{path}/all_result.json", 'w') as f:
+                        json.dump(all_result, f, indent=4)
 
     # run_param_dict['num_nodes'] = problem_size
 

@@ -141,7 +141,7 @@ class TSPEnv(gym.Env):
             visitng_idx = np.concatenate(self.visiting_seq, axis=2)
             # (num_env, pomo_size, num_nodes):
             dist = cal_distance(self.xy, visitng_idx, axis=2)
-            return -float(dist.reshape(-1))
+            return float(dist.reshape(-1))
 
         else:
             return 0
