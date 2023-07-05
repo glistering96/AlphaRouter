@@ -193,10 +193,10 @@ def main():
                         with open(f"{path}/{file_nm}.json", 'w') as f:
                             json.dump(result, f, indent=4)
 
-                        all_result[file_nm] = result
+                        all_result[file_nm] = {'result_avg': result['average'], 'result_std': result['std']}
 
                     # write the result_dict to a json file
-                    with open(f"{path}/all_result.json", 'w') as f:
+                    with open(f"{path}/all_result_avg.json", 'w') as f:
                         json.dump(all_result, f, indent=4)
 
 
@@ -255,6 +255,6 @@ if __name__ == '__main__':
     #     param['load_epoch'] = 'best'
     #     run_test(**param)
 
-    run_cross_test()
+    # run_cross_test()
 
 
