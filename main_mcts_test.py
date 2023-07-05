@@ -129,12 +129,12 @@ def collect_all_checkpoints(run_param_dict):
         # get the checkpoint with minimum train_score from the all_files
         all_files = list(sorted(all_files, key=lambda x: float(x.split('train_score=')[1].split('.ckpt')[0])))
 
-    return all_files
+    return all_files, ckpt_root
 
 
 if __name__ == '__main__':
     problem_size = 20
-    num_problems = 100
+    num_problems = 100 // 20
     num_env = 64
 
     run_param_dict = {
@@ -156,8 +156,9 @@ if __name__ == '__main__':
         'load_epoch': ['epoch=1-train_score=3.79818']
 
     }
-    result = {}
-    all_files = collect_all_checkpoints(run_param_dict)
+
+    all_result = {}
+    all_files, ckpt_root = collect_all_checkpoints(run_param_dict)
 
     for k in range(len(all_files)):
         load_epoch = all_files[k]
@@ -186,7 +187,28 @@ if __name__ == '__main__':
         result['average'] = {'score': avg_score, 'runtime': avg_runtime}
         result['std'] = {'score': std_score, 'runtime': std_runtime}
 
+        # save the result as json file
         print(f"{load_epoch}: {result['average']}")
+        path = f"./result_summary/{ckpt_root[1:]}"
+
+        if not Path(path).exists():
+            Path(path).mkdir(parents=True, exist_ok=False)
+
+        # write the result_dict to a json file
+        file_nm = load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]
+
+        with open(f"{path}/{file_nm}.json", 'w') as f:
+            json.dump(result, f, indent=4)
+
+        all_result[file_nm] = result
+
+    path = f"./result_summary/{ckpt_root[1:]}"
+    # write the result_dict to a json file
+    with open(f"{path}/all_result.json", 'w') as f:
+        json.dump(all_result, f, indent=4)
+
+    # run_param_dict['num_nodes'] = problem_size
+
 
 
     # result_dict = {}
