@@ -133,7 +133,7 @@ def run_pretrain(args):
 
 
 def run_am_test(args):
-    env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args)
+    env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args, return_logger=True)
 
     tester = AMTesterModule(env_params=env_params,
                             model_params=model_params,
