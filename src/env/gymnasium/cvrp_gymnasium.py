@@ -165,7 +165,7 @@ class CVRPEnv(gym.Env):
         if self._is_done().all() or self.step_reward:
             visitng_idx = np.concatenate(self.visiting_seq, axis=2)  # (num_env, num_nodes)
             dist = cal_distance(self.xy, visitng_idx, axis=2)
-            return dist
+            return float(dist.reshape(-1))
 
         else:
             return 0

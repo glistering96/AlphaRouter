@@ -189,6 +189,28 @@ def add_hparams(writer, param_dict, metrics_dict, step=None):
             writer.add_scalar(k, v, step)
 
 
+def save_json(data, path):
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
+
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=4)
+
+
+def load_json(path):
+    try:
+        with open(path, 'r') as f:
+            data = json.load(f)
+
+    except:
+        data = {}
+
+    return data
+
+
+
+
+
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):

@@ -1,9 +1,10 @@
 import json
+from copy import deepcopy
 from glob import glob
 from pathlib import Path
 
 from src.common.dir_parser import DirParser
-from src.common.utils import dict_product, check_debug
+from src.common.utils import dict_product, check_debug, save_json
 from src.run import parse_args
 import torch.multiprocessing as mp
 from src.run import run_mcts_test
@@ -22,7 +23,27 @@ def run_test(**kwargs):
 
     score, runtime = run_mcts_test(args)
 
-    return score, runtime, args.test_data_idx
+    return score, runtime, args.test_data_idx, kwargs['load_epoch'], kwargs['result_dir']
+
+
+def cal_average_std(result_dict):
+    result_dict = deepcopy(result_dict)
+
+    # sort the result_dict by test_data_idx
+    result_dict = dict(sorted(result_dict.items(), key=lambda x: x[0]))
+
+    num_problems = len(result_dict)
+
+    avg_score = sum([result_dict[i]['score'] for i in range(num_problems)]) / num_problems
+    avg_runtime = sum([result_dict[i]['runtime'] for i in range(num_problems)]) / num_problems
+
+    std_score = sum([(result_dict[i]['score'] - avg_score) ** 2 for i in range(num_problems)]) / num_problems
+    std_runtime = sum([(result_dict[i]['runtime'] - avg_runtime) ** 2 for i in range(num_problems)]) / num_problems
+
+    result_dict['average'] = {'score': avg_score, 'runtime': avg_runtime}
+    result_dict['std'] = {'score': std_score, 'runtime': std_runtime}
+
+    return result_dict
 
 
 def run_parallel_test(param_ranges, num_proc=5):
@@ -42,9 +63,11 @@ def run_parallel_test(param_ranges, num_proc=5):
     for params in dict_product(param_ranges):
         all_files, ckpt_root = collect_all_checkpoints(params)
         all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
+        result_dir = get_result_dir(params)
 
         for ckpt in all_checkpoints:
-            params['load_from'] = ckpt
+            params['load_epoch'] = ckpt
+            params['result_dir'] = result_dir
 
             pool.apply_async(run_test, kwds=params, callback=__callback)
 
@@ -55,24 +78,31 @@ def run_parallel_test(param_ranges, num_proc=5):
         return
 
     while not async_result.empty():
-        score, runtime, test_data_idx = async_result.get()
-        result_dict[test_data_idx] = {'score': score, 'runtime': runtime}
+        score, runtime, test_data_idx, load_epoch, result_dir = async_result.get()
 
-    # sort the result_dict by test_data_idx
-    result_dict = dict(sorted(result_dict.items(), key=lambda x: x[0]))
+        if result_dir not in result_dict.keys():
+            result_dict[result_dir] = {}
 
-    num_problems = len(result_dict)
+        if load_epoch not in result_dict[result_dir].keys():
+            result_dict[result_dir][load_epoch] = {}
 
-    avg_score = sum([result_dict[i]['score'] for i in range(num_problems)]) / num_problems
-    avg_runtime = sum([result_dict[i]['runtime'] for i in range(num_problems)]) / num_problems
+        if test_data_idx not in result_dict[result_dir][load_epoch].keys():
+            result_dict[result_dir][load_epoch][test_data_idx] = {}
 
-    std_score = sum([(result_dict[i]['score'] - avg_score) ** 2 for i in range(num_problems)]) / num_problems
-    std_runtime = sum([(result_dict[i]['runtime'] - avg_runtime) ** 2 for i in range(num_problems)]) / num_problems
+        result_dict[result_dir][load_epoch][test_data_idx] = {'score': score, 'runtime': runtime}
 
-    result_dict['average'] = {'score': avg_score, 'runtime': avg_runtime}
-    result_dict['std'] = {'score': std_score, 'runtime': std_runtime}
+    organized_result = {}
 
-    return result_dict
+    # average of score and runtime for load_epochs should be calculated for each result_dir and average of score and runtime
+    # for each load_epoch should be calculated over all test_data_idx
+
+    for result_dir, dir_result in result_dict.items():
+        organized_result[result_dir] = {}
+
+        for load_epoch, epoch_result in dir_result.items():
+            organized_result[result_dir][load_epoch] = cal_average_std(epoch_result)
+
+    return organized_result
 
 
 def run_cross_test():
@@ -138,15 +168,13 @@ def collect_all_checkpoints(params):
     return all_files, ckpt_root
 
 
-def get_result_dir(run_param_dict):
-    for params in dict_product(run_param_dict):
-        args = parse_args()
+def get_result_dir(params):
+    args = parse_args()
 
-        for k, v in params.items():
-            setattr(args, k, v)
+    for k, v in params.items():
+        setattr(args, k, v)
 
-        dir = DirParser(args).get_result_dir(mcts=True)
-        break
+    dir = DirParser(args).get_result_dir(mcts=True)
 
     return dir
 
@@ -157,7 +185,7 @@ def main():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp', 'cvrp'],
+        'env_type': ['cvrp'],
         'num_nodes': [20, 50, 100],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -173,36 +201,47 @@ def main():
         'cpuct': [0.8, 1.0, 1.1, 1.2, 1.5, 2]
     }
 
-    path = None
     all_result = {}
-    all_files, ckpt_root = collect_all_checkpoints(run_param_dict)
-    result_dir = get_result_dir(run_param_dict)
 
-    for k in range(len(all_files)):
-        load_epoch = all_files[k]
-        run_param_dict['load_epoch'] = [load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]]
+    result = run_parallel_test(run_param_dict, 5)
 
-        result = run_parallel_test(run_param_dict, 5)
+    path_format = "./result_summary/mcts"
 
-        # save the result as json file
-        print(f"{load_epoch}: {result['average']}")
-        path = f"./result_summary/{result_dir}"
+    for result_dir in result.keys():
+        for load_epoch in result[result_dir].keys():
+            # save the result as json file
+            print(f"{load_epoch}: {result[result_dir][load_epoch]['average']}")
+            path = f"{path_format}/{result_dir}"
 
-        if not Path(path).exists():
-            Path(path).mkdir(parents=True, exist_ok=False)
+            if not Path(path).exists():
+                Path(path).mkdir(parents=True, exist_ok=False)
 
-        # write the result_dict to a json file
-        file_nm = load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]
+            # write the result_dict to a json file
+            save_json(result[result_dir][load_epoch], f"{path}/{load_epoch}.json")
 
-        with open(f"{path}/{file_nm}.json", 'w') as f:
-            json.dump(result, f, indent=4)
+            all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'], 'result_std': result[result_dir][load_epoch]['std']}
 
-        all_result[file_nm] = {'result_avg': result['average'], 'result_std': result['std']}
-
-    if path is not None:
-        # write the result_dict to a json file
-        with open(f"{path}/all_result_avg.json", 'w') as f:
-            json.dump(all_result, f, indent=4)
+            save_json(all_result, f"{path}/all_result_avg.json")
+    #
+    # # save the result as json file
+    # print(f"{load_epoch}: {result['average']}")
+    # path = f"./result_summary/{result_dir}"
+    #
+    # if not Path(path).exists():
+    #     Path(path).mkdir(parents=True, exist_ok=False)
+    #
+    # # write the result_dict to a json file
+    # file_nm = load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]
+    #
+    # with open(f"{path}/{file_nm}.json", 'w') as f:
+    #     json.dump(result, f, indent=4)
+    #
+    # all_result[file_nm] = {'result_avg': result['average'], 'result_std': result['std']}
+    #
+    # if path is not None:
+    #     # write the result_dict to a json file
+    #     with open(f"{path}/all_result_avg.json", 'w') as f:
+    #         json.dump(all_result, f, indent=4)
 
 
 def debug():
@@ -213,7 +252,8 @@ def debug():
     run_param_dict = {
         'test_data_type': ['pkl'],
         'env_type': ['tsp', 'cvrp'],
-        'num_nodes': [20, 50, 100],
+        # 'num_nodes': [20, 50, 100],
+        'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
@@ -225,22 +265,45 @@ def debug():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'cpuct': [0.8, 1.0, 1.1, 1.2, 1.5, 2]
+        'cpuct': [1.1]
     }
 
-    for params in dict_product(run_param_dict):
-        try:
-            all_files, ckpt_root = collect_all_checkpoints(params)
-            all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
+    # for params in dict_product(run_param_dict):
+    #     try:
+    #         all_files, ckpt_root = collect_all_checkpoints(params)
+    #         all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
+    #
+    #         for ckpt in all_checkpoints:
+    #             params['load_epoch'] = ckpt
+    #             result = run_test(**params)
+    #             print(ckpt)
+    #         # params['load_epoch'] = all_files[0].split('/')[-1].split('\\')[-1].split('.ckpt')[0]
+    #
+    #     except FileNotFoundError as e:
+    #         print(e)
 
-            for ckpt in all_checkpoints:
-                params['load_epoch'] = ckpt
-                result = run_test(**params)
-                print(ckpt)
-            # params['load_epoch'] = all_files[0].split('/')[-1].split('\\')[-1].split('.ckpt')[0]
+    result = run_parallel_test(run_param_dict, 5)
+    path_format = "./result_summary/mcts"
 
-        except FileNotFoundError as e:
-            print(e)
+    for result_dir in result.keys():
+        all_result = {}
+
+        for load_epoch in result[result_dir].keys():
+            # save the result as json file
+            print(f"{result_dir}/{load_epoch}: {result[result_dir][load_epoch]['average']}")
+            path = f"{path_format}/{result_dir}"
+
+            if not Path(path).exists():
+                Path(path).mkdir(parents=True, exist_ok=False)
+
+            # write the result_dict to a json file
+            save_json(result[result_dir][load_epoch], f"{path}/{load_epoch}.json")
+
+            all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'], 'result_std': result[result_dir][load_epoch]['std']}
+
+            save_json(all_result, f"{path}/all_result_avg.json")
+
+    return all_result
 
 if __name__ == '__main__':
     # main()
