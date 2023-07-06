@@ -10,6 +10,9 @@ from src.run import run_mcts_test
 
 
 def run_test(**kwargs):
+    import warnings
+    warnings.simplefilter("ignore", UserWarning)
+
     args = parse_args()
 
     for k, v in kwargs.items():
@@ -22,7 +25,7 @@ def run_test(**kwargs):
     return score, runtime, args.test_data_idx
 
 
-def run_parallel_test(param_ranges, num_proc=4):
+def run_parallel_test(param_ranges, num_proc=5):
     """
     Parallel test with multiprocessing
     :param param_ranges: dict of parameter ranges. e.g. {"num_nodes": [1, 2, 3]}
@@ -149,6 +152,7 @@ def get_result_dir(run_param_dict):
 
 def main():
     num_env = 64
+    num_problems = 100
 
     run_param_dict = {
         'test_data_type': ['pkl'],
@@ -156,7 +160,6 @@ def main():
         'num_nodes': [20, 50, 100],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
-        'num_simulations': [problem_size * 2],
         'data_path': ['./data'],
         'activation': ['relu', 'swiglu'],
         'baseline': ['val', 'mean'],
