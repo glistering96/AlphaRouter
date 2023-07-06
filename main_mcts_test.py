@@ -51,6 +51,8 @@ def run_parallel_test(param_ranges, num_proc=4):
     # sort the result_dict by test_data_idx
     result_dict = dict(sorted(result_dict.items(), key=lambda x: x[0]))
 
+    num_problems = len(result_dict)
+
     avg_score = sum([result_dict[i]['score'] for i in range(num_problems)]) / num_problems
     avg_runtime = sum([result_dict[i]['runtime'] for i in range(num_problems)]) / num_problems
 
@@ -143,14 +145,15 @@ def get_result_dir(run_param_dict):
     return dir
 
 
-if __name__ == '__main__':
+def main():
     problem_size = 20
     num_problems = 100
     num_env = 64
 
-    for env_type in ['tsp']:
+    for env_type in ['cvrp']:
         for problem_size in [20, 50, 100]:
-            for activation in ['relu', 'swiglu']:
+            # for activation in ['relu', 'swiglu']:
+            for activation in ['swiglu']:
                 for baseline in ['val', 'mean']:
                     run_param_dict = {
                         'test_data_type': ['pkl'],
@@ -158,7 +161,7 @@ if __name__ == '__main__':
                         'num_nodes': [problem_size],
                         'num_parallel_env': [num_env],
                         'test_data_idx': list(range(num_problems)),
-                        'num_simulations': [problem_size*2],
+                        'num_simulations': [problem_size * 2],
                         'data_path': ['./data'],
                         'activation': [activation],
                         'baseline': [baseline],
@@ -171,6 +174,7 @@ if __name__ == '__main__':
                         # 'load_epoch': ['epoch=1-train_score=3.79818']
                     }
 
+                    path = None
                     all_result = {}
                     all_files, ckpt_root = collect_all_checkpoints(run_param_dict)
                     result_dir = get_result_dir(run_param_dict)
@@ -196,10 +200,42 @@ if __name__ == '__main__':
 
                         all_result[file_nm] = {'result_avg': result['average'], 'result_std': result['std']}
 
-                    # write the result_dict to a json file
-                    with open(f"{path}/all_result_avg.json", 'w') as f:
-                        json.dump(all_result, f, indent=4)
+                    if path is not None:
+                        # write the result_dict to a json file
+                        with open(f"{path}/all_result_avg.json", 'w') as f:
+                            json.dump(all_result, f, indent=4)
 
+if __name__ == '__main__':
+    # main()
+    env_type = 'cvrp'
+    problem_size = 20
+    num_problems = 100 // 50
+    activation = 'swiglu'
+    baseline = 'val'
+    num_env = 64
+
+    run_param_dict = {
+        'test_data_type': ['pkl'],
+        'env_type': [env_type],
+        'num_nodes': [problem_size],
+        'num_parallel_env': [num_env],
+        'test_data_idx': list(range(num_problems)),
+        'num_simulations': [problem_size * 2],
+        'data_path': ['./data'],
+        'activation': [activation],
+        'baseline': [baseline],
+        'encoder_layer_num': [6],
+        'qkv_dim': [32],
+        'num_heads': [4],
+        'embedding_dim': [128],
+        'grad_acc': [1],
+        'num_steps_in_epoch': [100 * 1000 // num_env],
+        'load_epoch': ['epoch=0-train_score=6.82059']
+    }
+
+    for params in dict_product(run_param_dict):
+        result = run_test(**params)
+        print(result)
     # run_param_dict['num_nodes'] = problem_size
 
 

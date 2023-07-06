@@ -57,6 +57,9 @@ class CVRPEnv(gym.Env):
         self.test_data_type = kwargs.get('test_data_type')
         self._load_data_idx = 0
 
+        self.num_env = 1
+        self.pomo_size = 1
+
     def seed(self, seed):
         self._np_random, self._seed = seeding.np_random(seed)
 
@@ -115,11 +118,6 @@ class CVRPEnv(gym.Env):
 
             np.savez_compressed(file_path, xy=xy, demands=demands)
 
-        if xy.ndim == 3:
-            xy = xy.reshape(-1, 2)
-
-        demands = demands.reshape(-1, )
-
         return xy, demands
 
     def _init_rendering(self):
@@ -157,10 +155,10 @@ class CVRPEnv(gym.Env):
             self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), flags=pygame.HIDDEN)
 
     def get_reward(self):
-        if self._is_done() or self.step_reward:
-            visitng_idx = np.array(self.visiting_seq, dtype=int)[None, :]
-            dist = cal_distance(self.xy[None, :], visitng_idx)
-            return -float(dist)
+        if self._is_done().all() or self.step_reward:
+            visitng_idx = np.concatenate(self.visiting_seq, axis=2)  # (num_env, num_nodes)
+            dist = cal_distance(self.xy, visitng_idx, axis=2)
+            return dist
 
         else:
             return 0
@@ -174,32 +172,27 @@ class CVRPEnv(gym.Env):
         else:
             self.xy, self.demand = self._load_problem()
 
-        init_depot = 0
-        self.pos = init_depot
-        self.visited = np.zeros(self.action_size, dtype=bool)
-        self.visited[self.pos] = True
+        self.pos = None
+        self.visited = np.zeros((self.num_env, self.pomo_size, self.action_size), dtype=bool)
+
         self.visiting_seq = []
-        self.load = np.ones(1, dtype=np.float32)
 
-        self.visiting_seq.append(init_depot)
-        self.available = np.ones(self.action_size, dtype=bool)
-        self.available[init_depot] = False  # for the initial depot
+        self.available = np.ones((self.num_env, self.pomo_size, self.action_size),
+                                 dtype=bool)  # all nodes are available at the beginning
 
-        self._init_rendering()
+        self.load = np.ones((self.num_env, self.pomo_size, 1), dtype=np.float16)  # all vehicles start with full load
         self.t = 0
 
-        obs = self._get_obs()
+        obs = self._get_obs()  # this must come after resetting all the fields
 
         return obs, {}
 
     def _is_on_depot(self):
-        return self.pos == 0
+        return (self.pos == 0).squeeze(-1)
 
     def step(self, action):
-        # action: (1, )
-
-        if action != 0:
-            assert action not in self.visiting_seq, f"visited nodes: {self.visiting_seq}, selected node: {action}"
+        # action: (num_env, pomo_size)
+        action = np.array([[[action]]]).astype(np.int64)
 
         # update the current pos
         self.pos = action
@@ -209,22 +202,28 @@ class CVRPEnv(gym.Env):
 
         # check on depot
         on_depot = self._is_on_depot()
+        # on_depot: (num_env, pomo_size, 1)
 
         # get the demands of the current node
-        demand = self.demand[action]
+        demand = np.take_along_axis(self.demand[:, None, :], self.pos, axis=2)
+        # demand: (num_env, pomo_size, 1)
 
         # update load
         self.load -= demand
 
-        # if on depot, refill
-        if on_depot:
-            self.load = np.ones(1, dtype=np.float32)
+        # reload the vehicles that are o
+        # depot
+        # self.load = np.where(on_depot[:, :, None], self.load, 1)
+        self.load[on_depot] = 1
 
         # update visited nodes
-        self.visited[action] = True
+        # self.visited[action] = True
+        np.put_along_axis(self.visited, action, True, axis=2)
 
-        if not on_depot:
-            self.visited[0] = False
+        # depot is always set as not visited if the vehicle is not on the depot
+        # here 0 is the depot idx
+        self.visited[~on_depot, 0] = False
+        # self.visited = np.where(~on_depot[:, :, None], self.visited, False)
 
         # assign avail to field
         self.available, done = self.get_avail_mask()
@@ -240,25 +239,24 @@ class CVRPEnv(gym.Env):
         return obs, reward, done, False, info
 
     def _is_done(self):
-        done_flag = (self.visited[:] == True).all()
-        return bool(done_flag)
+        # here 1 is depot
+        done_flag = (self.visited[:, :, 1:] == True).all(axis=-1)
+        return done_flag
 
     def get_avail_mask(self):
         # get a copy of avail
         avail = ~self.visited.copy()
 
-        # mark unavail for nodes that need more demands
-        unreachable = self.load < self.demand
-        avail[unreachable] = False
+        # mark unavail for nodes where the demands are larger than the current load
+        unreachable = self.load + 1e-6 < self.demand[:, None, :]
+
+        # mark unavail for nodes in which the demands cannot be fulfilled
+        avail = avail & ~unreachable
 
         done = self._is_done()
 
-        # depot is unavailable if finished
-        if done:
-            avail[0] = True
-
-        if not self._is_on_depot():
-            avail[0] = True
+        # for done episodes, set the depot as available
+        avail[done, 0] = True
 
         return avail, done
 
