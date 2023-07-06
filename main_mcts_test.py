@@ -201,8 +201,7 @@ def main():
         with open(f"{path}/all_result_avg.json", 'w') as f:
             json.dump(all_result, f, indent=4)
 
-if __name__ == '__main__':
-    # main()
+def debug():
     env_type = 'cvrp'
     problem_size = 20
     num_problems = 100 // 50
@@ -232,6 +231,10 @@ if __name__ == '__main__':
     for params in dict_product(run_param_dict):
         result = run_test(**params)
         print(result)
+
+if __name__ == '__main__':
+    main()
+
     # run_param_dict['num_nodes'] = problem_size
 
 
