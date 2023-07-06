@@ -69,7 +69,12 @@ class RolloutBase:
     def _load_model(self, ckpt_name):
         # if on debug mode, remove the debug prefix on the self.result_folder
         checkpoint_fullname = self.dir_parser.get_model_checkpoint(ckpt_name=ckpt_name)
-        checkpoint = torch.load(checkpoint_fullname, map_location=self.device)
+        try:
+            checkpoint = torch.load(checkpoint_fullname, map_location=self.device)
+
+        except:
+            print(f"Error in loading: {checkpoint_fullname}")
+            raise FileNotFoundError
 
         self.start_epoch = checkpoint['epoch'] + 1
         self.epochs = self.run_params['nn_train_epochs'] - self.start_epoch + 1

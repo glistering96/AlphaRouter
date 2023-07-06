@@ -97,6 +97,13 @@ class CVRPEnv(gym.Env):
 
         else:
             raise ValueError(f"Invalid file extension for loading data: {ext}")
+
+        if xy.ndim == 2:
+            xy = xy.reshape(1, -1, 2)
+
+        if demands.ndim == 2:
+            demands = demands.reshape(1, -1)
+
         return xy, demands
 
     def _load_problem(self):

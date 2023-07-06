@@ -103,6 +103,9 @@ class TSPEnv(gym.Env):
 
             np.savez_compressed(file_path, xy=xy, demands=None)
 
+        if xy.ndim == 2:
+            xy = xy.reshape(1, -1, 2)
+
         return xy
 
     def _init_rendering(self):
@@ -133,7 +136,7 @@ class TSPEnv(gym.Env):
             # Define font
 
     def get_reward(self):
-        if self._is_done() or self.step_reward or self.t > 0:
+        if (self._is_done() or self.step_reward) and self.t > 0:
             # batch_size, pomo_size = self.pos.shape
             visitng_idx = np.concatenate(self.visiting_seq, axis=2)
             # (num_env, pomo_size, num_nodes):

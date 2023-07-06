@@ -54,7 +54,7 @@ if __name__ == '__main__':
         'qkv_dim' : 32,
         'num_heads': 4,
         'load_from_the_latest' : False,
-        'env_type' : 'tsp',
+        'env_type' : 'cvrp',
         'embedding_dim': 128,
         'encoder_layer_num': 6,
         'nn_train_epochs': 50,

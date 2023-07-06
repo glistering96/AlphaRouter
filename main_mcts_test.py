@@ -31,7 +31,6 @@ def run_parallel_test(param_ranges, num_proc=5):
     :param param_ranges: dict of parameter ranges. e.g. {"num_nodes": [1, 2, 3]}
 
     """
-
     result_dict = {}
     async_result = mp.Queue()
 
@@ -41,7 +40,13 @@ def run_parallel_test(param_ranges, num_proc=5):
     pool = mp.Pool(num_proc)
 
     for params in dict_product(param_ranges):
-        pool.apply_async(run_test, kwds=params, callback=__callback)
+        all_files, ckpt_root = collect_all_checkpoints(params)
+        all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
+
+        for ckpt in all_checkpoints:
+            params['load_from'] = ckpt
+
+            pool.apply_async(run_test, kwds=params, callback=__callback)
 
     pool.close()
     pool.join()
@@ -117,22 +122,18 @@ def run_cross_test():
     print(avg_result)
 
 
-def collect_all_checkpoints(run_param_dict):
-    all_files = []
+def collect_all_checkpoints(params):
+    args = parse_args()
 
-    for params in dict_product(run_param_dict):
-        args = parse_args()
+    for k, v in params.items():
+        setattr(args, k, v)
 
-        for k, v in params.items():
-            setattr(args, k, v)
+    ckpt_root = DirParser(args).get_model_checkpoint()
 
-        ckpt_root = DirParser(args).get_model_checkpoint()
+    all_files = glob(ckpt_root + '/*.ckpt')
 
-        all_files = glob(ckpt_root + '/*.ckpt')
-
-        # get the checkpoint with minimum train_score from the all_files
-        all_files = list(sorted(all_files, key=lambda x: float(x.split('train_score=')[1].split('.ckpt')[0])))
-        break
+    # get the checkpoint with minimum train_score from the all_files
+    all_files = list(sorted(all_files, key=lambda x: float(x.split('train_score=')[1].split('.ckpt')[0])))
 
     return all_files, ckpt_root
 
@@ -169,8 +170,7 @@ def main():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'cpuct': [0.8, 1.0, 1.1, 1.2, 1.5, 2],
-        # 'load_epoch': ['epoch=1-train_score=3.79818']
+        'cpuct': [0.8, 1.0, 1.1, 1.2, 1.5, 2]
     }
 
     path = None
@@ -182,7 +182,7 @@ def main():
         load_epoch = all_files[k]
         run_param_dict['load_epoch'] = [load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]]
 
-        result = run_parallel_test(run_param_dict, 4)
+        result = run_parallel_test(run_param_dict, 5)
 
         # save the result as json file
         print(f"{load_epoch}: {result['average']}")
@@ -204,40 +204,47 @@ def main():
         with open(f"{path}/all_result_avg.json", 'w') as f:
             json.dump(all_result, f, indent=4)
 
+
 def debug():
-    env_type = 'cvrp'
-    problem_size = 20
-    num_problems = 100 // 50
-    activation = 'swiglu'
-    baseline = 'val'
     num_env = 64
+    num_problems = 2
+    path = None
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': [env_type],
-        'num_nodes': [problem_size],
+        'env_type': ['tsp', 'cvrp'],
+        'num_nodes': [20, 50, 100],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
-        'num_simulations': [problem_size * 2],
         'data_path': ['./data'],
-        'activation': [activation],
-        'baseline': [baseline],
+        'activation': ['relu', 'swiglu'],
+        'baseline': ['val', 'mean'],
         'encoder_layer_num': [6],
         'qkv_dim': [32],
         'num_heads': [4],
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'load_epoch': ['epoch=0-train_score=6.82059']
+        'cpuct': [0.8, 1.0, 1.1, 1.2, 1.5, 2]
     }
 
     for params in dict_product(run_param_dict):
-        result = run_test(**params)
-        print(result)
+        try:
+            all_files, ckpt_root = collect_all_checkpoints(params)
+            all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
+
+            for ckpt in all_checkpoints:
+                params['load_epoch'] = ckpt
+                result = run_test(**params)
+                print(ckpt)
+            # params['load_epoch'] = all_files[0].split('/')[-1].split('\\')[-1].split('.ckpt')[0]
+
+        except FileNotFoundError as e:
+            print(e)
 
 if __name__ == '__main__':
-    main()
-
+    # main()
+    debug()
     # run_param_dict['num_nodes'] = problem_size
 
 
