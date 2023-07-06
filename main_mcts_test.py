@@ -15,6 +15,8 @@ def run_test(**kwargs):
     for k, v in kwargs.items():
         setattr(args, k, v)
 
+    args.num_simulations = args.num_nodes * 2
+
     score, runtime = run_mcts_test(args)
 
     return score, runtime, args.test_data_idx
@@ -146,64 +148,58 @@ def get_result_dir(run_param_dict):
 
 
 def main():
-    problem_size = 20
-    num_problems = 100
     num_env = 64
 
-    for env_type in ['cvrp']:
-        for problem_size in [20, 50, 100]:
-            # for activation in ['relu', 'swiglu']:
-            for activation in ['swiglu']:
-                for baseline in ['val', 'mean']:
-                    run_param_dict = {
-                        'test_data_type': ['pkl'],
-                        'env_type': [env_type],
-                        'num_nodes': [problem_size],
-                        'num_parallel_env': [num_env],
-                        'test_data_idx': list(range(num_problems)),
-                        'num_simulations': [problem_size * 2],
-                        'data_path': ['./data'],
-                        'activation': [activation],
-                        'baseline': [baseline],
-                        'encoder_layer_num': [6],
-                        'qkv_dim': [32],
-                        'num_heads': [4],
-                        'embedding_dim': [128],
-                        'grad_acc': [1],
-                        'num_steps_in_epoch': [100 * 1000 // num_env],
-                        # 'load_epoch': ['epoch=1-train_score=3.79818']
-                    }
+    run_param_dict = {
+        'test_data_type': ['pkl'],
+        'env_type': ['tsp', 'cvrp'],
+        'num_nodes': [20, 50, 100],
+        'num_parallel_env': [num_env],
+        'test_data_idx': list(range(num_problems)),
+        'num_simulations': [problem_size * 2],
+        'data_path': ['./data'],
+        'activation': ['relu', 'swiglu'],
+        'baseline': ['val', 'mean'],
+        'encoder_layer_num': [6],
+        'qkv_dim': [32],
+        'num_heads': [4],
+        'embedding_dim': [128],
+        'grad_acc': [1],
+        'num_steps_in_epoch': [100 * 1000 // num_env],
+        'cpuct': [0.8, 1.0, 1.1, 1.2, 1.5, 2],
+        # 'load_epoch': ['epoch=1-train_score=3.79818']
+    }
 
-                    path = None
-                    all_result = {}
-                    all_files, ckpt_root = collect_all_checkpoints(run_param_dict)
-                    result_dir = get_result_dir(run_param_dict)
+    path = None
+    all_result = {}
+    all_files, ckpt_root = collect_all_checkpoints(run_param_dict)
+    result_dir = get_result_dir(run_param_dict)
 
-                    for k in range(len(all_files)):
-                        load_epoch = all_files[k]
-                        run_param_dict['load_epoch'] = [load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]]
+    for k in range(len(all_files)):
+        load_epoch = all_files[k]
+        run_param_dict['load_epoch'] = [load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]]
 
-                        result = run_parallel_test(run_param_dict, 4)
+        result = run_parallel_test(run_param_dict, 4)
 
-                        # save the result as json file
-                        print(f"{load_epoch}: {result['average']}")
-                        path = f"./result_summary/{result_dir}"
+        # save the result as json file
+        print(f"{load_epoch}: {result['average']}")
+        path = f"./result_summary/{result_dir}"
 
-                        if not Path(path).exists():
-                            Path(path).mkdir(parents=True, exist_ok=False)
+        if not Path(path).exists():
+            Path(path).mkdir(parents=True, exist_ok=False)
 
-                        # write the result_dict to a json file
-                        file_nm = load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]
+        # write the result_dict to a json file
+        file_nm = load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]
 
-                        with open(f"{path}/{file_nm}.json", 'w') as f:
-                            json.dump(result, f, indent=4)
+        with open(f"{path}/{file_nm}.json", 'w') as f:
+            json.dump(result, f, indent=4)
 
-                        all_result[file_nm] = {'result_avg': result['average'], 'result_std': result['std']}
+        all_result[file_nm] = {'result_avg': result['average'], 'result_std': result['std']}
 
-                    if path is not None:
-                        # write the result_dict to a json file
-                        with open(f"{path}/all_result_avg.json", 'w') as f:
-                            json.dump(all_result, f, indent=4)
+    if path is not None:
+        # write the result_dict to a json file
+        with open(f"{path}/all_result_avg.json", 'w') as f:
+            json.dump(all_result, f, indent=4)
 
 if __name__ == '__main__':
     # main()
