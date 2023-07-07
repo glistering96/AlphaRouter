@@ -3,17 +3,18 @@ import json
 import logging
 import os
 import random
-import shutil
 import sys
 import time
 from copy import deepcopy
-from dataclasses import fields
 from datetime import datetime
+from glob import glob
 
 import numpy as np
 import pytz
 import torch
 from torch.utils.tensorboard.summary import hparams
+
+
 
 
 class TimeEstimator:
@@ -208,6 +209,57 @@ def load_json(path):
     return data
 
 
+def cal_average_std(result_dict):
+    result_dict = deepcopy(result_dict)
+
+    # sort the result_dict by test_data_idx
+    result_dict = dict(sorted(result_dict.items(), key=lambda x: x[0]))
+
+    num_problems = len(result_dict)
+
+    avg_score = sum([result_dict[i]['score'] for i in range(num_problems)]) / num_problems
+    avg_runtime = sum([result_dict[i]['runtime'] for i in range(num_problems)]) / num_problems
+
+    std_score = sum([(result_dict[i]['score'] - avg_score) ** 2 for i in range(num_problems)]) / num_problems
+    std_runtime = sum([(result_dict[i]['runtime'] - avg_runtime) ** 2 for i in range(num_problems)]) / num_problems
+
+    result_dict['average'] = {'score': avg_score, 'runtime': avg_runtime}
+    result_dict['std'] = {'score': std_score, 'runtime': std_runtime}
+
+    return result_dict
+
+
+def collect_all_checkpoints(params):
+    from src.common.dir_parser import DirParser
+    from src.run import parse_args
+
+    args = parse_args()
+
+    for k, v in params.items():
+        setattr(args, k, v)
+
+    ckpt_root = DirParser(args).get_model_checkpoint()
+
+    all_files = glob(ckpt_root + '/*.ckpt')
+
+    # get the checkpoint with minimum train_score from the all_files
+    all_files = list(sorted(all_files, key=lambda x: float(x.split('train_score=')[1].split('.ckpt')[0])))
+
+    return all_files, ckpt_root
+
+
+def get_result_dir(params, mcts=False):
+    from src.common.dir_parser import DirParser
+    from src.run import parse_args
+
+    args = parse_args()
+
+    for k, v in params.items():
+        setattr(args, k, v)
+
+    dir = DirParser(args).get_result_dir(mcts=mcts)
+
+    return dir
 
 
 

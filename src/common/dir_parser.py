@@ -1,6 +1,3 @@
-from src.common.utils import check_debug
-
-
 class DirParser:
     def __init__(self, args):
         self._env_param_nm = f"{args.env_type}/N_{args.num_nodes}-B_{args.num_parallel_env}"
@@ -20,6 +17,7 @@ class DirParser:
         return f"{self.tb_log_dir}/{model_root_dir_without_dot}"
 
     def get_model_root_dir(self):
+        from src.common.utils import check_debug
         main_dir = "pretrained_result" if not check_debug() else "debug"
         return f"./{main_dir}/{self._common_part}"
 

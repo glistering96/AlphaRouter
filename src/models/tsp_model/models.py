@@ -1,10 +1,8 @@
-import math
-
 import torch
+import torch.nn as nn
 from torch.distributions import Categorical
 
 from src.models.model_common import get_encoding, _to_tensor, Encoder, Decoder, Value, Policy
-import torch.nn as nn
 
 
 class TSPModel(nn.Module):

@@ -1,14 +1,15 @@
 from argparse import ArgumentParser
 
+import lightning.pytorch as pl
 import torch.utils.data
+from lightning.pytorch import loggers as pl_loggers
 
 from src.common.dir_parser import DirParser
 from src.common.utils import get_param_dict
 from src.mcts_tester import MCTSTesterModule
 from src.pretrain_model.pretrain_tester import AMTesterModule
 from src.pretrain_model.pretrainer_module_pl import AMTrainer
-import lightning.pytorch as pl
-from lightning.pytorch import loggers as pl_loggers
+
 
 def parse_args():
     parser = ArgumentParser()

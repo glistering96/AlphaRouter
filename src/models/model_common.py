@@ -1,9 +1,9 @@
 import math
 
+import numpy as np
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch
-import numpy as np
 
 
 def get_encoding(encoded_nodes, node_index_to_pick):
