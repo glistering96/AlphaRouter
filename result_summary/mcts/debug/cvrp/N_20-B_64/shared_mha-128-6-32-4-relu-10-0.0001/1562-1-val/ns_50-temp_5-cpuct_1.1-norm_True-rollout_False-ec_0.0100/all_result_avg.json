@@ -1,0 +1,12 @@
+{
+    "epoch=197-train_score=6.06552": {
+        "result_avg": {
+            "score": 5.996316909790039,
+            "runtime": 2.753961205482483
+        },
+        "result_std": {
+            "score": 0.0,
+            "runtime": 3.12537764557419e-08
+        }
+    }
+}
