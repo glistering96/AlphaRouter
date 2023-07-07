@@ -111,7 +111,7 @@ class CVRPEnv(gym.Env):
             file_path = f"{self.data_path}/cvrp/N_{self.test_num}.npz"
 
         else:
-            file_path = f"{self.data_path}/cvrp/cvrp{self.test_num}_test_seed1234.pkl"
+            file_path = f"{self.data_path}/cvrp/vrp{self.test_num}_test_seed1234.pkl"
 
         if os.path.isfile(file_path):
             xy, demands = self._load_data(file_path)

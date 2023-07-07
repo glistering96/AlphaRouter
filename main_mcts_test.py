@@ -25,6 +25,7 @@ def run_test(**kwargs):
 
     return score, runtime, args.test_data_idx, kwargs['load_epoch'], kwargs['result_dir']
 
+
 def run_parallel_test(param_ranges, num_proc=5):
     """
     Parallel test with multiprocessing
@@ -49,7 +50,7 @@ def run_parallel_test(param_ranges, num_proc=5):
             input_params['load_epoch'] = ckpt
             input_params['result_dir'] = result_dir
 
-            pool.apply_async(run_test, kwds=params, callback=__callback)
+            pool.apply_async(run_test, kwds=input_params, callback=__callback)
 
     pool.close()
     pool.join()
@@ -157,37 +158,35 @@ def main():
     for num_nodes in [20, 50, 100]:
         run_param_dict['num_nodes'] = [num_nodes]
 
-        result = run_parallel_test(run_param_dict, 5)
+        result = run_parallel_test(run_param_dict, 10)
 
         path_format = "./result_summary/mcts"
 
         for result_dir in result.keys():
             all_result = {}
+            path = f"{path_format}/{result_dir}"
+
+            if not Path(path).exists():
+                Path(path).mkdir(parents=True, exist_ok=False)
 
             for load_epoch in result[result_dir].keys():
-                # save the result as json file
-                path = f"{path_format}/{result_dir}"
-
-                if not Path(path).exists():
-                    Path(path).mkdir(parents=True, exist_ok=False)
-
                 # write the result_dict to a json file
                 save_json(result[result_dir][load_epoch], f"{path}/{load_epoch}.json")
 
-                all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'], 'result_std': result[result_dir][load_epoch]['std']}
+                all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'],
+                                          'result_std': result[result_dir][load_epoch]['std']}
 
-                save_json(all_result, f"{path}/all_result_avg.json")
+            save_json(all_result, f"{path}/all_result_avg.json")
+
 
 def debug():
     num_env = 64
     num_problems = 2
-    path = None
 
     run_param_dict = {
         'test_data_type': ['pkl'],
         'env_type': ['tsp', 'cvrp'],
-        # 'num_nodes': [20, 50, 100],
-        'num_nodes': [20],
+        'num_nodes': [20, 50, 100],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
@@ -202,46 +201,32 @@ def debug():
         'cpuct': [1.1]
     }
 
-    # for params in dict_product(run_param_dict):
-    #     try:
-    #         all_files, ckpt_root = collect_all_checkpoints(params)
-    #         all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
-    #
-    #         for ckpt in all_checkpoints:
-    #             params['load_epoch'] = ckpt
-    #             result = run_test(**params)
-    #             print(ckpt)
-    #         # params['load_epoch'] = all_files[0].split('/')[-1].split('\\')[-1].split('.ckpt')[0]
-    #
-    #     except FileNotFoundError as e:
-    #         print(e)
+    for num_nodes in [20, 50]:
+        run_param_dict['num_nodes'] = [num_nodes]
 
-    result = run_parallel_test(run_param_dict, 5)
-    path_format = "./result_summary/mcts"
+        result = run_parallel_test(run_param_dict, 10)
 
-    for result_dir in result.keys():
-        all_result = {}
+        path_format = "./result_summary/mcts"
 
-        for load_epoch in result[result_dir].keys():
-            # save the result as json file
-            print(f"{result_dir}/{load_epoch}: {result[result_dir][load_epoch]['average']}")
+        for result_dir in result.keys():
+            all_result = {}
             path = f"{path_format}/{result_dir}"
 
             if not Path(path).exists():
                 Path(path).mkdir(parents=True, exist_ok=False)
 
-            # write the result_dict to a json file
-            save_json(result[result_dir][load_epoch], f"{path}/{load_epoch}.json")
+            for load_epoch in result[result_dir].keys():
+                # write the result_dict to a json file
+                save_json(result[result_dir][load_epoch], f"{path}/{load_epoch}.json")
 
-            all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'], 'result_std': result[result_dir][load_epoch]['std']}
+                all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'],
+                                          'result_std': result[result_dir][load_epoch]['std']}
 
             save_json(all_result, f"{path}/all_result_avg.json")
 
-    return all_result
-
 if __name__ == '__main__':
-    main()
-    # debug()
+    # main()
+    debug()
     # run_param_dict['num_nodes'] = problem_size
 
 

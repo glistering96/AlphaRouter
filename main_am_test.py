@@ -109,14 +109,12 @@ def main():
 
         for result_dir in result.keys():
             all_result = {}
+            path = f"{path_format}/{result_dir}"
+
+            if not Path(path).exists():
+                Path(path).mkdir(parents=True, exist_ok=False)
 
             for load_epoch in result[result_dir].keys():
-                # save the result as json file
-                path = f"{path_format}/{result_dir}"
-
-                if not Path(path).exists():
-                    Path(path).mkdir(parents=True, exist_ok=False)
-
                 # write the result_dict to a json file
                 save_json(result[result_dir][load_epoch], f"{path}/{load_epoch}.json")
 
@@ -147,27 +145,27 @@ def debug():
         'num_steps_in_epoch': [100 * 1000 // num_env]
     }
 
-    result = run_parallel_test(run_param_dict, 10)
+    for num_nodes in [20, 50, 100]:
+        run_param_dict['num_nodes'] = [num_nodes]
+        result = run_parallel_test(run_param_dict, 10)
 
-    path_format = "./result_summary/am"
-    all_result = {}
+        path_format = "./result_summary/am"
 
-    for result_dir in result.keys():
-        for load_epoch in result[result_dir].keys():
-            # save the result as json file
-            print(f"{result_dir}/{load_epoch}: {result[result_dir][load_epoch]['average']}")
+        for result_dir in result.keys():
+            all_result = {}
             path = f"{path_format}/{result_dir}"
 
             if not Path(path).exists():
                 Path(path).mkdir(parents=True, exist_ok=False)
 
-            # write the result_dict to a json file
-            save_json(result[result_dir][load_epoch], f"{path}/{load_epoch}.json")
+            for load_epoch in result[result_dir].keys():
+                # write the result_dict to a json file
+                save_json(result[result_dir][load_epoch], f"{path}/{load_epoch}.json")
 
-            all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'],
-                                      'result_std': result[result_dir][load_epoch]['std']}
+                all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'],
+                                          'result_std': result[result_dir][load_epoch]['std']}
 
-        save_json(all_result, f"{path}/all_result_avg.json")
+            save_json(all_result, f"{path}/all_result_avg.json")
 
 
 
