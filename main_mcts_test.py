@@ -185,7 +185,7 @@ def main():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['cvrp'],
+        'env_type': ['tsp', 'cvrp'],
         'num_nodes': [20, 50, 100],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -210,7 +210,7 @@ def main():
     for result_dir in result.keys():
         for load_epoch in result[result_dir].keys():
             # save the result as json file
-            print(f"{load_epoch}: {result[result_dir][load_epoch]['average']}")
+            print(f"{result_dir}/{load_epoch}: {result[result_dir][load_epoch]['average']}")
             path = f"{path_format}/{result_dir}"
 
             if not Path(path).exists():
@@ -222,27 +222,6 @@ def main():
             all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'], 'result_std': result[result_dir][load_epoch]['std']}
 
             save_json(all_result, f"{path}/all_result_avg.json")
-    #
-    # # save the result as json file
-    # print(f"{load_epoch}: {result['average']}")
-    # path = f"./result_summary/{result_dir}"
-    #
-    # if not Path(path).exists():
-    #     Path(path).mkdir(parents=True, exist_ok=False)
-    #
-    # # write the result_dict to a json file
-    # file_nm = load_epoch.split('/')[-1].split('\\')[-1].split('.ckpt')[0]
-    #
-    # with open(f"{path}/{file_nm}.json", 'w') as f:
-    #     json.dump(result, f, indent=4)
-    #
-    # all_result[file_nm] = {'result_avg': result['average'], 'result_std': result['std']}
-    #
-    # if path is not None:
-    #     # write the result_dict to a json file
-    #     with open(f"{path}/all_result_avg.json", 'w') as f:
-    #         json.dump(all_result, f, indent=4)
-
 
 def debug():
     num_env = 64
