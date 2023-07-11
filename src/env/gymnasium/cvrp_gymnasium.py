@@ -88,10 +88,19 @@ class CVRPEnv(gym.Env):
 
         elif ext == 'pkl':
             with open(filepath, 'rb') as f:
-                depot_xy, node_xy, node_demand, capacity = pickle.load(f)
-                xy = np.array([depot_xy, node_xy], dtype=np.float32)[self._load_data_idx, :]
-                demands = np.array([[0, 1], node_demand], dtype=np.float32) / capacity
-                demands = demands[self._load_data_idx, :]
+                loaded_data = pickle.load(f)
+                # loaded_data: [(depot_xy, node_xy, node_demand, capacity), (...), ...]
+                depot_xy, node_xy, node_demand, capacity = loaded_data[self._load_data_idx]
+
+                depot_xy = np.array(depot_xy, dtype=np.float32).reshape(-1, 2)
+                node_xy = np.array(node_xy, dtype=np.float32)
+
+                xy = np.concatenate([depot_xy, node_xy])
+
+                node_demands = np.array(node_demand, dtype=np.float32) / capacity
+                depot_demands = np.array([0.0 for _ in range(self.num_depots)], dtype=np.float32)
+
+                demands = np.concatenate([depot_demands, node_demands])
 
             self._load_data_idx += 1
 
@@ -101,7 +110,7 @@ class CVRPEnv(gym.Env):
         if xy.ndim == 2:
             xy = xy.reshape(1, -1, 2)
 
-        if demands.ndim == 2:
+        if demands.ndim < 2:
             demands = demands.reshape(1, -1)
 
         return xy, demands
