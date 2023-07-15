@@ -1,0 +1,52 @@
+{
+    "epoch=85-train_score=5.99531": {
+        "result_avg": {
+            "score": 6.7435622215271,
+            "runtime": 1.7148400449752808
+        },
+        "result_std": {
+            "score": 0.0,
+            "runtime": 0.0012857437451389386
+        }
+    },
+    "epoch=171-train_score=6.04508": {
+        "result_avg": {
+            "score": 6.801358823776245,
+            "runtime": 1.7164900755882264
+        },
+        "result_std": {
+            "score": 0.0052970865518210284,
+            "runtime": 0.002552144528084108
+        }
+    },
+    "epoch=133-train_score=6.05230": {
+        "result_avg": {
+            "score": 6.5530589580535885,
+            "runtime": 1.6947899985313415
+        },
+        "result_std": {
+            "score": 0.0037165385236471644,
+            "runtime": 0.0018479660227279223
+        }
+    },
+    "epoch=181-train_score=6.09711": {
+        "result_avg": {
+            "score": 6.575750617980957,
+            "runtime": 1.7395599007606506
+        },
+        "result_std": {
+            "score": 9.198415865430442e-05,
+            "runtime": 0.0015174725200374434
+        }
+    },
+    "epoch=135-train_score=6.10468": {
+        "result_avg": {
+            "score": 6.958422508239746,
+            "runtime": 1.722910053730011
+        },
+        "result_std": {
+            "score": 0.0003828953437681775,
+            "runtime": 0.001341228424606078
+        }
+    }
+}

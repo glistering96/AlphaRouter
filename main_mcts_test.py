@@ -38,22 +38,36 @@ def run_parallel_test(param_ranges, num_proc=5):
     def __callback(val):
         async_result.put(val)
 
-    pool = mp.Pool(num_proc)
+    if num_proc > 1:
+        pool = mp.Pool(num_proc)
 
-    for params in dict_product(param_ranges):
-        all_files, ckpt_root = collect_all_checkpoints(params)
-        all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
-        result_dir = get_result_dir(params, mcts=True)
+        for params in dict_product(param_ranges):
+            all_files, ckpt_root = collect_all_checkpoints(params)
+            all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
+            result_dir = get_result_dir(params, mcts=True)
 
-        for ckpt in all_checkpoints:
-            input_params = deepcopy(params)
-            input_params['load_epoch'] = ckpt
-            input_params['result_dir'] = result_dir
+            for ckpt in all_checkpoints:
+                input_params = deepcopy(params)
+                input_params['load_epoch'] = ckpt
+                input_params['result_dir'] = result_dir
 
-            pool.apply_async(run_test, kwds=input_params, callback=__callback)
+                pool.apply_async(run_test, kwds=input_params, callback=__callback)
 
-    pool.close()
-    pool.join()
+        pool.close()
+        pool.join()
+
+    else:
+        for params in dict_product(param_ranges):
+            all_files, ckpt_root = collect_all_checkpoints(params)
+            all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
+            result_dir = get_result_dir(params, mcts=True)
+
+            for ckpt in all_checkpoints:
+                input_params = deepcopy(params)
+                input_params['load_epoch'] = ckpt
+                input_params['result_dir'] = result_dir
+
+                async_result.put(run_test(**input_params))
 
     if async_result.empty():
         return
@@ -139,7 +153,7 @@ def main():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp', 'cvrp'],
+        'env_type': ['cvrp'],
         'num_nodes': [20, 50, 100],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -158,7 +172,7 @@ def main():
     for num_nodes in [20, 50, 100]:
         run_param_dict['num_nodes'] = [num_nodes]
 
-        result = run_parallel_test(run_param_dict, 10)
+        result = run_parallel_test(run_param_dict, 5)
 
         path_format = "./result_summary/mcts"
 
@@ -185,7 +199,7 @@ def debug():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp', 'cvrp'],
+        'env_type': ['cvrp'],
         'num_nodes': [20, 50, 100],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -204,8 +218,7 @@ def debug():
     for num_nodes in [20, 50]:
         run_param_dict['num_nodes'] = [num_nodes]
 
-        result = run_parallel_test(run_param_dict, 10)
-
+        result = run_parallel_test(run_param_dict, 1)
         path_format = "./result_summary/mcts"
 
         for result_dir in result.keys():
@@ -225,31 +238,6 @@ def debug():
             save_json(all_result, f"{path}/all_result_avg.json")
 
 if __name__ == '__main__':
-    # main()
     debug()
-    # run_param_dict['num_nodes'] = problem_size
-
-
-
-    # result_dict = {}
-    #
-    # for i in range(num_problems):
-    #     run_param_dict['test_data_idx'] = i
-    #     score, runtime, i = run_test(**run_param_dict)
-    #
-    #     result_dict[i] = {'score': score, 'runtime': runtime}
-    #
-    # if not Path(f"./result_summary/").exists():
-    #     Path(f"./result_summary/").mkdir(parents=True, exist_ok=False)
-    #
-    # # write the result_dict to a json file
-    # with open(f"./result_summary/{run_param_dict['env_type']}_{problem_size}_test_result.json", 'w') as f:
-    #     json.dump(result_dict, f, indent=4)
-    #
-
-    # for load_epoch in list(range(400000, 500000, 5000)) + ['best', 'best_val_loss']:
-    #     run_param_dict['load_epoch'] = [load_epoch]
-    #     run_parallel_test(run_param_dict, num_proc=4)
-
-    # run_cross_test()
+    main()
 
