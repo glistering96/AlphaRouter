@@ -45,22 +45,24 @@ def test_one_episode(env, agent, mcts_params, temp):
     obs, _ = env.reset()
     done = False
     agent.eval()
-    debug = 0
 
     agent.encoding = None
 
     start = time.time()
+    mcts = MCTS(env, agent, mcts_params, training=False)
 
     with torch.no_grad():
+        action_probs, _ = agent(obs)
+        action = int(np.argmax(action_probs.cpu(), -1))  # type must be python native
+        obs, _, done, _, _ = env.step(obs, action)
+
         while not done:
-            mcts = MCTS(env, agent, mcts_params, training=False)
             action_probs = mcts.get_action_prob(obs, temp=temp)
             action = int(np.argmax(action_probs, -1))  # type must be python native
 
-            next_state, reward, done, _, _ = env.step(action)
+            next_state, reward, done, _, _ = env.step(obs, action)
 
             obs = next_state
-            debug += 1
 
             if done:
                 return reward, time.time() - start

@@ -70,7 +70,8 @@ class CVRPModel(nn.Module):
             cur_node_encoding = get_encoding(self.encoding, selected[:, :, None])
             mh_attn_out = self.decoder(cur_node_encoding, load=load, mask=mask)
             
-        elif obs['t'] == 1:
+        elif batch_size != 1 and obs['t'] == 1:
+            # do not use the below method when using MCTS, in which case batch_size is 1
             selected = torch.arange(start=1, end=pomo_size + 1)[None, :].expand(batch_size, pomo_size).to(self.device)
             probs = torch.zeros(batch_size, pomo_size, N).to(self.device)
             probs = probs.scatter(2, selected[:, :, None], 1)   # assign prob 1 to the next nodes for each pomo

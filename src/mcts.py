@@ -17,8 +17,7 @@ class MCTS():
     """
 
     def __init__(self, env, model, mcts_params, training=True):
-
-        self.env = deepcopy(env)
+        self.env = env
         self.env_type = env.env_type
         self.model = model
         self.mcts_params = mcts_params
@@ -39,13 +38,6 @@ class MCTS():
 
         self.max_q_val = -float('inf')
         self.min_q_val = float('inf')
-
-        if isinstance(self.env, RecordVideo):
-            self.env = self.env.env
-
-        self.target_env_address = self.env
-
-        self._save_state_field()
 
     def _cal_probs(self, target_state, temp):
         s = target_state['t']
@@ -69,8 +61,10 @@ class MCTS():
         Simulate and return the probability for the target state based on the visit counts acquired from simulations
         """
 
+        # obs = deepcopy(target_state)
+
         for i in range(self.mcts_params['num_simulations']):
-            self._run_simulation(target_state)
+            self._run_simulation(deepcopy(target_state))
 
         probs = self._cal_probs(target_state, temp)
         return probs
@@ -107,11 +101,21 @@ class MCTS():
         return int(a)
 
     def _expand(self, state, add_noise=False, return_action=False):
-        s = state['t']
-
         prob_dist, val = self.model(state)
+        val = val.item()
+
+        if self.env_type == 'tsp':
+            pos, visited, visiting_seq, available, s = self.env.extract_obs(state)
+            avail, _ = self.env.get_avail_mask(visited)
+
+        elif self.env_type == 'cvrp':
+            load, pos, visited, visiting_seq, available, s = self.env.extract_obs(state)
+            avail, _ = self.env.get_avail_mask(visited, load)
+
+        else:
+            raise ValueError('Invalid env type')
+
         probs = prob_dist.view(-1, ).cpu().numpy()
-        avail, _ = self.env.get_avail_mask()
         avail = avail.reshape(-1, )
 
         self.Ns[s] = 1
@@ -143,21 +147,6 @@ class MCTS():
         else:
             return val
 
-    def _cal_factor(self):
-        diff = self.max_q_val - self.min_q_val
-        # (분모, 분자)
-        if np.isinf(self.max_q_val) or np.isinf(self.min_q_val):
-            return (1, 0)
-
-        if self.max_q_val == self.min_q_val:
-            return (self.min_q_val, 0)
-
-        if not self.expand_root:
-            return diff, self.min_q_val
-
-        else:
-            return (1, 0)
-
     def _back_propagate(self, path, v):
         if isinstance(v, torch.Tensor):
             v = v.item()
@@ -175,54 +164,28 @@ class MCTS():
 
             self.Q[(s, a)] = Q_val
 
-    def _save_state_field(self):
-        self._initial_visiting_seq = deepcopy(self.env.visiting_seq)
-        self._initial_visited = deepcopy(self.env.visited)
-        self._initial_pos = deepcopy(self.env.pos)
-        self._initial_available = deepcopy(self.env.available)
-        self._initial_t = deepcopy(self.env.t)
-
-        if self.env_type == 'cvrp':
-            self._initial_load = deepcopy(self.env.load)
-
-    def _reset_env_field(self):
-        self.env.visiting_seq = deepcopy(self._initial_visiting_seq)  # type is list
-        self.env.visited = deepcopy(self._initial_visited)
-        self.env.available = deepcopy(self._initial_available)
-        self.env.t = deepcopy(self._initial_t)
-        self.env.pos = deepcopy(self._initial_pos)
-
-        if self.env_type == 'cvrp':
-            self.env.load = self._initial_load.copy()
-
     def _run_simulation(self, root_state):
         obs = root_state
-        self._reset_env_field()
         state_num = obs['t']
 
         path = []
         done = False
-        v = 0
 
-        # Initialize the first nodes
-        if self.expand_root:
-            _add_noise = True if self.training else False
-            # _add_noise = False
-            _ = self._expand(root_state, add_noise=_add_noise, return_action=False)
-            # path.append((state_num, a))
-            # self._back_propagate(path, v)
-            self.expand_root = False
+        # # Initialize the first nodes
+        # if self.expand_root:
+        #     _add_noise = True if self.training else False
+        #     # _add_noise = False
+        #     a, v = self._expand(root_state, add_noise=_add_noise, return_action=True)
+        #     path.append((state_num, a))
+        #     self._back_propagate(path, v)
+        #     self.expand_root = False
 
         # select child node and action
         while state_num in self.Ns and not done:
             a = self._select(obs)
             path.append((state_num, a))
 
-            if self.training:
-                obs, value, done, _ = self.env.step(a)
-
-            else:
-                obs, reward, done, _, _ = self.env.step(a)
+            obs, reward, done, _, _ = self.env.step(obs, a)
 
             state_num = obs['t']
 
@@ -230,29 +193,12 @@ class MCTS():
                 if len(path) > 30:
                     break
 
-        if self.rollout_game:
-            v = self._rollout_until_end(obs)
+        if not done:
+            # leaf node reached
+            v = self._expand(obs)
 
         else:
-            if not done:
-                # leaf node reached
-                v = self._expand(obs)
-
-            else:
-                # terminal node reached
-                v = reward
+            # terminal node reached
+            v = reward
 
         self._back_propagate(path, v)
-
-    def _rollout_until_end(self, obs):
-        _obs = deepcopy(obs)
-        _env = deepcopy(self.env)
-        _env.set_test_mode()
-
-        done = False
-
-        while not done:
-            a, _ = self.model.predict(obs)
-            obs, reward, done, _, _ = _env.step(a)
-
-        return reward

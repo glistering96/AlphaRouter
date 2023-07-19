@@ -1,4 +1,5 @@
 import json
+import math
 from copy import deepcopy
 from pathlib import Path
 
@@ -17,7 +18,7 @@ def run_test(**kwargs):
     for k, v in kwargs.items():
         setattr(args, k, v)
 
-    args.num_simulations = args.num_nodes * 2
+    # args.num_simulations = args.num_nodes * 2
 
     score, runtime = run_mcts_test(args)
 
@@ -154,7 +155,7 @@ def main():
     run_param_dict = {
         'test_data_type': ['pkl'],
         'env_type': ['cvrp'],
-        'num_nodes': [20, 50, 100],
+        'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
@@ -166,13 +167,13 @@ def main():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'cpuct': [0.8, 1.0, 1.1, 1.2, 1.5, 2]
+        'cpuct': [math.sqrt(2), 1.75]
     }
 
-    for num_nodes in [20, 50, 100]:
+    for num_nodes in [20]:
         run_param_dict['num_nodes'] = [num_nodes]
 
-        result = run_parallel_test(run_param_dict, 5)
+        result = run_parallel_test(run_param_dict, 3)
 
         path_format = "./result_summary/mcts"
 
@@ -195,12 +196,12 @@ def main():
 
 def debug():
     num_env = 64
-    num_problems = 2
+    num_problems = 100
 
     run_param_dict = {
         'test_data_type': ['pkl'],
         'env_type': ['cvrp'],
-        'num_nodes': [20, 50, 100],
+        'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
@@ -212,10 +213,10 @@ def debug():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'cpuct': [1.1]
+        'cpuct': [math.sqrt(2)]
     }
 
-    for num_nodes in [20, 50]:
+    for num_nodes in [20]:
         run_param_dict['num_nodes'] = [num_nodes]
 
         result = run_parallel_test(run_param_dict, 1)
@@ -239,5 +240,5 @@ def debug():
 
 if __name__ == '__main__':
     debug()
-    main()
+    # main()
 
