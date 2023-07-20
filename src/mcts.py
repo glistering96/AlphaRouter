@@ -204,14 +204,14 @@ class MCTS():
         done = False
         v = 0
 
-        # Initialize the first nodes
-        if self.expand_root:
-            _add_noise = True if self.training else False
-            # _add_noise = False
-            _ = self._expand(root_state, add_noise=_add_noise, return_action=False)
-            # path.append((state_num, a))
-            # self._back_propagate(path, v)
-            self.expand_root = False
+        # # Initialize the first nodes
+        # if self.expand_root:
+        #     _add_noise = True if self.training else False
+        #     # _add_noise = False
+        #     _ = self._expand(root_state, add_noise=_add_noise, return_action=False)
+        #     # path.append((state_num, a))
+        #     # self._back_propagate(path, v)
+        #     self.expand_root = False
 
         # select child node and action
         while state_num in self.Ns and not done:

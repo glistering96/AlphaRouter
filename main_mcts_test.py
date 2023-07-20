@@ -17,8 +17,6 @@ def run_test(**kwargs):
     for k, v in kwargs.items():
         setattr(args, k, v)
 
-    args.num_simulations = args.num_nodes * 2
-
     score, runtime = run_mcts_test(args)
 
     print(f"Done {kwargs['result_dir']}/{kwargs['load_epoch']}")
@@ -166,13 +164,15 @@ def main():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'cpuct': [0.8, 1.0, 1.1, 1.2, 1.5, 2]
+        'cpuct': [1.5, 1.6, 1.7, 1.8, 1.9, 2, 2.1 ,2.2, 2.3],
+
     }
 
-    for num_nodes in [20, 50, 100]:
+    for num_nodes in [20]:
         run_param_dict['num_nodes'] = [num_nodes]
+        run_param_dict['num_simulations'] = [num_nodes * i for i in range(1, 5)]
 
-        result = run_parallel_test(run_param_dict, 5)
+        result = run_parallel_test(run_param_dict, 4)
 
         path_format = "./result_summary/mcts"
 
@@ -238,6 +238,6 @@ def debug():
             save_json(all_result, f"{path}/all_result_avg.json")
 
 if __name__ == '__main__':
-    debug()
+    # debug()
     main()
 
