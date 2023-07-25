@@ -49,16 +49,15 @@ def test_one_episode(env, agent, mcts_params, temp):
     agent.encoding = None
 
     start = time.time()
-    mcts = MCTS(env, agent, mcts_params, training=False)
 
     with torch.no_grad():
-        action_probs, _ = agent(obs)
-        action = int(np.argmax(action_probs.cpu(), -1))  # type must be python native
-        obs, _, done, _, _ = env.step(obs, action)
+        # action_probs, _ = agent(obs)
+        # action = int(np.argmax(action_probs.cpu(), -1))  # type must be python native
+        # obs, _, done, _, _ = env.step(obs, action)
 
         while not done:
-            action_probs = mcts.get_action_prob(obs, temp=temp)
-            action = int(np.argmax(action_probs, -1))  # type must be python native
+            mcts = MCTS(env, agent, mcts_params)
+            action, visit_counts = mcts.get_action_prob(obs)
 
             next_state, reward, done, _, _ = env.step(obs, action)
 

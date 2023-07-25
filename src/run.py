@@ -39,7 +39,7 @@ def parse_args():
     parser.add_argument("--activation", type=str, default='swiglu', choices=['swiglu', 'relu'], help="activation function")
 
     # mcts params
-    parser.add_argument("--num_simulations", type=int, default=200, help="Number of simulations")
+    parser.add_argument("--num_simulations", type=int, default=4000, help="Number of simulations")
     parser.add_argument("--temp_threshold", type=int, default=5, help="Temperature threshold")
     parser.add_argument("--noise_eta", type=float, default=0.25, help="Noise eta param")
     parser.add_argument("--cpuct", type=float, default=1.1, help="cpuct param")

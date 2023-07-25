@@ -22,7 +22,8 @@ def run_test(**kwargs):
 
     score, runtime = run_mcts_test(args)
 
-    print(f"Done {kwargs['result_dir']}/{kwargs['load_epoch']}")
+    print(f"Done! Loaded from :{kwargs['result_dir']}/{kwargs['load_epoch']}. "
+          f"Tested on: {kwargs['test_data_idx']}. Scored: {score:.5f} in {runtime:.2f} seconds.")
 
     return score, runtime, args.test_data_idx, kwargs['load_epoch'], kwargs['result_dir']
 
@@ -154,12 +155,12 @@ def main():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['cvrp'],
+        'env_type': ['tsp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
-        'activation': ['relu', 'swiglu'],
+        'activation': ['swiglu'],
         'baseline': ['val', 'mean'],
         'encoder_layer_num': [6],
         'qkv_dim': [32],
@@ -167,15 +168,16 @@ def main():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'cpuct': [math.sqrt(2), 1.75]
+        'num_simulations': [20, 50, 100],
+        'cpuct': [1.9]
     }
 
     for num_nodes in [20]:
         run_param_dict['num_nodes'] = [num_nodes]
 
-        result = run_parallel_test(run_param_dict, 3)
+        result = run_parallel_test(run_param_dict, 4)
 
-        path_format = "./result_summary/mcts"
+        path_format = "./result_summary/mcts_v2"
 
         for result_dir in result.keys():
             all_result = {}
@@ -196,11 +198,11 @@ def main():
 
 def debug():
     num_env = 64
-    num_problems = 100
+    num_problems = 10
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['cvrp'],
+        'env_type': ['tsp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -213,14 +215,14 @@ def debug():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'cpuct': [math.sqrt(2)]
+        'cpuct': [1.1]
     }
 
     for num_nodes in [20]:
         run_param_dict['num_nodes'] = [num_nodes]
 
         result = run_parallel_test(run_param_dict, 1)
-        path_format = "./result_summary/mcts"
+        path_format = "./result_summary/debug/mcts_v2"
 
         for result_dir in result.keys():
             all_result = {}
@@ -241,4 +243,3 @@ def debug():
 if __name__ == '__main__':
     debug()
     # main()
-

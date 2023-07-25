@@ -82,15 +82,3 @@ class TSPModel(nn.Module):
             
         return probs, val
 
-    def predict(self, obs, deterministic=False):
-        probs, _, = self.forward(obs)
-
-        if deterministic:
-            action = probs.argmax(-1).item()
-
-        else:
-            action = Categorical(probs=probs).sample().item()
-
-        return action, None
-
-

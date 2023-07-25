@@ -147,7 +147,7 @@ class TSPEnv:
 
         info = {}
 
-        obs = self._get_obs(self.xy, pos, visited, visiting_seq, available, t)
+        obs = self._get_obs(pos, visited, visiting_seq, available, t)
 
         return obs, reward, done, False, info
 

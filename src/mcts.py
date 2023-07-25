@@ -4,201 +4,191 @@ from copy import deepcopy
 
 import numpy as np
 import torch
-from gymnasium.wrappers import RecordVideo
-
 EPS = 1e-8
 
 log = logging.getLogger(__name__)
 
 
-class MCTS():
+class MinMaxStats:
+    """
+    A class that holds the min-max values of the tree.
+    """
+
+    def __init__(self):
+        self.maximum = -float("inf")
+        self.minimum = float("inf")
+
+    def update(self, value):
+        self.maximum = max(self.maximum, value)
+        self.minimum = min(self.minimum, value)
+
+    def normalize(self, value):
+        if self.maximum > self.minimum:
+            # We normalize only when we have set the maximum and minimum values
+            return (value - self.minimum) / (self.maximum - self.minimum)
+        return value
+
+
+class Node:
+    """
+    Node class for MCTS
+    """
+    def __init__(self, state, parent=None, prior=1):
+        self.state = state
+        self._is_expanded = False
+        self.parent = parent
+        self.children = {}
+        self.visit_count = 0
+        self.total_cost = 0
+        self.prior = prior
+
+    def expand(self, state, action_priors):
+        """
+        Expand tree by creating new children.
+        """
+        self._is_expanded = True
+
+        for action, prob in enumerate(action_priors):
+            if action not in self.children and prob > 0:
+                self.children[action] = Node(state=state, parent=self, prior=prob)
+
+    def is_expanded(self):
+        return self._is_expanded
+
+    def get_cost(self):
+        """
+        Calculate the value of this node.
+        """
+        if self.visit_count == 0:
+            return 0
+        return self.total_cost / self.visit_count
+
+
+class MCTS:
     """
     This class handles the MCTS tree.
     """
 
-    def __init__(self, env, model, mcts_params, training=True):
+    def __init__(self, env, model, mcts_params):
         self.env = env
         self.env_type = env.env_type
+        self.action_space = env.action_size
+
         self.model = model
-        self.mcts_params = mcts_params
-        self.action_space = env.action_space.n
-        self.expand_root = True
+
         self.cpuct = mcts_params['cpuct']
-        self.normalize_q_value = mcts_params['normalize_value']
         self.noise_eta = mcts_params['noise_eta']
         self.rollout_game = mcts_params['rollout_game']
+        self.ns = mcts_params['num_simulations']
 
-        self.training = training
+        self.seed = 1234
+        self.rand_gen = np.random.default_rng(self.seed)
 
-        self.Q = {}  # stores Q values for s,a (as defined in the paper)
-        self.W = {}  # sum of values
-        self.Ns = {}  # sum of visit counts for state s
-        self.N = {}  # stores #times edge s,a was visited
-        self.P = {}  # stores initial policy (returned by neural net), dtype: numpy ndarray
+        self.min_max_stats = MinMaxStats()
 
-        self.max_q_val = -float('inf')
-        self.min_q_val = float('inf')
-
-    def _cal_probs(self, target_state, temp):
-        s = target_state['t']
-        counts = [self.N[(s, a)] if (s, a) in self.N else 0 for a in range(self.action_space)]
-
-        if temp == 0:
-            bestAs = np.array(np.argwhere(counts == np.max(counts))).flatten()
-            bestA = np.random.choice(bestAs)
-            probs = [0] * len(counts)
-            probs[bestA] = 1
-
-        else:
-            counts = [x ** (1. / temp) for x in counts]
-            counts_sum = float(sum(counts)) + 1e-8
-            probs = [x / counts_sum for x in counts]
-
-        return probs
-
-    def get_action_prob(self, target_state, temp=1):
+    def get_action_prob(self, root_state, temp=0):
         """
         Simulate and return the probability for the target state based on the visit counts acquired from simulations
         """
+        root_node = Node(state=root_state)
 
-        # obs = deepcopy(target_state)
+        for i in range(self.ns):
+            self._run(root_node)
 
-        for i in range(self.mcts_params['num_simulations']):
-            self._run_simulation(deepcopy(target_state))
+        visit_counts = [child.visit_count for child in root_node.children.values()]
+        actions = [action for action in root_node.children.keys()]
 
-        probs = self._cal_probs(target_state, temp)
-        return probs
+        if temp == 0:
+            action = actions[np.argmax(visit_counts)]
 
-    def _select(self, state):
-        # select the action
-        # argmin (Q-U), since the reward concept becomes the loss in this MCTS
-        # originally, argmax (Q+U) is true but to fit into minimization, argmin (-Q+U) is selected
-        s = state['t']
-        avail_mask = state['available'].reshape(-1, )
-        ucb_scores = {}
-
-        # pick the action with the lowest upper confidence bound
-        for a in range(self.action_space):
-            # mask unavailable or non-promising actions
-
-            if not avail_mask[a]:
-                continue
-
-            ucb = self.cpuct * self.P[(s, a)] * math.sqrt(self.Ns[s]) / (1 + self.N[(s, a)])
-
-            Q_val = self.Q[(s, a)]
-
-            normalizable = self.max_q_val > self.min_q_val
-
-            if self.normalize_q_value and normalizable:
-                Q_val = (Q_val - self.min_q_val) / (self.max_q_val - self.min_q_val + 1e-8)
-
-            score = -Q_val + ucb
-            ucb_scores[a] = score
-
-        max_ucb = max(ucb_scores.values())
-        a = np.random.choice([action for action, score in ucb_scores.items() if score == max_ucb])
-        return int(a)
-
-    def _expand(self, state, add_noise=False, return_action=False):
-        prob_dist, val = self.model(state)
-        val = val.item()
-
-        if self.env_type == 'tsp':
-            pos, visited, visiting_seq, available, s = self.env.extract_obs(state)
-            avail, _ = self.env.get_avail_mask(visited)
-
-        elif self.env_type == 'cvrp':
-            load, pos, visited, visiting_seq, available, s = self.env.extract_obs(state)
-            avail, _ = self.env.get_avail_mask(visited, load)
+        elif temp == float('inf'):
+            action = self.rand_gen.choice(actions)
 
         else:
-            raise ValueError('Invalid env type')
+            visit_counts = np.power(visit_counts, 1.0 / temp)
+            visit_counts_sum = np.sum(visit_counts)
+            action_probs = visit_counts / visit_counts_sum
+            action = self.rand_gen.choice(actions, p=action_probs)
 
-        probs = prob_dist.view(-1, ).cpu().numpy()
-        avail = avail.reshape(-1, )
+        return action, visit_counts
 
-        self.Ns[s] = 1
+    def _run(self, root_node):
+        """
+        Run one simulation in MCTS
+        """
+        action, search_path = self._search(root_node)
 
-        if add_noise:
-            noise = np.random.dirichlet([self.noise_eta for _ in range(self.action_space)])
+        leaf = search_path[-1]
 
-        for a in range(self.action_space):
-            if add_noise and avail[a]:
-                action_noise = float(noise[a] * avail[a])
-                prob = 0.75 * probs[a] + 0.25 * action_noise
+        next_state, env_cost, done, _, _ = self.env.step(leaf.state, action)
 
-            else:
-                prob = probs[a]
+        predicted_cost = self._expand(leaf, next_state)
 
-            self.P[(s, a)] = prob
-            self.W[(s, a)] = 0
-            self.Q[(s, a)] = 0
-            self.N[(s, a)] = 0
-
-        if return_action and self.training:
-            action = np.random.choice(self.action_space, p=probs)
-            return action, val
-
-        elif return_action and not self.training:
-            action = probs.argmax()
-            return action, val
+        if done:
+            cost = env_cost
 
         else:
-            return val
+            # one may add rollout cost here
+            cost = predicted_cost
 
-    def _back_propagate(self, path, v):
-        if isinstance(v, torch.Tensor):
-            v = v.item()
+        self._backup(search_path, cost)
 
-        for s, a in reversed(path):
-            self.N[(s, a)] += 1
-            self.Ns[s] += 1
-            self.W[(s, a)] += v
+    def _search(self, node):
+        """
+        Search from root to leaf and return the search path
+        """
+        search_path = [node]
+        action = None
 
-        for i, (s, a) in enumerate(reversed(path)):
-            Q_val = self.W[(s, a)] / self.N[(s, a)]
+        while node.is_expanded():
+            action, node = self._select(node)
+            search_path.append(node)
 
-            self.min_q_val = min(self.min_q_val, Q_val)
-            self.max_q_val = max(self.max_q_val, Q_val)
+        if action is None:
+            available = node.state['available'].flatten()
+            available_actions = np.where(available == 1)[0]
+            action = int(self.rand_gen.choice(available_actions, size=1))
 
-            self.Q[(s, a)] = Q_val
+        return action, search_path
 
-    def _run_simulation(self, root_state):
-        obs = root_state
-        state_num = obs['t']
+    def _select(self, node):
+        """
+        Select action among children that gives maximum action value Q plus bonus u(P).
+        """
+        ucb_scores = {action: self._ucb_score(node, child) for action, child in node.children.items()}
+        _, action, child = max((ucb_scores[action], action, child) for action, child in node.children.items())
+        return action, child
 
-        path = []
-        done = False
+    def _ucb_score(self, parent, child):
+        """
+        The score for a node is based on its value, plus an exploration bonus based on the prior.
+        """
+        u = self.cpuct * child.prior * math.sqrt(parent.visit_count) / (child.visit_count + 1)
+        v = child.get_cost()
 
-        # # Initialize the first nodes
-        # if self.expand_root:
-        #     _add_noise = True if self.training else False
-        #     # _add_noise = False
-        #     a, v = self._expand(root_state, add_noise=_add_noise, return_action=True)
-        #     path.append((state_num, a))
-        #     self._back_propagate(path, v)
-        #     self.expand_root = False
+        v_normalized = self.min_max_stats.normalize(v)
 
-        # select child node and action
-        while state_num in self.Ns and not done:
-            a = self._select(obs)
-            path.append((state_num, a))
+        return -v_normalized + u
 
-            obs, reward, done, _, _ = self.env.step(obs, a)
+    def _expand(self, node, state):
+        """
+        Expand tree by creating new children.
+        """
+        is_expandable = state['available'].sum() > 0
+        cost = None
 
-            state_num = obs['t']
+        if is_expandable:
+            action_probs_tensor, cost_tensor = self.model(state)
+            action_probs = action_probs_tensor.detach().cpu().flatten().tolist()
+            cost = cost_tensor.detach().item()
+            node.expand(state, action_probs)
 
-            if self.training:
-                if len(path) > 30:
-                    break
+        return cost
 
-        if not done:
-            # leaf node reached
-            v = self._expand(obs)
-
-        else:
-            # terminal node reached
-            v = reward
-
-        self._back_propagate(path, v)
+    def _backup(self, search_path, value):
+        """
+        Update value and visit count of nodes in search path
+        """
+        for node in reversed(search_path):
+            node.visit_count += 1
+            node.total_cost += value
