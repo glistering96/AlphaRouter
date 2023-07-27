@@ -62,14 +62,19 @@ def run_parallel_test(param_ranges, num_proc=5):
         for params in dict_product(param_ranges):
             all_files, ckpt_root = collect_all_checkpoints(params)
             all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
+
+            # leave only the latest checkpoint
+            all_checkpoints.sort(key=lambda x: float(x.split('-')[1].split('=')[-1]))
+
             result_dir = get_result_dir(params, mcts=True)
 
-            for ckpt in all_checkpoints:
-                input_params = deepcopy(params)
-                input_params['load_epoch'] = ckpt
-                input_params['result_dir'] = result_dir
+            # for ckpt in all_checkpoints:
+            ckpt = all_checkpoints[0]
+            input_params = deepcopy(params)
+            input_params['load_epoch'] = ckpt
+            input_params['result_dir'] = result_dir
 
-                async_result.put(run_test(**input_params))
+            async_result.put(run_test(**input_params))
 
     if async_result.empty():
         return
@@ -169,7 +174,7 @@ def main():
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
         'num_simulations': [20, 50, 100],
-        'cpuct': [1.9]
+        'cpuct': [1.1]
     }
 
     for num_nodes in [20]:
@@ -198,7 +203,7 @@ def main():
 
 def debug():
     num_env = 64
-    num_problems = 10
+    num_problems = 1
 
     run_param_dict = {
         'test_data_type': ['pkl'],
@@ -207,15 +212,16 @@ def debug():
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
-        'activation': ['relu', 'swiglu'],
-        'baseline': ['val', 'mean'],
+        'activation': ['swiglu'],
+        'baseline': ['val'],
         'encoder_layer_num': [6],
         'qkv_dim': [32],
         'num_heads': [4],
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'cpuct': [1.1]
+        'cpuct': [1.1],
+        'num_simulations': [1000]
     }
 
     for num_nodes in [20]:

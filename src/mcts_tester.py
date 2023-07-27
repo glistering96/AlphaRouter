@@ -1,10 +1,11 @@
 import time
+from pathlib import Path
 
 import numpy as np
 import torch
 from gymnasium.wrappers import RecordVideo
 
-from src.mcts import MCTS
+from src.mcts import MCTS, Node
 from src.module_base import RolloutBase
 
 
@@ -19,10 +20,6 @@ class MCTSTesterModule(RolloutBase):
 
         self._load_model(load_epoch)
 
-        video_dir = self.result_folder + f'/videos/'
-        self.test_env_with_vide = RecordVideo(self.env_setup.create_env(test=True, render_mode='rgb_array'), video_dir,
-                                              name_prefix=f'test_on_{env_params["test_data_idx"]}_with_{load_epoch}')
-
     def run(self):
         self.time_estimator.reset(self.epochs)
         global hparam_writer
@@ -35,9 +32,6 @@ class MCTSTesterModule(RolloutBase):
         # self.record_video()
 
         return test_score, runtime
-
-    def record_video(self):
-        test_one_episode(self.test_env_with_vide, self.model, self.mcts_params, 1)
 
 
 def test_one_episode(env, agent, mcts_params, temp):
@@ -54,12 +48,43 @@ def test_one_episode(env, agent, mcts_params, temp):
         # action_probs, _ = agent(obs)
         # action = int(np.argmax(action_probs.cpu(), -1))  # type must be python native
         # obs, _, done, _, _ = env.step(obs, action)
+        use_mcts = True
+
+        save_path = Path('./debug/plot/tsp/')
+
+        if not save_path.exists():
+            save_path.mkdir(parents=True)
+
+        if use_mcts:
+            agent_type = 'mcts'
+        else:
+            agent_type = 'am'
 
         while not done:
-            mcts = MCTS(env, agent, mcts_params)
-            action, visit_counts = mcts.get_action_prob(obs)
+            avail = obs['available']
+
+            if (avail == True).sum() == 1:
+                action = np.where(avail == True)[2][0]
+
+            else:
+                if use_mcts:
+                    mcts = MCTS(env, agent, mcts_params)
+                    action, mcts_info = mcts.get_action_prob(obs)
+                    node_visit_count = mcts_info['visit_counts_stats']
+                    priors = mcts_info['priors']
+
+                else:
+                    action_probs, _ = agent(obs)
+                    action_probs = action_probs.cpu().numpy().reshape(-1)
+                    action = int(np.argmax(action_probs, -1))
+
+                    priors = {a: p for a, p in enumerate(action_probs)}
+                    node_visit_count = None
 
             next_state, reward, done, _, _ = env.step(obs, action)
+
+            env.plot(obs, node_visit_count=node_visit_count, priors=priors,
+                     iteration=obs['t'], agent_type=agent_type, save_path=save_path)
 
             obs = next_state
 

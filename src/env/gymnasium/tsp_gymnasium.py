@@ -6,6 +6,7 @@ import numpy as np
 import pygame as pygame
 from gymnasium.spaces import Discrete, Dict, Box, MultiBinary
 from gymnasium.utils import seeding
+from matplotlib import pyplot as plt
 
 from src.common.data_manipulator import make_cord
 from src.common.utils import cal_distance
@@ -106,10 +107,10 @@ class TSPEnv:
         else:
             self.xy = self._load_problem()
 
-        pos = None
+        pos = np.zeros((1, 1), dtype=np.int32)
         visited = np.zeros((1, 1, self.action_size), dtype=bool)
 
-        visiting_seq = []
+        visiting_seq = [pos[None, :, :]]
 
         available = np.ones((1, 1, self.action_size), dtype=bool)  # all nodes are available at the beginning
 
@@ -165,3 +166,35 @@ class TSPEnv:
 
     def set_test_mode(self):
         self.training = False
+
+    def plot(self, obs, node_visit_count=None, priors=None, iteration=None, agent_type=None, save_path=None):
+        # set the figure size
+        plt.figure(figsize=(10, 10))
+
+        # plot problem with black point and plot the visiting sequence with red line
+        visiting_seq = obs['visiting_seq']
+        visiting_seq = np.concatenate(visiting_seq, axis=2)
+        visiting_seq = visiting_seq.reshape(-1)
+
+        plt.scatter(self.xy[0, :, 0], self.xy[0, :, 1], c='black')
+
+        for visted_node in visiting_seq:
+            plt.scatter(self.xy[0, visted_node, 0], self.xy[0, visted_node, 1], c='red')
+
+        # draw a line between two nodes
+        if len(visiting_seq) > 1:
+            for i in range(len(visiting_seq) - 1):
+                plt.plot([self.xy[0, visiting_seq[i], 0], self.xy[0, visiting_seq[i+1], 0]],
+                         [self.xy[0, visiting_seq[i], 1], self.xy[0, visiting_seq[i+1], 1]], c='red')
+
+        # denote the node visit count with text on the node
+        if node_visit_count is not None:
+            for node_id, visit_count in node_visit_count.items():
+                plt.text(self.xy[0, node_id, 0], self.xy[0, node_id, 1], f"vc: {visit_count}, p: {priors[node_id]:.2f}")
+
+        if node_visit_count is None and priors is not None:
+            for node_id, visit_count in priors.items():
+                plt.text(self.xy[0, node_id, 0], self.xy[0, node_id, 1], f"p: {priors[node_id]:.2f}")
+
+        plt.savefig(f"{save_path}/{self.test_num}-{iteration}-{agent_type}.png")
+        plt.show()

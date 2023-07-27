@@ -49,8 +49,8 @@ class Node:
         self._is_expanded = True
 
         for action, prob in enumerate(action_priors):
-            if action not in self.children and prob > 0:
-                self.children[action] = Node(state=state, parent=self, prior=prob)
+            if action not in self.children and prob > 1e-6:
+                self.children[action] = Node(state=deepcopy(state), parent=self, prior=prob)
 
     def is_expanded(self):
         return self._is_expanded
@@ -90,13 +90,27 @@ class MCTS:
         """
         Simulate and return the probability for the target state based on the visit counts acquired from simulations
         """
-        root_node = Node(state=root_state)
+
+        root = Node(state=deepcopy(root_state), prior=0)
+
+        action_probs, _ = self.model(root_state)
+        action_probs = action_probs.cpu().numpy().reshape(-1)
+        action = int(np.argmax(action_probs, -1))
+
+        next_state = self.env.step(root_state, action)[0]
+
+        root.expand(next_state, action_probs)
 
         for i in range(self.ns):
-            self._run(root_node)
+            self._run(root)
 
-        visit_counts = [child.visit_count for child in root_node.children.values()]
-        actions = [action for action in root_node.children.keys()]
+        visit_counts, actions = [], []
+        est_cost = {}
+
+        for action, child in root.children.items():
+            visit_counts.append(child.visit_count)
+            actions.append(action)
+            est_cost[action] = child.get_cost()
 
         if temp == 0:
             action = actions[np.argmax(visit_counts)]
@@ -110,13 +124,25 @@ class MCTS:
             action_probs = visit_counts / visit_counts_sum
             action = self.rand_gen.choice(actions, p=action_probs)
 
-        return action, visit_counts
+        min_cost_child = min(est_cost, key=est_cost.get)
+        visit_counts_stats = {a: v for a, v in zip(actions, visit_counts)}
+        mcts_run_info = {
+            'min_cost_child': min_cost_child,
+            'visit_counts_stats': visit_counts_stats,
+            'priors': {a: c.prior for a, c in root.children.items()},
+        }
+        return action, mcts_run_info
 
     def _run(self, root_node):
         """
         Run one simulation in MCTS
         """
-        action, search_path = self._search(root_node)
+        node = root_node
+        search_path = [node]
+
+        while node.is_expanded():
+            action, node = self._select(node)
+            search_path.append(node)
 
         leaf = search_path[-1]
 
@@ -143,11 +169,11 @@ class MCTS:
         while node.is_expanded():
             action, node = self._select(node)
             search_path.append(node)
-
-        if action is None:
-            available = node.state['available'].flatten()
-            available_actions = np.where(available == 1)[0]
-            action = int(self.rand_gen.choice(available_actions, size=1))
+        #
+        # if action is None:
+        #     action_probs_tensor, cost_tensor = self.model(node.state)
+        #     action_probs = action_probs_tensor.detach().cpu().flatten().tolist()
+        #     action = np.argmax(action_probs)
 
         return action, search_path
 
@@ -155,8 +181,14 @@ class MCTS:
         """
         Select action among children that gives maximum action value Q plus bonus u(P).
         """
-        ucb_scores = {action: self._ucb_score(node, child) for action, child in node.children.items()}
+        ucb_scores = {}
+
+        for action, child in node.children.items():
+            ucb_score = self._ucb_score(node, child)
+            ucb_scores[action] = ucb_score
+
         _, action, child = max((ucb_scores[action], action, child) for action, child in node.children.items())
+
         return action, child
 
     def _ucb_score(self, parent, child):
@@ -164,11 +196,11 @@ class MCTS:
         The score for a node is based on its value, plus an exploration bonus based on the prior.
         """
         u = self.cpuct * child.prior * math.sqrt(parent.visit_count) / (child.visit_count + 1)
-        v = child.get_cost()
+        q_val = child.get_cost()
 
-        v_normalized = self.min_max_stats.normalize(v)
+        norm_q_val = self.min_max_stats.normalize(q_val)
 
-        return -v_normalized + u
+        return -norm_q_val + u
 
     def _expand(self, node, state):
         """
@@ -192,3 +224,5 @@ class MCTS:
         for node in reversed(search_path):
             node.visit_count += 1
             node.total_cost += value
+            q_value = node.get_cost()
+            self.min_max_stats.update(q_value)
