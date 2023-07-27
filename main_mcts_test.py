@@ -165,7 +165,7 @@ def main():
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
-        'activation': ['swiglu'],
+        'activation': ['relu', 'swiglu'],
         'baseline': ['val', 'mean'],
         'encoder_layer_num': [6],
         'qkv_dim': [32],
@@ -173,7 +173,7 @@ def main():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'num_simulations': [20, 50, 100],
+        'num_simulations': [2000],
         'cpuct': [1.1]
     }
 
@@ -203,14 +203,15 @@ def main():
 
 def debug():
     num_env = 64
-    num_problems = 1
+    num_problems = 10
 
     run_param_dict = {
         'test_data_type': ['pkl'],
         'env_type': ['tsp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
-        'test_data_idx': list(range(num_problems)),
+        # 'test_data_idx': list(range(num_problems)),
+        'test_data_idx': [3],
         'data_path': ['./data'],
         'activation': ['swiglu'],
         'baseline': ['val'],
@@ -221,7 +222,7 @@ def debug():
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
         'cpuct': [1.1],
-        'num_simulations': [1000]
+        'num_simulations': [2000]
     }
 
     for num_nodes in [20]:

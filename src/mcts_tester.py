@@ -24,7 +24,7 @@ class MCTSTesterModule(RolloutBase):
         self.time_estimator.reset(self.epochs)
         global hparam_writer
 
-        test_score, runtime = test_one_episode(self.env, self.model, self.mcts_params, 1)
+        test_score, runtime = test_one_episode(self.env, self.model, self.mcts_params, use_mcts=True)
 
         # self.logger.info(f"Test score: {test_score: .5f}")
         # self.logger.info(" *** Testing Done *** ")
@@ -34,7 +34,7 @@ class MCTSTesterModule(RolloutBase):
         return test_score, runtime
 
 
-def test_one_episode(env, agent, mcts_params, temp):
+def test_one_episode(env, agent, mcts_params, use_mcts):
     env.set_test_mode()
     obs, _ = env.reset()
     done = False
@@ -48,8 +48,6 @@ def test_one_episode(env, agent, mcts_params, temp):
         # action_probs, _ = agent(obs)
         # action = int(np.argmax(action_probs.cpu(), -1))  # type must be python native
         # obs, _, done, _, _ = env.step(obs, action)
-        use_mcts = True
-
         save_path = Path('./debug/plot/tsp/')
 
         if not save_path.exists():
