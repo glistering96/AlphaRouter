@@ -20,11 +20,11 @@ class MCTSTesterModule(RolloutBase):
 
         self._load_model(load_epoch)
 
-    def run(self):
+    def run(self, use_mcts):
         self.time_estimator.reset(self.epochs)
         global hparam_writer
 
-        test_score, runtime = test_one_episode(self.env, self.model, self.mcts_params, use_mcts=True)
+        test_score, runtime = test_one_episode(self.env, self.model, self.mcts_params, use_mcts=use_mcts)
 
         # self.logger.info(f"Test score: {test_score: .5f}")
         # self.logger.info(" *** Testing Done *** ")
@@ -81,8 +81,8 @@ def test_one_episode(env, agent, mcts_params, use_mcts):
 
             next_state, reward, done, _, _ = env.step(obs, action)
 
-            env.plot(obs, node_visit_count=node_visit_count, priors=priors,
-                     iteration=obs['t'], agent_type=agent_type, save_path=save_path)
+            # env.plot(obs, node_visit_count=node_visit_count, priors=priors,
+            #          iteration=obs['t'], agent_type=agent_type, save_path=save_path)
 
             obs = next_state
 

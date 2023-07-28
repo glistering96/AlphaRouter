@@ -38,14 +38,21 @@ def run_parallel_test(param_ranges, num_proc=5):
     for params in dict_product(param_ranges):
         all_files, ckpt_root = collect_all_checkpoints(params)
         all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
+
+        all_checkpoints.sort(
+            key=lambda x: float(x.split('-')[1].split('=')[-1])
+        )
+
         result_dir = get_result_dir(params, mcts=False)
 
-        for ckpt in all_checkpoints:
-            input_params = deepcopy(params)
-            input_params['load_epoch'] = ckpt
-            input_params['result_dir'] = result_dir
+        ckpt = all_checkpoints[0]
 
-            pool.apply_async(run_test, kwds=input_params, callback=__callback)
+        # for ckpt in all_checkpoints:
+        input_params = deepcopy(params)
+        input_params['load_epoch'] = ckpt
+        input_params['result_dir'] = result_dir
+
+        pool.apply_async(run_test, kwds=input_params, callback=__callback)
 
     pool.close()
     pool.join()
@@ -83,11 +90,11 @@ def run_parallel_test(param_ranges, num_proc=5):
 
 def main():
     num_env = 64
-    num_problems = 100
+    num_problems = 10
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp', 'cvrp'],
+        'env_type': ['tsp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -101,7 +108,8 @@ def main():
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env]
     }
-    for num_nodes in [20, 50, 100]:
+
+    for num_nodes in [100]:
         run_param_dict['num_nodes'] = [num_nodes]
         result = run_parallel_test(run_param_dict, 10)
 
@@ -126,17 +134,17 @@ def main():
 
 def debug():
     num_env = 64
-    num_problems = 2
+    num_problems = 10
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp', 'cvrp'],
+        'env_type': ['tsp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
-        'activation': ['swiglu'],
-        'baseline': ['val'],
+        'activation': ['swiglu', 'relu'],
+        'baseline': ['val', 'mean'],
         'encoder_layer_num': [6],
         'qkv_dim': [32],
         'num_heads': [4],
@@ -145,9 +153,9 @@ def debug():
         'num_steps_in_epoch': [100 * 1000 // num_env]
     }
 
-    for num_nodes in [20, 50, 100]:
+    for num_nodes in [20, 100]:
         run_param_dict['num_nodes'] = [num_nodes]
-        result = run_parallel_test(run_param_dict, 10)
+        result = run_parallel_test(run_param_dict, 1)
 
         path_format = "./result_summary/am"
 
@@ -168,10 +176,9 @@ def debug():
             save_json(all_result, f"{path}/all_result_avg.json")
 
 
-
 if __name__ == '__main__':
-    main()
-    # debug()
+    # main()
+    debug()
 
     # problem_size = 20
     # num_problems = 100

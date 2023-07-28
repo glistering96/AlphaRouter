@@ -86,7 +86,7 @@ def run_mcts_test(args):
                               dir_parser=DirParser(args),
                               )
 
-    return tester.run()
+    return tester.run(use_mcts=True)
 
 
 def run_pretrain(args):
@@ -134,13 +134,14 @@ def run_pretrain(args):
 
 
 def run_am_test(args):
-    env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args, return_logger=True)
+    env_params, mcts_params, model_params, h_params, run_params, optimizer_params, logger_params = get_param_dict(args, return_logger=True)
 
-    tester = AMTesterModule(env_params=env_params,
-                            model_params=model_params,
-                            logger_params=logger_params,
-                            run_params=run_params,
-                            dir_parser=DirParser(args)
-                            )
+    tester = MCTSTesterModule(env_params=env_params,
+                              model_params=model_params,
+                              logger_params=logger_params,
+                              mcts_params=None,
+                              run_params=run_params,
+                              dir_parser=DirParser(args),
+                              )
 
-    return tester.run()
+    return tester.run(use_mcts=False)

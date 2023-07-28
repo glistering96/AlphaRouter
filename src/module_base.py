@@ -33,7 +33,7 @@ class RolloutBase:
         self.result_folder = self.dir_parser.get_result_dir(mcts=True if mcts_params is not None else False)
 
         create_logger(self.result_folder)
-        self.logger = getLogger(name='trainer')
+        self.logger = getLogger()
 
         Path(self.result_folder).mkdir(parents=True, exist_ok=True)
 
@@ -116,7 +116,7 @@ class RolloutBase:
 
         return env
 
-    def run(self):
+    def run(self, **kwargs):
         # abstract method
         raise NotImplementedError
 

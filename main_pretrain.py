@@ -67,15 +67,15 @@ if __name__ == '__main__':
         'activation': 'swiglu',
     }
 
-    _work(**params)
+    # _work(**params)
 
-    # for _num_nodes in [20, 50, 100]:
-    #     for _activation in ['relu', 'swiglu']:
-    #         for _baseline in ['val', 'mean']:
-    #             params['baseline'] = _baseline
-    #             params['num_nodes'] = _num_nodes
-    #             params['activation'] = _activation
-    #             _work(**params)
+    for _num_nodes in [50]:
+        for _activation in ['swiglu']:
+            for _baseline in ['val']:
+                params['baseline'] = _baseline
+                params['num_nodes'] = _num_nodes
+                params['activation'] = _activation
+                _work(**params)
 
 
 
