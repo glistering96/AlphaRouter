@@ -179,7 +179,7 @@ def main():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'num_simulations': [4000],
+        'num_simulations': [100, 250, 500, 1000],
         'cpuct': [1.1]
     }
 
@@ -188,7 +188,7 @@ def main():
 
         result = run_parallel_test(run_param_dict, 4)
 
-        path_format = "./result_summary/mcts_v2"
+        path_format = "./result_summary/mcts"
 
         for result_dir in result.keys():
             all_result = {}
@@ -228,7 +228,7 @@ def debug():
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
         'cpuct': [1.1],
-        'num_simulations': [100]
+        'num_simulations': [200]
     }
 
     for num_nodes in [100]:
@@ -254,5 +254,5 @@ def debug():
             save_json(all_result, f"{path}/all_result_avg.json")
 
 if __name__ == '__main__':
-    debug()
-    # main()
+    # debug()
+    main()

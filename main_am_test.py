@@ -90,7 +90,7 @@ def run_parallel_test(param_ranges, num_proc=5):
 
 def main():
     num_env = 64
-    num_problems = 10
+    num_problems = 100
 
     run_param_dict = {
         'test_data_type': ['pkl'],
@@ -111,7 +111,7 @@ def main():
 
     for num_nodes in [100]:
         run_param_dict['num_nodes'] = [num_nodes]
-        result = run_parallel_test(run_param_dict, 10)
+        result = run_parallel_test(run_param_dict, 4)
 
         path_format = "./result_summary/am"
 

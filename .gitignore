@@ -16,3 +16,4 @@
 /debug_pretrain.py
 *.pyc
 log_archive/
+/result_summary.backup/
