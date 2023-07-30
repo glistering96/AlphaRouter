@@ -97,9 +97,9 @@ class MCTS:
         action_probs = action_probs.cpu().numpy().reshape(-1)
         action = int(np.argmax(action_probs, -1))
 
-        next_state = self.env.step(root_state, action)[0]
+        # next_state = self.env.step(root_state, action)[0]
 
-        root.expand(next_state, action_probs)
+        root.expand(root_state, action_probs)
 
         for i in range(self.ns):
             self._run(root)
@@ -140,13 +140,21 @@ class MCTS:
         node = root_node
         search_path = [node]
 
-        while node.is_expanded():
+        tree_depth = 0
+        reached_terminal = self.env.is_done(node.state['visited'])
+
+        while node.is_expanded() and not reached_terminal:
+            tree_depth += 1
             action, node = self._select(node)
             search_path.append(node)
+            reached_terminal = self.env.is_done(node.state['visited'])
 
         leaf = search_path[-1]
 
         next_state, env_cost, done, _, _ = self.env.step(leaf.state, action)
+
+        if self.env_type == 'cvrp' and not self.env.is_done(next_state['visited']) and next_state['load'] < 0:
+            print('load is negative while its traverse is not done')
 
         predicted_cost = self._expand(leaf, next_state)
 
@@ -169,11 +177,6 @@ class MCTS:
         while node.is_expanded():
             action, node = self._select(node)
             search_path.append(node)
-        #
-        # if action is None:
-        #     action_probs_tensor, cost_tensor = self.model(node.state)
-        #     action_probs = action_probs_tensor.detach().cpu().flatten().tolist()
-        #     action = np.argmax(action_probs)
 
         return action, search_path
 

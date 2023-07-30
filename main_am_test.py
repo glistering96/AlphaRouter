@@ -16,7 +16,8 @@ def run_test(**kwargs):
         setattr(args, k, v)
     score, runtime = run_am_test(args)
 
-    print(f"Done {kwargs['result_dir']}/{kwargs['load_epoch']}")
+    print(f"Done! Loaded from :{kwargs['result_dir']}/{kwargs['load_epoch']}. "
+          f"Tested on: {kwargs['test_data_idx']}. Scored: {score:.5f} in {runtime:.2f} seconds.")
 
     return score, runtime, args.test_data_idx, kwargs['load_epoch'], kwargs['result_dir']
 
@@ -138,7 +139,7 @@ def debug():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp'],
+        'env_type': ['cvrp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -157,7 +158,7 @@ def debug():
         run_param_dict['num_nodes'] = [num_nodes]
         result = run_parallel_test(run_param_dict, 1)
 
-        path_format = "./result_summary/am"
+        path_format = "./result_summary/debug/am"
 
         for result_dir in result.keys():
             all_result = {}

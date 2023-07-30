@@ -87,7 +87,7 @@ class TSPEnv:
         return xy
 
     def get_reward(self, visited, t, visiting_seq):
-        if (self._is_done(visited) or self.step_reward) and t > 0:
+        if (self.is_done(visited) or self.step_reward) and t > 0:
             # batch_size, pomo_size = self.pos.shape
             visitng_idx = np.concatenate(visiting_seq, axis=2)
             # (num_env, pomo_size, num_nodes):
@@ -107,10 +107,10 @@ class TSPEnv:
         else:
             self.xy = self._load_problem()
 
-        pos = np.zeros((1, 1), dtype=np.int32)
+        pos = None
         visited = np.zeros((1, 1, self.action_size), dtype=bool)
 
-        visiting_seq = [pos[None, :, :]]
+        visiting_seq = []
 
         available = np.ones((1, 1, self.action_size), dtype=bool)  # all nodes are available at the beginning
 
@@ -152,7 +152,7 @@ class TSPEnv:
 
         return obs, reward, done, False, info
 
-    def _is_done(self, visited):
+    def is_done(self, visited):
         done_flag = (visited == True).all()
         return done_flag
 
@@ -160,7 +160,7 @@ class TSPEnv:
         # get a copy of avail
         avail = ~visited.copy()
 
-        done = self._is_done(visited)
+        done = self.is_done(visited)
 
         return avail, done
 

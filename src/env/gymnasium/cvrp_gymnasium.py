@@ -5,6 +5,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium.spaces import Discrete, Dict, Box, MultiBinary
 from gymnasium.utils import seeding
+from matplotlib import pyplot as plt
 
 from src.common.data_manipulator import make_cord, make_demands
 from src.common.utils import cal_distance
@@ -117,7 +118,7 @@ class CVRPEnv:
         return xy, demands
 
     def get_reward(self, visited, visiting_seq):
-        if self._is_done(visited).all() or self.step_reward:
+        if self.is_done(visited).all() or self.step_reward:
             visitng_idx = np.concatenate(visiting_seq, axis=2)  # (num_env, num_nodes)
             dist = cal_distance(self.xy, visitng_idx, axis=2)
             return float(dist.reshape(-1))
@@ -133,12 +134,16 @@ class CVRPEnv:
             self.xy, self.demand = self._load_problem()
 
         load = np.ones((self.num_env, self.pomo_size, 1), dtype=np.float16)  # all vehicles start with full load
-        pos = np.zeros((1, 1), dtype=np.int32)
+        pos = None
         visited = np.zeros((self.num_env, self.pomo_size, self.action_size), dtype=bool)
-        visiting_seq = [pos[None, :, :]]
+        # visiting_seq = [pos[None, :, :]]
+        visiting_seq = []
         available = np.ones((self.num_env, self.pomo_size, self.action_size),
                                  dtype=bool)  # all nodes are available at the beginning
         t = 0
+
+        # np.put_along_axis(available, pos[None, :, :], False, axis=2)  # set the current pos to unavailable
+        # np.put_along_axis(visited, pos[None, :, :], True, axis=2)  # set the current pos to visited
 
         obs = self._get_obs(load, pos, visited, visiting_seq, available, t)  # this must come after resetting all the fields
 
@@ -201,7 +206,7 @@ class CVRPEnv:
 
         return obs, reward, done, False, info
 
-    def _is_done(self, visited):
+    def is_done(self, visited):
         # here 1 is depot
         done_flag = (visited[:, :, 1:] == True).all(axis=-1)
         return done_flag
@@ -216,7 +221,7 @@ class CVRPEnv:
         # mark unavail for nodes in which the demands cannot be fulfilled
         avail = avail & ~unreachable
 
-        done = self._is_done(visited)
+        done = self.is_done(visited)
 
         # for done episodes, set the depot as available
         avail[done, 0] = True
@@ -225,3 +230,38 @@ class CVRPEnv:
 
     def set_test_mode(self):
         self.training = False
+
+    def plot(self, obs, node_visit_count=None, priors=None, iteration=None, agent_type=None, save_path=None):
+        # set the figure size
+        plt.figure(figsize=(10, 10))
+
+        # plot problem with black point and plot the visiting sequence with red line
+        visiting_seq = obs['visiting_seq']
+        visiting_seq = np.concatenate(visiting_seq, axis=2)
+        visiting_seq = visiting_seq.reshape(-1)
+
+        plt.scatter(self.xy[0, 0, 0], self.xy[0, 0, 1], marker="*", c='green')  # depot node is green
+        plt.scatter(self.xy[0, 1:, 0], self.xy[0, 1:, 1], c='black')
+
+        for visted_node in visiting_seq:
+            plt.scatter(self.xy[0, visted_node, 0], self.xy[0, visted_node, 1], c='red')
+
+        # draw a line between two nodes
+        if len(visiting_seq) > 1:
+            for i in range(len(visiting_seq) - 1):
+                plt.plot([self.xy[0, visiting_seq[i], 0], self.xy[0, visiting_seq[i+1], 0]],
+                         [self.xy[0, visiting_seq[i], 1], self.xy[0, visiting_seq[i+1], 1]], c='red')
+
+        # denote the node visit count with text on the node
+        if node_visit_count is not None:
+            for node_id, visit_count in node_visit_count.items():
+                demand = self.demand[0, node_id]
+                plt.text(self.xy[0, node_id, 0], self.xy[0, node_id, 1], f"vc: {visit_count}, p: {priors[node_id]:.2f}, d: {demand:.2f}")
+
+        if node_visit_count is None and priors is not None:
+            for node_id, visit_count in priors.items():
+                demand = self.demand[0, node_id]
+                plt.text(self.xy[0, node_id, 0], self.xy[0, node_id, 1], f"p: {priors[node_id]:.2f}, d: {demand:.2f}")
+
+        plt.savefig(f"{save_path}/{self.test_num}-{iteration}-{agent_type}.png")
+        plt.show()

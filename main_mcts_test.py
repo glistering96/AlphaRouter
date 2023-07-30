@@ -213,7 +213,7 @@ def debug():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp'],
+        'env_type': ['cvrp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -231,11 +231,11 @@ def debug():
         'num_simulations': [200]
     }
 
-    for num_nodes in [100]:
+    for num_nodes in [20]:
         run_param_dict['num_nodes'] = [num_nodes]
 
         result = run_parallel_test(run_param_dict, 4)
-        path_format = "./result_summary/mcts_v2"
+        path_format = "./result_summary/debug/mcts_v2"
 
         for result_dir in result.keys():
             all_result = {}
