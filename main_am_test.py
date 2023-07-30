@@ -38,15 +38,19 @@ def run_parallel_test(param_ranges, num_proc=5):
 
     for params in dict_product(param_ranges):
         all_files, ckpt_root = collect_all_checkpoints(params)
+        
         all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
 
+        if len(all_checkpoints) == 0:
+            continue
+        
         all_checkpoints.sort(
-            key=lambda x: float(x.split('-')[1].split('=')[-1])
+            key=lambda x: float(x.split('-')[0].split('=')[-1])
         )
 
         result_dir = get_result_dir(params, mcts=False)
 
-        ckpt = all_checkpoints[0]
+        ckpt = all_checkpoints[-1]
 
         # for ckpt in all_checkpoints:
         input_params = deepcopy(params)
@@ -154,7 +158,7 @@ def debug():
         'num_steps_in_epoch': [100 * 1000 // num_env]
     }
 
-    for num_nodes in [20, 100]:
+    for num_nodes in [20]:
         run_param_dict['num_nodes'] = [num_nodes]
         result = run_parallel_test(run_param_dict, 1)
 

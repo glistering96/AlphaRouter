@@ -32,9 +32,6 @@ class RolloutBase:
         USE_CUDA = self.run_params['use_cuda']
         self.result_folder = self.dir_parser.get_result_dir(mcts=True if mcts_params is not None else False)
 
-        create_logger(self.result_folder)
-        self.logger = getLogger()
-
         Path(self.result_folder).mkdir(parents=True, exist_ok=True)
 
         if USE_CUDA:

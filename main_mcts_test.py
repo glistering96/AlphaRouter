@@ -39,20 +39,36 @@ def run_parallel_test(param_ranges, num_proc=5):
 
     def __callback(val):
         async_result.put(val)
-
+    
+    pivot = 'epoch'
+    
     if num_proc > 1:
         pool = mp.Pool(num_proc)
 
         for params in dict_product(param_ranges):
             all_files, ckpt_root = collect_all_checkpoints(params)
             all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
-            all_checkpoints.sort(
-                key=lambda x: float(x.split('-')[1].split('=')[-1])
-            )
+            
+            if pivot == 'train_score':
+                all_checkpoints.sort(
+                    key=lambda x: float(x.split('-')[1].split('=')[-1])
+                )
 
-            result_dir = get_result_dir(params, mcts=True)
+                result_dir = get_result_dir(params, mcts=True)
 
-            ckpt = all_checkpoints[0]
+                ckpt = all_checkpoints[0]
+                # minimum score ckpt
+                
+            elif pivot == 'epoch':
+                all_checkpoints.sort(
+                    key=lambda x: float(x.split('-')[0].split('=')[-1])
+                )
+
+                result_dir = get_result_dir(params, mcts=True)
+
+                ckpt = all_checkpoints[-1]
+                
+                # max_epoch ckpt
 
             # for ckpt in all_checkpoints:
             input_params = deepcopy(params)
@@ -70,12 +86,14 @@ def run_parallel_test(param_ranges, num_proc=5):
             all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
 
             # leave only the latest checkpoint
-            all_checkpoints.sort(key=lambda x: float(x.split('-')[1].split('=')[-1]))
+            all_checkpoints.sort(
+                key=lambda x: float(x.split('-')[0].split('=')[-1])
+            )
 
             result_dir = get_result_dir(params, mcts=True)
 
-            # for ckpt in all_checkpoints:
-            ckpt = all_checkpoints[0]
+            ckpt = all_checkpoints[-1]
+            
             input_params = deepcopy(params)
             input_params['load_epoch'] = ckpt
             input_params['result_dir'] = result_dir
@@ -166,7 +184,7 @@ def main():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp'],
+        'env_type': ['cvrp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -183,7 +201,7 @@ def main():
         'cpuct': [1.1]
     }
 
-    for num_nodes in [100]:
+    for num_nodes in [20]:
         run_param_dict['num_nodes'] = [num_nodes]
 
         result = run_parallel_test(run_param_dict, 4)
@@ -234,7 +252,7 @@ def debug():
     for num_nodes in [20]:
         run_param_dict['num_nodes'] = [num_nodes]
 
-        result = run_parallel_test(run_param_dict, 4)
+        result = run_parallel_test(run_param_dict, 1)
         path_format = "./result_summary/debug/mcts_v2"
 
         for result_dir in result.keys():
