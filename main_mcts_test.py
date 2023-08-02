@@ -41,7 +41,7 @@ def run_parallel_test(param_ranges, num_proc=5):
     def __callback(val):
         async_result.put(val)
     
-    pivot = 'epoch'
+    pivot = 'train_score'
     
     if num_proc > 1:
         pool = mp.Pool(num_proc)
@@ -181,7 +181,7 @@ def run_cross_test():
 
 def main():
     num_env = 64
-    num_problems = 100
+    num_problems = 10
 
     run_param_dict = {
         'test_data_type': ['pkl'],
