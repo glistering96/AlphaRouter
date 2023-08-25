@@ -185,12 +185,12 @@ def main():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp'],
+        'env_type': ['tsp', 'cvrp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
-        'activation': ['relu'],
+        'activation': ['relu', 'swiglu'],
         'baseline': ['mean'],
         'encoder_layer_num': [6],
         'qkv_dim': [32],
@@ -202,12 +202,12 @@ def main():
         'cpuct': [1.1]
     }
 
-    for num_nodes in [100]:
+    for num_nodes in [20, 50, 100]:
         run_param_dict['num_nodes'] = [num_nodes]
 
-        result = run_parallel_test(run_param_dict, 4)
+        result = run_parallel_test(run_param_dict, 1)
 
-        path_format = "./result_summary/mcts"
+        path_format = "./result_summary/mcts/run_time"
         
         for result_dir in result.keys():            
             path = f"{path_format}/{result_dir}"

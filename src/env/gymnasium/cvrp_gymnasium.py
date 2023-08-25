@@ -45,8 +45,8 @@ class CVRPEnv:
         self._np_random, self._seed = seeding.np_random(seed)
 
     def _get_obs(self, load, pos, visited, visiting_seq, available, t):
-        return {"xy": self.xy, "demands": self.demand, "load": load, "pos": pos, "visited": visited,
-                "visiting_seq": visiting_seq, "available": available, "t": t}
+        return {"load": load, "pos": pos, "visited": visited, "visiting_seq": visiting_seq,
+                "available": available, "t": t}
 
     def _make_problems(self, num_rollouts, num_depots, num_nodes):
         xy = make_cord(num_rollouts, num_depots, num_nodes)

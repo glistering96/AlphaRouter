@@ -18,10 +18,22 @@ class CVRPModel(nn.Module):
 
         self.encoding = None
 
-    def _get_obs(self, observations, device):
-        observations = _to_tensor(observations, device)
+        self.xy, self.demands = None, None
 
-        xy, demands = observations['xy'], observations['demands']
+    def _get_obs(self, observations, device):
+
+        observations = _to_tensor(observations, device)
+        if self.xy.device != device:
+            self.xy = self.xy.to(device)
+
+        if self.demands.device != device:
+            self.demands = self.demands.to(device)
+
+        if self.xy is None: xy = observations['xy']
+        else: xy = self.xy
+
+        if self.demands is None: demands = observations['demands']
+        else: demands = self.demands
         # (N, 2), (N, 1)
 
         cur_node = observations['pos']
@@ -101,3 +113,7 @@ class CVRPModel(nn.Module):
             action = Categorical(probs=probs).sample().item()
 
         return action, None
+
+    def set_core_state(self, xy, demands=None):
+        self.xy = xy
+        self.demands = demands

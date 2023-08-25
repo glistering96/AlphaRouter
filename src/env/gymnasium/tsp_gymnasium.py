@@ -98,7 +98,7 @@ class TSPEnv:
             return 0
 
     def _get_obs(self, pos, visited, visiting_seq, available, t):
-        return {"xy": self.xy, "pos": pos, "visited": visited, "visiting_seq": visiting_seq, "available": available, "t": t}
+        return {"pos": pos, "visited": visited, "visiting_seq": visiting_seq, "available": available, "t": t}
 
     def reset(self):
         if self.training:

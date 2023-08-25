@@ -42,6 +42,12 @@ def test_one_episode(env, agent, mcts_params, use_mcts):
 
     agent.encoding = None
 
+    if env.env_type == 'tsp':
+        agent.set_core_state(env.xy)
+
+    elif env.env_type == 'cvrp':
+        agent.set_core_state(env.xy, env.demand)
+
     start = time.time()
 
     with torch.no_grad():

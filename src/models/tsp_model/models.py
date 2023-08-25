@@ -17,12 +17,16 @@ class TSPModel(nn.Module):
         self.decoder = Decoder(model_params['embedding_dim'], **model_params)
 
         self.encoding = None
+        self.xy = None
 
     def _get_obs(self, observations, device):
         observations = _to_tensor(observations, device)
-        
-        xy = observations['xy']
-        # (N, 2), (N, 1)
+
+        if self.xy.device != device:
+            self.xy = self.xy.to(device)
+
+        if self.xy is None: xy = observations['xy']
+        else: xy = self.xy
 
         cur_node = observations['pos']
         # (1, )
@@ -82,3 +86,8 @@ class TSPModel(nn.Module):
             
         return probs, val
 
+    def set_core_state(self, xy, demands=None):
+        self.xy = torch.from_numpy(xy)
+
+        if demands is not None:
+            self.demands = torch.from_numpy(demands)
