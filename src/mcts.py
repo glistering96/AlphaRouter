@@ -73,8 +73,8 @@ class Node:
         self.parent.child_total_value[self.action] = value
 
     def child_Q(self, normalize=False):
-        q = self.child_total_value / self.child_number_visits
-        q = np.nan_to_num(q, nan=0)
+        denominator = np.where(self.child_number_visits == 0, 1, self.child_number_visits)
+        q = self.child_total_value / denominator
 
         if normalize is True:
             q_norm = self.min_max_stats.normalize(q)
@@ -98,9 +98,20 @@ class Node:
 
     def select_leaf(self):
         current = self
-        while current.is_expanded:
+        reached_terminal = self.env.is_done(self.state['visited'])
+
+        while current.is_expanded and not reached_terminal:
             best_move = current.best_child()
+
+            if best_move not in self.children:
+                obs = self.env.step(self.state, best_move)[0]
+                reached_terminal = self.env.is_done(obs['visited'])
+
+                self.children[best_move] = Node(deepcopy(obs), best_move, parent=self, min_max_stats=self.min_max_stats,
+                                           env=self.env)
+
             current = current.maybe_add_child(best_move)
+
         return current
 
     def expand(self, child_priors):
@@ -123,7 +134,8 @@ class Node:
             current = current.parent
 
     def get_cost(self):
-        return self.total_value / self.number_visits
+        denominator = 1 if self.number_visits == 0 else self.number_visits
+        return self.total_value / denominator
 
 
 class MCTS:
@@ -165,6 +177,12 @@ class MCTS:
 
         for i in range(self.ns):
             leaf = root.select_leaf()
+
+            if self.env.is_done(leaf.state['visited']):
+                real_cost = self.env.get_reward(leaf.state['visited'], leaf.state['visiting_seq'])
+                leaf.backup(real_cost)
+                continue
+
             child_priors, value_estimate = self.model(leaf.state)
             leaf.expand(child_priors.cpu().numpy().reshape(-1))
             leaf.backup(value_estimate.item())
