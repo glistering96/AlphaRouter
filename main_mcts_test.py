@@ -275,5 +275,5 @@ def debug():
             save_json(all_result, f"{path}/all_result_avg.json")
 
 if __name__ == '__main__':
-    # debug()
-    main()
+    debug()
+    # main()

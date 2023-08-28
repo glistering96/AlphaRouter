@@ -1,3 +1,4 @@
+import collections
 import logging
 import math
 from copy import deepcopy
@@ -29,39 +30,100 @@ class MinMaxStats:
         return value
 
 
+class DummyNode(object):
+  def __init__(self):
+    self.parent = None
+    self.child_total_value = collections.defaultdict(float)
+    self.child_number_visits = collections.defaultdict(float)
+
+
 class Node:
     """
     Node class for MCTS
     """
-    def __init__(self, state, parent=None, prior=1):
+    def __init__(self, state, action, env, min_max_stats, parent=None, cpuct=1.1):
         self.state = state
-        self._is_expanded = False
+        self.env = env
+        self.min_max_stats = min_max_stats
+        self.is_expanded = False
         self.parent = parent
         self.children = {}
-        self.visit_count = 0
-        self.total_cost = 0
-        self.prior = prior
+        self.action = action
+        self.cpuct = cpuct
+        action_size = state['available'].shape[-1]
 
-    def expand(self, state, action_priors):
-        """
-        Expand tree by creating new children.
-        """
-        self._is_expanded = True
+        self.child_priors = np.zeros([action_size], dtype=np.float32)
+        self.child_total_value = np.zeros([action_size], dtype=np.float32)
+        self.child_number_visits = np.zeros([action_size], dtype=np.float32)
 
-        for action, prob in enumerate(action_priors):
-            if action not in self.children and prob > 1e-6:
-                self.children[action] = Node(state=deepcopy(state), parent=self, prior=prob)
+    @property
+    def number_visits(self):
+        return self.parent.child_number_visits[self.action]
 
-    def is_expanded(self):
-        return self._is_expanded
+    @number_visits.setter
+    def number_visits(self, value):
+        self.parent.child_number_visits[self.action] = value
+
+    @property
+    def total_value(self):
+        return self.parent.child_total_value[self.action]
+
+    @total_value.setter
+    def total_value(self, value):
+        self.parent.child_total_value[self.action] = value
+
+    def child_Q(self, normalize=False):
+        q = self.child_total_value / self.child_number_visits
+        q = np.nan_to_num(q, nan=0)
+
+        if normalize is True:
+            q_norm = self.min_max_stats.normalize(q)
+            q_norm = np.where(q_norm > 0, q_norm, 0)
+            return q_norm
+
+        else:
+            return q
+
+    def child_U(self):
+        return math.sqrt(self.number_visits) * self.child_priors / (1 + self.child_number_visits)
+
+    def best_child(self):
+        q = self.child_Q(normalize=True)
+        u = self.child_U()
+        mask = (q >= 0) & (self.state['available'].reshape(-1) == True)
+        ucb = -q + self.cpuct * u
+        masked_children = np.where(mask, ucb, float('-inf'))
+        best_child = np.argmax(masked_children)
+        return best_child
+
+    def select_leaf(self):
+        current = self
+        while current.is_expanded:
+            best_move = current.best_child()
+            current = current.maybe_add_child(best_move)
+        return current
+
+    def expand(self, child_priors):
+        self.is_expanded = True
+        self.child_priors = child_priors
+
+    def maybe_add_child(self, move):
+        if move not in self.children:
+            obs = self.env.step(self.state, move)[0]
+            self.children[move] = Node(deepcopy(obs), move, parent=self, min_max_stats=self.min_max_stats, env=self.env)
+        return self.children[move]
+
+    def backup(self, value_estimate: float):
+        current = self
+        while current.parent is not None:
+            current.number_visits += 1
+            current.total_value += value_estimate
+            q_value = current.get_cost()
+            self.min_max_stats.update(q_value)
+            current = current.parent
 
     def get_cost(self):
-        """
-        Calculate the value of this node.
-        """
-        if self.visit_count == 0:
-            return 0
-        return self.total_cost / self.visit_count
+        return self.total_value / self.number_visits
 
 
 class MCTS:
@@ -91,24 +153,27 @@ class MCTS:
         Simulate and return the probability for the target state based on the visit counts acquired from simulations
         """
 
-        root = Node(state=deepcopy(root_state), prior=0)
-
-        action_probs, _ = self.model(root_state)
-        action_probs = action_probs.cpu().numpy().reshape(-1)
-        action = int(np.argmax(action_probs, -1))
+        root = Node(state=deepcopy(root_state), action=None, env=self.env,
+                    min_max_stats=self.min_max_stats, parent=DummyNode())
+        #
+        # action_probs, _ = self.model(root_state)
+        # action_probs = action_probs.cpu().numpy().reshape(-1)
 
         # next_state = self.env.step(root_state, action)[0]
 
-        root.expand(root_state, action_probs)
+        # root.expand(action_probs)
 
         for i in range(self.ns):
-            self._run(root)
+            leaf = root.select_leaf()
+            child_priors, value_estimate = self.model(leaf.state)
+            leaf.expand(child_priors.cpu().numpy().reshape(-1))
+            leaf.backup(value_estimate.item())
 
         visit_counts, actions = [], []
         est_cost = {}
 
         for action, child in root.children.items():
-            visit_counts.append(child.visit_count)
+            visit_counts.append(child.number_visits)
             actions.append(action)
             est_cost[action] = child.get_cost()
 
@@ -129,7 +194,7 @@ class MCTS:
         mcts_run_info = {
             'min_cost_child': min_cost_child,
             'visit_counts_stats': visit_counts_stats,
-            'priors': {a: c.prior for a, c in root.children.items()},
+            'priors': {a: p for a, p in enumerate(root.child_priors)},
         }
         return action, mcts_run_info
 
