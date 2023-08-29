@@ -104,10 +104,10 @@ class Node:
             best_move = current.best_child()
 
             if best_move not in self.children:
-                obs = self.env.step(self.state, best_move)[0]
+                obs = self.env.step(deepcopy(self.state), best_move)[0]
                 reached_terminal = self.env.is_done(obs['visited'])
 
-                self.children[best_move] = Node(deepcopy(obs), best_move, parent=self, min_max_stats=self.min_max_stats,
+                self.children[best_move] = Node(obs, best_move, parent=self, min_max_stats=self.min_max_stats,
                                            env=self.env)
 
             current = current.maybe_add_child(best_move)
