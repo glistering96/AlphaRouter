@@ -86,8 +86,8 @@ class TSPEnv:
 
         return xy
 
-    def get_reward(self, visited, t, visiting_seq):
-        if (self.is_done(visited) or self.step_reward) and t > 0:
+    def get_reward(self, visited, visiting_seq):
+        if self.is_done(visited) or self.step_reward:
             # batch_size, pomo_size = self.pos.shape
             visitng_idx = np.concatenate(visiting_seq, axis=2)
             # (num_env, pomo_size, num_nodes):
@@ -144,7 +144,7 @@ class TSPEnv:
         # assign avail to field
         available, done = self.get_avail_mask(visited)
 
-        reward = self.get_reward(visited, t, visiting_seq)
+        reward = self.get_reward(visited, visiting_seq)
 
         info = {}
 

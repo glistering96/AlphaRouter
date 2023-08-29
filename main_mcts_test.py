@@ -181,17 +181,17 @@ def run_cross_test():
 
 def main():
     num_env = 64
-    num_problems = 10
+    num_problems = 100
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp'],
+        'env_type': ['tsp', 'cvrp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
-        'activation': ['relu'],
-        'baseline': ['mean'],
+        'activation': ['swiglu', 'relu'],
+        'baseline': ['mean', 'val'],
         'encoder_layer_num': [6],
         'qkv_dim': [32],
         'num_heads': [4],
@@ -199,10 +199,10 @@ def main():
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
         'num_simulations': [100, 250, 500, 1000],
-        'cpuct': [1.1]
+        'cpuct': [0.9, 1, 1.1]
     }
 
-    for num_nodes in [100]:
+    for num_nodes in [20, 50, 100]:
         run_param_dict['num_nodes'] = [num_nodes]
 
         result = run_parallel_test(run_param_dict, 4)
@@ -233,13 +233,12 @@ def debug():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['cvrp'],
+        'env_type': ['tsp', 'cvrp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
-        # 'test_data_idx': [3],
         'data_path': ['./data'],
-        'activation': ['relu', 'swiglu'],
+        'activation': ['swiglu', 'relu'],
         'baseline': ['mean', 'val'],
         'encoder_layer_num': [6],
         'qkv_dim': [32],
@@ -247,8 +246,8 @@ def debug():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'cpuct': [1.1],
-        'num_simulations': [200]
+        'num_simulations': [1000],
+        'cpuct': [1.1]
     }
 
     for num_nodes in [20]:
@@ -275,5 +274,5 @@ def debug():
             save_json(all_result, f"{path}/all_result_avg.json")
 
 if __name__ == '__main__':
-    debug()
-    # main()
+    # debug()
+    main()
