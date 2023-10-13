@@ -30,7 +30,6 @@ class AMTrainer(pl.LightningModule):
         # etc
         self.ent_coef = run_params['ent_coef']
         self.nn_train_epochs = run_params['nn_train_epochs']
-        self.warm_up_epochs = 10
 
         self.baseline = run_params['baseline']
 
@@ -92,16 +91,11 @@ class AMTrainer(pl.LightningModule):
             p_loss = advantage * log_prob.squeeze(-1)
             # shape: (batch, pomo)
 
-        loss = p_loss + 0.5 * val_loss  # Minus Sign: To Increase REWARD
+        loss = p_loss + 0.5 * val_loss 
         loss = loss.mean()
         entropy = -torch.cat(entropy_lst, dim=-1).mean()
         min_pomo_reward, _ = reward.min(dim=1)  # get best results from pomo
         score_mean = min_pomo_reward.mean()
-
-        # self.automatic_optimization = False
-        # self.optimizers().zero_grad()
-        # self.manual_backward(loss)
-        # self.optimizers().step()
         
         train_score, loss, p_loss, val_loss, epi_len, entropy = reward.mean().item(), loss, p_loss, val_loss, len(prob_lst), -entropy
 
@@ -112,8 +106,6 @@ class AMTrainer(pl.LightningModule):
         self.log('loss/p_loss', p_loss.mean().item())
         self.log('loss/val_loss', val_loss, prog_bar=True)
         self.log('loss/entropy', entropy, prog_bar=True)
-        lr = self.trainer.lr_scheduler_configs[0].scheduler.get_lr()[0]
-        self.log('debug/lr', lr, prog_bar=True)
         self.log('hp_metric', train_score)
 
         # self.add_histogram()
@@ -128,14 +120,7 @@ class AMTrainer(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = Optimizer(self.parameters(), **self.optimizer_params)
-
-        scheduler = CosineAnnealingWarmupRestarts(
-            optimizer,
-            first_cycle_steps=1000,
-            warmup_steps=self.warm_up_epochs,
-            max_lr=self.optimizer_params['lr'],
-            min_lr=self.optimizer_params['lr'])
-        return {"optimizer": optimizer, "lr_scheduler": scheduler}
+        return optimizer
 
     # def lr_scheduler_step(self, scheduler, metric):
     #     scheduler.step(epoch=self.current_epoch)
