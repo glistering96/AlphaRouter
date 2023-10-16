@@ -50,14 +50,12 @@ def run_parallel_test(param_ranges, num_proc=5):
 
         result_dir = get_result_dir(params, mcts=False)
 
-        ckpt = all_checkpoints[-1]
+        for ckpt in all_checkpoints:
+            input_params = deepcopy(params)
+            input_params['load_epoch'] = ckpt
+            input_params['result_dir'] = result_dir
 
-        # for ckpt in all_checkpoints:
-        input_params = deepcopy(params)
-        input_params['load_epoch'] = ckpt
-        input_params['result_dir'] = result_dir
-
-        pool.apply_async(run_test, kwds=input_params, callback=__callback)
+            pool.apply_async(run_test, kwds=input_params, callback=__callback)
 
     pool.close()
     pool.join()
@@ -99,14 +97,14 @@ def main():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp'],
+        'env_type': ['tsp', 'cvrp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
         'activation': ['relu', 'swiglu'],
         'baseline': ['val', 'mean'],
-        'encoder_layer_num': [6],
+        'encoder_layer_num': [4],
         'qkv_dim': [32],
         'num_heads': [4],
         'embedding_dim': [128],
@@ -114,9 +112,9 @@ def main():
         'num_steps_in_epoch': [100 * 1000 // num_env]
     }
 
-    for num_nodes in [100]:
+    for num_nodes in [20, 50, 100]:
         run_param_dict['num_nodes'] = [num_nodes]
-        result = run_parallel_test(run_param_dict, 4)
+        result = run_parallel_test(run_param_dict, 8)
 
         path_format = "./result_summary/am"
 
@@ -182,8 +180,8 @@ def debug():
 
 
 if __name__ == '__main__':
-    # main()
-    debug()
+    main()
+    # debug()
 
     # problem_size = 20
     # num_problems = 100

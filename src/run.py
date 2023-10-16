@@ -101,6 +101,7 @@ def run_pretrain(args):
                                optimizer_params=optimizer_params,)
 
     model.save_hyperparameters(h_params)
+            
     default_root_dir = DirParser(args).get_model_root_dir()
     max_epochs = run_params['nn_train_epochs']
 
@@ -110,11 +111,11 @@ def run_pretrain(args):
     score_cp_callback = pl.callbacks.ModelCheckpoint(
         dirpath=default_root_dir,
         monitor="train_score",
-        every_n_epochs=1,
+        every_n_epochs=50,
         mode="min",
         filename="{epoch}-{train_score:.5f}",
         save_on_train_epoch_end=True,
-        save_top_k=5
+        save_top_k=100
     )
 
     trainer = pl.Trainer(
@@ -125,12 +126,18 @@ def run_pretrain(args):
         default_root_dir=default_root_dir,
         precision="16-mixed",
         callbacks=[score_cp_callback],
-        gradient_clip_val=1.0
+        gradient_clip_val=1.0,
+        
+        
     )
 
     dummy_dl = torch.utils.data.DataLoader(torch.zeros((num_steps_in_epoch, 1, 1, 1)), batch_size=1)
-    trainer.fit(model,
-                train_dataloaders=dummy_dl)
+    
+    if args.load_epoch:
+        trainer.fit(model, train_dataloaders=dummy_dl, ckpt_path=args.load_epoch)
+    
+    else:
+        trainer.fit(model, train_dataloaders=dummy_dl)
 
 
 def run_am_test(args):

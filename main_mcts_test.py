@@ -41,7 +41,7 @@ def run_parallel_test(param_ranges, num_proc=5):
     def __callback(val):
         async_result.put(val)
     
-    pivot = 'train_score'
+    pivot = None
     
     if num_proc > 1:
         pool = mp.Pool(num_proc)
@@ -49,34 +49,37 @@ def run_parallel_test(param_ranges, num_proc=5):
         for params in dict_product(param_ranges):
             all_files, ckpt_root = collect_all_checkpoints(params)
             all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
+            result_dir = get_result_dir(params, mcts=True)
             
-            if pivot == 'train_score':
-                all_checkpoints.sort(
-                    key=lambda x: float(x.split('-')[1].split('=')[-1])
-                )
+            if pivot is not None:
+                if pivot == 'train_score':
+                    all_checkpoints.sort(
+                        key=lambda x: float(x.split('-')[1].split('=')[-1])
+                    )
+                    ckpt = all_checkpoints[0]
+                    # minimum score ckpt
+                    
+                elif pivot == 'epoch':
+                    all_checkpoints.sort(
+                        key=lambda x: float(x.split('-')[0].split('=')[-1])
+                    )
+                    ckpt = all_checkpoints[-1]
 
-                result_dir = get_result_dir(params, mcts=True)
 
-                ckpt = all_checkpoints[0]
-                # minimum score ckpt
+                input_params = deepcopy(params)
+                input_params['load_epoch'] = ckpt
+                input_params['result_dir'] = result_dir
+
+                pool.apply_async(run_test, kwds=input_params, callback=__callback)
                 
-            elif pivot == 'epoch':
-                all_checkpoints.sort(
-                    key=lambda x: float(x.split('-')[0].split('=')[-1])
-                )
+            else:
+                for ckpt in all_checkpoints:
+                    input_params = deepcopy(params)
+                    input_params['load_epoch'] = ckpt
+                    input_params['result_dir'] = result_dir
 
-                result_dir = get_result_dir(params, mcts=True)
-
-                ckpt = all_checkpoints[-1]
+                    pool.apply_async(run_test, kwds=input_params, callback=__callback)
                 
-                # max_epoch ckpt
-
-            # for ckpt in all_checkpoints:
-            input_params = deepcopy(params)
-            input_params['load_epoch'] = ckpt
-            input_params['result_dir'] = result_dir
-
-            pool.apply_async(run_test, kwds=input_params, callback=__callback)
 
         pool.close()
         pool.join()
@@ -185,27 +188,27 @@ def main():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp', 'cvrp'],
+        'env_type': ['cvrp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
         'activation': ['swiglu', 'relu'],
         'baseline': ['mean', 'val'],
-        'encoder_layer_num': [6],
+        'encoder_layer_num': [4],
         'qkv_dim': [32],
         'num_heads': [4],
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
         'num_simulations': [100, 250, 500, 1000],
-        'cpuct': [0.9, 1, 1.1]
+        'cpuct': [1.1]
     }
 
     for num_nodes in [20, 50, 100]:
         run_param_dict['num_nodes'] = [num_nodes]
 
-        result = run_parallel_test(run_param_dict, 4)
+        result = run_parallel_test(run_param_dict, 6)
 
         path_format = "./result_summary/mcts"
         
@@ -226,6 +229,7 @@ def main():
 
             save_json(all_result, f"{path}/all_result_avg.json")
 
+    print("Done!")
 
 def debug():
     num_env = 64
@@ -233,7 +237,7 @@ def debug():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp', 'cvrp'],
+        'env_type': ['cvrp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -246,15 +250,15 @@ def debug():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'num_simulations': [1000],
+        'num_simulations': [100, 250, 500, 1000],
         'cpuct': [1.1]
     }
 
-    for num_nodes in [20]:
+    for num_nodes in [100]:
         run_param_dict['num_nodes'] = [num_nodes]
 
         result = run_parallel_test(run_param_dict, 1)
-        path_format = "./result_summary/debug/mcts_v2"
+        path_format = "./result_summary/debug/mcts"
 
         for result_dir in result.keys():
             path = f"{path_format}/{result_dir}"
@@ -274,5 +278,14 @@ def debug():
             save_json(all_result, f"{path}/all_result_avg.json")
 
 if __name__ == '__main__':
+    import torch
+    torch.set_float32_matmul_precision('high')
     # debug()
     main()
+
+
+"""
+Done! Loaded from :./pretrained_result//tsp/N_100-B_64/shared_mha-128-4-32-4-relu-10-0.0001/1562-1-val/ns_1000-temp_5-cpuct_1.1-norm_True-rollout_False-
+ec_0.0100/epoch=49-train_score=8.01927. Tested on: 99. Scored: 8.75224 in 202.64 seconds.
+
+"""
