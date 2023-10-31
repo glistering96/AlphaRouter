@@ -15,6 +15,8 @@ from src.common.dir_parser import DirParser
 
 
 def _work(**kwargs):
+    torch.set_float32_matmul_precision('high')
+    
     if 'load_from_the_latest' in kwargs:
         load_from_the_latest = kwargs.pop('load_from_the_latest')
 
@@ -50,14 +52,14 @@ def _work(**kwargs):
 if __name__ == '__main__':    
     torch.set_float32_matmul_precision('high')
     params = {
-        'num_nodes' : [100],
+        'num_nodes' : [50],
         'result_dir' : ['pretrained_result'],
         'name_prefix' : [""],
         'render_mode' : [None],
         'qkv_dim' : [32],
         'num_heads': [4],
         'load_from_the_latest' : [False],
-        'env_type' : ['tsp', 'cvrp'],
+        'env_type' : ['cvrp'],
         'embedding_dim': [128],
         'encoder_layer_num':[6],
         'nn_train_epochs': [300],

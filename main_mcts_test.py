@@ -8,11 +8,13 @@ import torch.multiprocessing as mp
 from src.common.utils import (cal_average_std, collect_all_checkpoints,
                               dict_product, get_result_dir, save_json, load_json)
 from src.run import parse_args, run_mcts_test
+import torch
 
 
 def run_test(**kwargs):
     import warnings
     warnings.simplefilter("ignore", UserWarning)
+    torch.set_float32_matmul_precision('high')
 
     args = parse_args()
 
@@ -242,8 +244,8 @@ def debug():
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
-        'activation': ['swiglu', 'relu'],
-        'baseline': ['mean', 'val'],
+        'activation': ['relu'],
+        'baseline': ['mean'],
         'encoder_layer_num': [6],
         'qkv_dim': [32],
         'num_heads': [4],
@@ -278,10 +280,8 @@ def debug():
             save_json(all_result, f"{path}/all_result_avg.json")
 
 if __name__ == '__main__':
-    import torch
-    torch.set_float32_matmul_precision('high')
-    # debug()
-    main()
+    debug()
+    # main()
 
 
 """
