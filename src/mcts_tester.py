@@ -3,10 +3,13 @@ from pathlib import Path
 
 import numpy as np
 import torch
+import torch.multiprocessing as mp
 from gymnasium.wrappers import RecordVideo
 
 from src.mcts import MCTS, Node
 from src.module_base import RolloutBase
+
+
 
 
 class MCTSTesterModule(RolloutBase):
@@ -66,10 +69,36 @@ def test_one_episode(env, agent, mcts_params, use_mcts):
 
             else:
                 if use_mcts:
-                    mcts = MCTS(env, agent, mcts_params)
-                    action, mcts_info = mcts.get_action_prob(obs)
-                    node_visit_count = mcts_info['visit_counts_stats']
-                    priors = mcts_info['priors']
+                    from copy import deepcopy
+                    
+                    mcts_params['num_simulations'] = mcts_params['num_simulations'] // 4 + 1
+                    pool = mp.Pool(4)
+                    
+                    result = pool.map(MCTS(env, agent, mcts_params).get_action_prob, [deepcopy(obs) for _ in range(4)])
+                    # mcts = MCTS(env, agent, mcts_params)
+                    # action, mcts_info = mcts.get_action_prob(obs)
+                    # node_visit_count = mcts_info['visit_counts_stats']
+                    # priors = mcts_info['priors']
+                    
+                    pool.close()
+                    pool.join()
+                    
+                    visit_count_agg = dict()
+                    
+                    # aggregate visit counts from the result's mcts_run_info. 
+                    # result is a list of (action, mcts_run_info) tuples
+                    for action, mcts_run_info in result:
+                        visit_counts = mcts_run_info['visit_counts_stats']
+                        for a, v in visit_counts.items():
+                            if a not in visit_count_agg:
+                                visit_count_agg[a] = v
+                            else:
+                                visit_count_agg[a] += v
+                    
+                    # visit_counts_stats = {a: v for a, v in zip(actions, visit_counts)}
+                    # get the action with the highest visit count
+                    action = max(visit_count_agg, key=visit_count_agg.get)
+                    
 
                 else:
                     action_probs, _ = agent(obs)

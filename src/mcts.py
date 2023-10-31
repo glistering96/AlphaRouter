@@ -164,57 +164,60 @@ class MCTS:
         """
         Simulate and return the probability for the target state based on the visit counts acquired from simulations
         """
+        import warnings
+        warnings.filterwarnings("ignore", category=UserWarning)
+        
+        with torch.no_grad():
+            root = Node(state=deepcopy(root_state), action=None, env=self.env,
+                        min_max_stats=self.min_max_stats, parent=DummyNode())
+            #
+            # action_probs, _ = self.model(root_state)
+            # action_probs = action_probs.cpu().numpy().reshape(-1)
 
-        root = Node(state=deepcopy(root_state), action=None, env=self.env,
-                    min_max_stats=self.min_max_stats, parent=DummyNode())
-        #
-        # action_probs, _ = self.model(root_state)
-        # action_probs = action_probs.cpu().numpy().reshape(-1)
+            # next_state = self.env.step(root_state, action)[0]
 
-        # next_state = self.env.step(root_state, action)[0]
+            # root.expand(action_probs)
 
-        # root.expand(action_probs)
+            for i in range(self.ns):
+                leaf = root.select_leaf()
 
-        for i in range(self.ns):
-            leaf = root.select_leaf()
+                if self.env.is_done(leaf.state['visited']):
+                    real_cost = self.env.get_reward(leaf.state['visited'], leaf.state['visiting_seq'])
+                    leaf.backup(real_cost)
+                    continue
 
-            if self.env.is_done(leaf.state['visited']):
-                real_cost = self.env.get_reward(leaf.state['visited'], leaf.state['visiting_seq'])
-                leaf.backup(real_cost)
-                continue
+                child_priors, value_estimate = self.model(leaf.state)
+                leaf.expand(child_priors.cpu().numpy().reshape(-1))
+                leaf.backup(value_estimate.item())
 
-            child_priors, value_estimate = self.model(leaf.state)
-            leaf.expand(child_priors.cpu().numpy().reshape(-1))
-            leaf.backup(value_estimate.item())
+            visit_counts, actions = [], []
+            est_cost = {}
 
-        visit_counts, actions = [], []
-        est_cost = {}
+            for action, child in root.children.items():
+                visit_counts.append(child.number_visits)
+                actions.append(action)
+                est_cost[action] = child.get_cost()
 
-        for action, child in root.children.items():
-            visit_counts.append(child.number_visits)
-            actions.append(action)
-            est_cost[action] = child.get_cost()
+            if temp == 0:
+                action = actions[np.argmax(visit_counts)]
 
-        if temp == 0:
-            action = actions[np.argmax(visit_counts)]
+            elif temp == float('inf'):
+                action = self.rand_gen.choice(actions)
 
-        elif temp == float('inf'):
-            action = self.rand_gen.choice(actions)
+            else:
+                visit_counts = np.power(visit_counts, 1.0 / temp)
+                visit_counts_sum = np.sum(visit_counts)
+                action_probs = visit_counts / visit_counts_sum
+                action = self.rand_gen.choice(actions, p=action_probs)
 
-        else:
-            visit_counts = np.power(visit_counts, 1.0 / temp)
-            visit_counts_sum = np.sum(visit_counts)
-            action_probs = visit_counts / visit_counts_sum
-            action = self.rand_gen.choice(actions, p=action_probs)
-
-        min_cost_child = min(est_cost, key=est_cost.get)
-        visit_counts_stats = {a: v for a, v in zip(actions, visit_counts)}
-        mcts_run_info = {
-            'min_cost_child': min_cost_child,
-            'visit_counts_stats': visit_counts_stats,
-            'priors': {a: p for a, p in enumerate(root.child_priors)},
-        }
-        return action, mcts_run_info
+            min_cost_child = min(est_cost, key=est_cost.get)
+            visit_counts_stats = {a: v for a, v in zip(actions, visit_counts)}
+            mcts_run_info = {
+                'min_cost_child': min_cost_child,
+                'visit_counts_stats': visit_counts_stats,
+                'priors': {a: p for a, p in enumerate(root.child_priors)},
+            }
+            return action, mcts_run_info
 
     def _run(self, root_node):
         """
