@@ -5,6 +5,8 @@ from copy import deepcopy
 
 import numpy as np
 import torch
+
+from src.models.routing_model import RoutingModel
 EPS = 1e-8
 
 log = logging.getLogger(__name__)
@@ -150,12 +152,24 @@ class MCTS:
     This class handles the MCTS tree.
     """
 
-    def __init__(self, env, model, mcts_params):
+    def __init__(self, env, model_params, env_params, mcts_params, dir_parser, model=None):
         self.env = env
         self.env_type = env.env_type
         self.action_space = env.action_size
-
-        self.model = model
+        
+        if model is None:
+            self.model = RoutingModel(model_params, env_params).create_model(self.env_type)
+            self.model.device = 'cuda'
+            self.dir_parser = dir_parser
+            
+            checkpoint_fullname = self.dir_parser.get_model_checkpoint(ckpt_name=model_params['ckpt'])
+            checkpoint = torch.load(checkpoint_fullname, map_location="cuda")
+            loaded_state_dict = checkpoint['state_dict']
+            loaded_state_dict = {k[6:]: v for k, v in loaded_state_dict.items() if k.startswith('model.')}
+            self.model.load_state_dict(loaded_state_dict)
+            
+        else:
+            self.model = model
 
         self.cpuct = mcts_params['cpuct']
         self.noise_eta = mcts_params['noise_eta']
@@ -167,6 +181,26 @@ class MCTS:
 
         self.min_max_stats = MinMaxStats()
 
+    def _load_model(self, ckpt_name):
+        # if on debug mode, remove the debug prefix on the self.result_folder
+        checkpoint_fullname = self.dir_parser.get_model_checkpoint(ckpt_name=ckpt_name)
+        try:
+            checkpoint = torch.load(checkpoint_fullname, map_location=self.device)
+
+        except:
+            print(f"Error in loading: {checkpoint_fullname}")
+            raise FileNotFoundError
+
+        self.start_epoch = checkpoint['epoch'] + 1
+        self.epochs = self.run_params['nn_train_epochs'] - self.start_epoch + 1
+
+        loaded_state_dict = checkpoint['state_dict']
+        loaded_state_dict = {k[6:]: v for k, v in loaded_state_dict.items() if k.startswith('model.')}
+        self.model.load_state_dict(loaded_state_dict)
+
+        if self.optimizer is not None:
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            
     def get_action_prob(self, root_state, temp=0):
         """
         Simulate and return the probability for the target state based on the visit counts acquired from simulations
