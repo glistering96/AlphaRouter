@@ -11,7 +11,7 @@ from gymnasium.wrappers import RecordVideo
 from src.mcts import MCTS, Node
 from src.module_base import RolloutBase
 
-
+from copy import deepcopy
 
 
 class MCTSTesterModule(RolloutBase):
@@ -45,25 +45,6 @@ class MCTSTesterModule(RolloutBase):
         done = False
         self.model.eval()
 
-<<<<<<< Updated upstream
-    agent.encoding = None
-
-    start = time.time()
-
-    with torch.no_grad():
-        # action_probs, _ = agent(obs)
-        # action = int(np.argmax(action_probs.cpu(), -1))  # type must be python native
-        # obs, _, done, _, _ = env.step(obs, action)
-        save_path = Path('./debug/plot/tsp/')
-
-        if not save_path.exists():
-            save_path.mkdir(parents=True)
-
-        if use_mcts:
-            agent_type = 'mcts'
-        else:
-            agent_type = 'am'
-=======
         self.model.encoding = None
         num_cpu = 4
         
@@ -73,7 +54,6 @@ class MCTSTesterModule(RolloutBase):
         if num_cpu > 1:
             pool = mp.Pool(num_cpu)
         save_path = Path('./debug/plot/tsp/')
->>>>>>> Stashed changes
 
         if not save_path.exists():
             save_path.mkdir(parents=True)
@@ -87,45 +67,6 @@ class MCTSTesterModule(RolloutBase):
             while not done:
                 avail = obs['available']
 
-<<<<<<< Updated upstream
-            else:
-                if use_mcts:
-                    from copy import deepcopy
-                    
-                    mcts_params['num_simulations'] = mcts_params['num_simulations'] // 4 + 1
-                    pool = mp.Pool(4)
-                    
-                    result = pool.map(MCTS(env, agent, mcts_params).get_action_prob, [deepcopy(obs) for _ in range(4)])
-                    # mcts = MCTS(env, agent, mcts_params)
-                    # action, mcts_info = mcts.get_action_prob(obs)
-                    # node_visit_count = mcts_info['visit_counts_stats']
-                    # priors = mcts_info['priors']
-                    
-                    pool.close()
-                    pool.join()
-                    
-                    visit_count_agg = dict()
-                    
-                    # aggregate visit counts from the result's mcts_run_info. 
-                    # result is a list of (action, mcts_run_info) tuples
-                    for action, mcts_run_info in result:
-                        visit_counts = mcts_run_info['visit_counts_stats']
-                        for a, v in visit_counts.items():
-                            if a not in visit_count_agg:
-                                visit_count_agg[a] = v
-                            else:
-                                visit_count_agg[a] += v
-                    
-                    # visit_counts_stats = {a: v for a, v in zip(actions, visit_counts)}
-                    # get the action with the highest visit count
-                    action = max(visit_count_agg, key=visit_count_agg.get)
-                    
-
-                else:
-                    action_probs, _ = agent(obs)
-                    action_probs = action_probs.cpu().numpy().reshape(-1)
-                    action = int(np.argmax(action_probs, -1))
-=======
                 if (avail == True).sum() == 1:
                     action = np.where(avail == True)[2][0]
 
@@ -159,7 +100,6 @@ class MCTSTesterModule(RolloutBase):
                         action_probs, _ = self.model(obs)
                         action_probs = action_probs.cpu().numpy().reshape(-1)
                         action = int(np.argmax(action_probs, -1))
->>>>>>> Stashed changes
 
                         priors = {a: p for a, p in enumerate(action_probs)}
                         node_visit_count = None
@@ -171,13 +111,8 @@ class MCTSTesterModule(RolloutBase):
 
                 obs = next_state
 
-<<<<<<< Updated upstream
-            if done:
-                return reward, time.time() - start
-=======
                 if done:
                     if num_cpu > 1:
                         pool.close()
                         pool.join()
                     return reward, time.time() - start
->>>>>>> Stashed changes
