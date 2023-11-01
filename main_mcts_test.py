@@ -239,7 +239,7 @@ def debug():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp'],
+        'env_type': ['cvrp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),

@@ -1,5 +1,7 @@
+from collections.abc import Callable, Iterable, Mapping
 import time
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import torch
@@ -37,6 +39,32 @@ class MCTSTesterModule(RolloutBase):
         return test_score, runtime
 
 
+class MCTSWorker(mp.Process):
+    def __init__(self, env, agent, mcts_params):
+        super().__init__()
+        self.env = env
+        self.agent = agent
+        self.mcts_params = mcts_params
+        self.queue = mp.Queue()
+        self.mcts = MCTS(env, agent, mcts_params)
+        self.result = None
+        self.done_signal = False
+        
+    def run(self):
+        for arg in iter(self.queue.get, "STOP"):
+            self.done_signal = False
+            action, mcts_run_info = self.mcts.get_action_prob(arg)
+            self.result = mcts_run_info['visit_counts_stats']
+            self.done_signal = True
+            
+    def get_result(self):
+        return self.result
+    
+    def get_done_signal(self):
+        return self.done_signal
+            
+            
+
 def test_one_episode(env, agent, mcts_params, use_mcts):
     env.set_test_mode()
     obs, _ = env.reset()
@@ -44,10 +72,16 @@ def test_one_episode(env, agent, mcts_params, use_mcts):
     agent.eval()
 
     agent.encoding = None
-    num_cpu = 8
-    mcts_params['num_simulations'] = mcts_params['num_simulations'] // num_cpu + 1 if use_mcts else mcts_params['num_simulations']
-    pool = mp.Pool(num_cpu)
+    num_cpu = 4
     
+    if num_cpu > 1:
+        mcts_params['num_simulations'] = mcts_params['num_simulations'] // num_cpu + 1 if use_mcts else mcts_params['num_simulations']
+        
+        workers = {i: MCTSWorker(env, agent, mcts_params) for i in range(num_cpu)}
+        
+        for i in range(num_cpu):
+            workers[i].start()
+                            
     start = time.time()
     save_path = Path('./debug/plot/tsp/')
 
@@ -69,15 +103,25 @@ def test_one_episode(env, agent, mcts_params, use_mcts):
             else:
                 if use_mcts:
 
-                    
                     if num_cpu > 1:
-                        result = pool.map(MCTS(env, agent, mcts_params).get_action_prob, [deepcopy(obs) for _ in range(4)])
+                        for i in range(num_cpu):
+                            workers[i].queue.put(deepcopy(obs))
+                        
+                        all_done = False
+                        
+                        while not all_done:
+                            all_done = workers[0].get_done_signal()
+                            for i in range(1, num_cpu):
+                                all_done = all_done and workers[i].get_done_signal()
+                                
+                        
+                        results = [workers[i].get_result() for i in range(num_cpu)]
+                            
                         visit_count_agg = dict()
                         
                         # aggregate visit counts from the result's mcts_run_info. 
                         # result is a list of (action, mcts_run_info) tuples
-                        for action, mcts_run_info in result:
-                            visit_counts = mcts_run_info['visit_counts_stats']
+                        for visit_counts in results:
                             for a, v in visit_counts.items():
                                 if a not in visit_count_agg:
                                     visit_count_agg[a] = v
@@ -110,7 +154,7 @@ def test_one_episode(env, agent, mcts_params, use_mcts):
 
             if done:
                 
-                pool.close()
-                pool.join()
+                for i in range(num_cpu):
+                    workers[i].queue.put("STOP")
                 
                 return reward, time.time() - start
