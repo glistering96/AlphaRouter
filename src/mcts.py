@@ -93,7 +93,14 @@ class Node:
         mask = (q >= 0) & (self.state['available'].reshape(-1) == True)
         ucb = -q + self.cpuct * u
         masked_children = np.where(mask, ucb, float('-inf'))
-        best_child = np.argmax(masked_children)
+        max_prior = np.max(masked_children)
+        
+        if np.count_nonzero(masked_children == max_prior) > 1:
+            best_child = np.random.choice(np.where(masked_children == max_prior)[0])
+            
+        else:
+            best_child = np.argmax(masked_children)
+        
         return best_child
 
     def select_leaf(self):

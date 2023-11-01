@@ -19,3 +19,4 @@ log_archive/
 /result_summary.backup/
 *.txt
 *ckpt
+/.venv/

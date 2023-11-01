@@ -235,11 +235,11 @@ def main():
 
 def debug():
     num_env = 64
-    num_problems = 10
+    num_problems = 1
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['cvrp'],
+        'env_type': ['tsp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -252,11 +252,11 @@ def debug():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'num_simulations': [100, 250, 500, 1000],
+        'num_simulations': [1000],
         'cpuct': [1.1]
     }
 
-    for num_nodes in [100]:
+    for num_nodes in [50]:
         run_param_dict['num_nodes'] = [num_nodes]
 
         result = run_parallel_test(run_param_dict, 1)
@@ -285,7 +285,21 @@ if __name__ == '__main__':
 
 
 """
-Done! Loaded from :./pretrained_result//tsp/N_100-B_64/shared_mha-128-4-32-4-relu-10-0.0001/1562-1-val/ns_1000-temp_5-cpuct_1.1-norm_True-rollout_False-
-ec_0.0100/epoch=49-train_score=8.01927. Tested on: 99. Scored: 8.75224 in 202.64 seconds.
+Done! Loaded from :./pretrained_result//tsp/N_20-B_64/shared_mha-128-6-32-4-relu-10-0.0001/1562-1-mean/ns_1000-temp_5-cpuct_1.1-norm_True-rollout_False-ec_0.0100/
+epoch=299-train_score=3.82308. Tested on: 0. Scored: 7.00382 in 93.48 seconds.
+
+1
+Done! Loaded from :./pretrained_result//tsp/N_50-B_64/shared_mha-128-6-32-4-relu-10-0.0001/1562-1-mean/ns_1000-temp_5-cpuct_1.1-norm_True-rollout_False-ec_0.0100/
+epoch=299-train_score=5.68891. Tested on: 0. Scored: 5.40425 in 50.35 seconds.
+
+2
+Done! Loaded from :./pretrained_result//tsp/N_50-B_64/shared_mha-128-6-32-4-relu-10-0.0001/1562-1-mean/ns_1000-temp_5-cpuct_1.1-norm_True-rollout_False-ec_0.0100/
+epoch=299-train_score=5.68891. Tested on: 0. Scored: 23.09609 in 237.62 seconds.
+
+4
+Done! Loaded from :./pretrained_result//tsp/N_50-B_64/shared_mha-128-6-32-4-relu-10-0.0001/1562-1-mean/ns_1000-temp_5-cpuct_1.1-norm_True-rollout_False-ec_0.0100/
+epoch=299-train_score=5.68891. Tested on: 0. Scored: 25.05918 in 209.75 seconds.
+
+8
 
 """

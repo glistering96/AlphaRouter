@@ -9,7 +9,7 @@ from gymnasium.wrappers import RecordVideo
 from src.mcts import MCTS, Node
 from src.module_base import RolloutBase
 
-
+from copy import deepcopy
 
 
 class MCTSTesterModule(RolloutBase):
@@ -44,22 +44,21 @@ def test_one_episode(env, agent, mcts_params, use_mcts):
     agent.eval()
 
     agent.encoding = None
-
+    num_cpu = 8
+    mcts_params['num_simulations'] = mcts_params['num_simulations'] // num_cpu + 1 if use_mcts else mcts_params['num_simulations']
+    pool = mp.Pool(num_cpu)
+    
     start = time.time()
+    save_path = Path('./debug/plot/tsp/')
 
+    if not save_path.exists():
+        save_path.mkdir(parents=True)
+        
     with torch.no_grad():
-        # action_probs, _ = agent(obs)
-        # action = int(np.argmax(action_probs.cpu(), -1))  # type must be python native
-        # obs, _, done, _, _ = env.step(obs, action)
-        save_path = Path('./debug/plot/tsp/')
-
-        if not save_path.exists():
-            save_path.mkdir(parents=True)
-
-        if use_mcts:
-            agent_type = 'mcts'
-        else:
-            agent_type = 'am'
+        # if use_mcts:
+        #     agent_type = 'mcts'
+        # else:
+        #     agent_type = 'am'
 
         while not done:
             avail = obs['available']
@@ -69,37 +68,31 @@ def test_one_episode(env, agent, mcts_params, use_mcts):
 
             else:
                 if use_mcts:
-                    from copy import deepcopy
-                    
-                    mcts_params['num_simulations'] = mcts_params['num_simulations'] // 4 + 1
-                    pool = mp.Pool(4)
-                    
-                    result = pool.map(MCTS(env, agent, mcts_params).get_action_prob, [deepcopy(obs) for _ in range(4)])
-                    # mcts = MCTS(env, agent, mcts_params)
-                    # action, mcts_info = mcts.get_action_prob(obs)
-                    # node_visit_count = mcts_info['visit_counts_stats']
-                    # priors = mcts_info['priors']
-                    
-                    pool.close()
-                    pool.join()
-                    
-                    visit_count_agg = dict()
-                    
-                    # aggregate visit counts from the result's mcts_run_info. 
-                    # result is a list of (action, mcts_run_info) tuples
-                    for action, mcts_run_info in result:
-                        visit_counts = mcts_run_info['visit_counts_stats']
-                        for a, v in visit_counts.items():
-                            if a not in visit_count_agg:
-                                visit_count_agg[a] = v
-                            else:
-                                visit_count_agg[a] += v
-                    
-                    # visit_counts_stats = {a: v for a, v in zip(actions, visit_counts)}
-                    # get the action with the highest visit count
-                    action = max(visit_count_agg, key=visit_count_agg.get)
-                    
 
+                    
+                    if num_cpu > 1:
+                        result = pool.map(MCTS(env, agent, mcts_params).get_action_prob, [deepcopy(obs) for _ in range(4)])
+                        visit_count_agg = dict()
+                        
+                        # aggregate visit counts from the result's mcts_run_info. 
+                        # result is a list of (action, mcts_run_info) tuples
+                        for action, mcts_run_info in result:
+                            visit_counts = mcts_run_info['visit_counts_stats']
+                            for a, v in visit_counts.items():
+                                if a not in visit_count_agg:
+                                    visit_count_agg[a] = v
+                                else:
+                                    visit_count_agg[a] += v
+                        
+                        # visit_counts_stats = {a: v for a, v in zip(actions, visit_counts)}
+                        # get the action with the highest visit count
+                        action = max(visit_count_agg, key=visit_count_agg.get)
+                        
+                    mcts = MCTS(env, agent, mcts_params)
+                    action, mcts_info = mcts.get_action_prob(obs)
+                    node_visit_count = mcts_info['visit_counts_stats']
+                    priors = mcts_info['priors']                   
+                    
                 else:
                     action_probs, _ = agent(obs)
                     action_probs = action_probs.cpu().numpy().reshape(-1)
@@ -116,4 +109,8 @@ def test_one_episode(env, agent, mcts_params, use_mcts):
             obs = next_state
 
             if done:
+                
+                pool.close()
+                pool.join()
+                
                 return reward, time.time() - start
