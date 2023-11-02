@@ -38,32 +38,45 @@ class MCTSTesterModule(RolloutBase):
 
         return test_score, runtime            
             
-
+    
     def test_one_episode(self, use_mcts):
-        self.env.set_test_mode()
-        obs, _ = self.env.reset()
-        done = False
-        self.model.eval()
-
-        self.model.encoding = None
-        num_cpu = 4
-        
-        self.mcts_params['num_simulations'] = self.mcts_params['num_simulations'] // num_cpu + 1
-        start = time.time()
-        
-        if num_cpu > 1:
-            pool = mp.Pool(num_cpu)
-        save_path = Path('./debug/plot/tsp/')
-
-        if not save_path.exists():
-            save_path.mkdir(parents=True)
-            
         with torch.no_grad():
+            self.env.set_test_mode()
+            obs, _ = self.env.reset()
+            done = False
+            self.model.eval()
+            self.model.encoding = None
+            self.model(obs)
+            self.encoding = self.model.encoding
+            # self.k, self.v, self.shk = self.model.decoder.set_kv(self.encoding)
+            
+
+            num_cpu = 8
+            self.mcts_params['num_simulations'] = self.mcts_params['num_simulations'] // num_cpu + 1
+            
+            processes = [
+                mp.Process(target=MCTS(self.env, self.model_params, 
+                                       self.env_params, self.mcts_params, self.dir_parser).get_action_prob, 
+                           args=(deepcopy(obs))) for _ in range(num_cpu)
+                ]
+
+            start = time.time()
+            
+            # if num_cpu > 1:
+            #     pool = mp.Pool(num_cpu)
+                
+            save_path = Path('./debug/plot/tsp/')
+
+            if not save_path.exists():
+                save_path.mkdir(parents=True)
+            
+
             # if use_mcts:
             #     agent_type = 'mcts'
             # else:
             #     agent_type = 'am'
-
+            processing_jobs = []
+            
             while not done:
                 avail = obs['available']
 
@@ -72,7 +85,9 @@ class MCTSTesterModule(RolloutBase):
 
                 else:
                     if use_mcts and num_cpu > 1:                    
-                        results = pool.map(MCTS(self.env, self.model_params, self.env_params, self.mcts_params, self.dir_parser, model=self.model).get_action_prob, [obs for _ in range(num_cpu)])
+                        # results = pool.starmap(self.work, zip(mcts_lst, [deepcopy(obs) for _ in range(num_cpu)]))
+                        for p in processes:
+                            p.set
                 
                         visit_count_agg = dict()
                         

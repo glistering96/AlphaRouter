@@ -190,7 +190,7 @@ def main():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['cvrp'],
+        'env_type': ['tsp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -207,7 +207,7 @@ def main():
         'cpuct': [1.1]
     }
 
-    for num_nodes in [20, 50, 100]:
+    for num_nodes in [50, 100]:
         run_param_dict['num_nodes'] = [num_nodes]
 
         result = run_parallel_test(run_param_dict, 6)
@@ -235,7 +235,7 @@ def main():
 
 def debug():
     num_env = 64
-    num_problems = 10
+    num_problems = 1
 
     run_param_dict = {
         'test_data_type': ['pkl'],
@@ -252,11 +252,11 @@ def debug():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'num_simulations': [100, 250, 500, 1000],
+        'num_simulations': [4000],
         'cpuct': [1.1]
     }
 
-    for num_nodes in [100]:
+    for num_nodes in [50]:
         run_param_dict['num_nodes'] = [num_nodes]
 
         result = run_parallel_test(run_param_dict, 1)
@@ -285,7 +285,28 @@ if __name__ == '__main__':
 
 
 """
-Done! Loaded from :./pretrained_result//tsp/N_100-B_64/shared_mha-128-4-32-4-relu-10-0.0001/1562-1-val/ns_1000-temp_5-cpuct_1.1-norm_True-rollout_False-
-ec_0.0100/epoch=49-train_score=8.01927. Tested on: 99. Scored: 8.75224 in 202.64 seconds.
+8
+Done! Loaded from :./pretrained_result//cvrp/N_50-B_64/shared_mha-128-6-32-4-relu-10-0.0001/1562-1-mean/ns_4000-temp_5-cpuct_1.1-norm_True-rollout_False-ec_0.0100/epoch=199-train_score=10.88664.
+Tested on: 0. Scored: 12.16461 in 78.05 seconds.
+
+8
+Done! Loaded from :./pretrained_result//cvrp/N_50-B_64/shared_mha-128-6-32-4-relu-10-0.0001/1562-1-mean/ns_4000-temp_5-cpuct_1.1-norm_True-rollout_False-ec_0.0100/epoch=199-train_score=10.88664. 
+Tested on: 0. Scored: 10.96594 in 74.22 seconds.
+
+8
+Done! Loaded from :./pretrained_result//cvrp/N_50-B_64/shared_mha-128-6-32-4-relu-10-0.0001/1562-1-mean/ns_4000-temp_5-cpuct_1.1-norm_True-rollout_False-ec_0.0100/epoch=199-train_score=10.88664. 
+Tested on: 0. Scored: 12.15588 in 78.02 seconds.
+
+1
+Done! Loaded from :./pretrained_result//cvrp/N_50-B_64/shared_mha-128-6-32-4-relu-10-0.0001/1562-1-mean/ns_4000-temp_5-cpuct_1.1-norm_True-rollout_False-ec_0.0100/epoch=199-train_score=10.88664.
+Tested on: 0. Scored: 10.53372 in 134.61 seconds.
+
+1
+Done! Loaded from :./pretrained_result//cvrp/N_50-B_64/shared_mha-128-6-32-4-relu-10-0.0001/1562-1-mean/ns_4000-temp_5-cpuct_1.1-norm_True-rollout_False-ec_0.0100/epoch=199-train_score=10.88664.
+Tested on: 0. Scored: 10.53372 in 134.61 seconds.
+
+1
+Done! Loaded from :./pretrained_result//cvrp/N_50-B_64/shared_mha-128-6-32-4-relu-10-0.0001/1562-1-mean/ns_4000-temp_5-cpuct_1.1-norm_True-rollout_False-ec_0.0100/epoch=199-train_score=10.88664. 
+Tested on: 0. Scored: 10.53372 in 136.44 seconds.
 
 """

@@ -194,13 +194,17 @@ class MCTS:
         if self.optimizer is not None:
             self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             
-    def get_action_prob(self, root_state, temp=0):
+    def get_action_prob(self, root_state, k, v, shk, temp=0):
         """
         Simulate and return the probability for the target state based on the visit counts acquired from simulations
         """
         import warnings
         warnings.filterwarnings("ignore", category=UserWarning)
         
+        self.model.decoder.k = k
+        self.model.decoder.v = v
+        self.model.decoder.single_head_key = shk
+                
         with torch.no_grad():
             root = Node(state=deepcopy(root_state), action=None, env=self.env,
                         min_max_stats=self.min_max_stats, parent=DummyNode())
