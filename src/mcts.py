@@ -149,8 +149,9 @@ class MCTS:
         self.env = env
         self.env_type = env.env_type
         self.action_space = env.action_size
+        self.model = None
         
-        if model is None:
+        if model is None and self.model is None:
             self.model = RoutingModel(model_params, env_params).create_model(self.env_type)
             self.model.device = 'cuda'
             self.dir_parser = dir_parser
@@ -173,52 +174,29 @@ class MCTS:
         self.rand_gen = np.random.default_rng(self.seed)
 
         self.min_max_stats = MinMaxStats()
-
-    def _load_model(self, ckpt_name):
-        # if on debug mode, remove the debug prefix on the self.result_folder
-        checkpoint_fullname = self.dir_parser.get_model_checkpoint(ckpt_name=ckpt_name)
-        try:
-            checkpoint = torch.load(checkpoint_fullname, map_location=self.device)
-
-        except:
-            print(f"Error in loading: {checkpoint_fullname}")
-            raise FileNotFoundError
-
-        self.start_epoch = checkpoint['epoch'] + 1
-        self.epochs = self.run_params['nn_train_epochs'] - self.start_epoch + 1
-
-        loaded_state_dict = checkpoint['state_dict']
-        loaded_state_dict = {k[6:]: v for k, v in loaded_state_dict.items() if k.startswith('model.')}
-        self.model.load_state_dict(loaded_state_dict)
-
-        if self.optimizer is not None:
-            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             
-    def get_action_prob(self, root_state, k, v, shk, temp=0):
+    def get_action_prob(self, root_state, p_id=None, temp=0):
         """
         Simulate and return the probability for the target state based on the visit counts acquired from simulations
         """
         import warnings
+        import os
         warnings.filterwarnings("ignore", category=UserWarning)
         
-        self.model.decoder.k = k
-        self.model.decoder.v = v
-        self.model.decoder.single_head_key = shk
-                
         with torch.no_grad():
             root = Node(state=deepcopy(root_state), action=None, env=self.env,
                         min_max_stats=self.min_max_stats, parent=DummyNode())
-            #
+
             # action_probs, _ = self.model(root_state)
             # action_probs = action_probs.cpu().numpy().reshape(-1)
 
             # next_state = self.env.step(root_state, action)[0]
 
             # root.expand(action_probs)
-
+            
             for i in range(self.ns):
                 leaf = root.select_leaf()
-
+                # print(f"p_id: {os.getpid()}, i: {i}")
                 if self.env.is_done(leaf.state['visited']):
                     real_cost = self.env.get_reward(leaf.state['visited'], leaf.state['visiting_seq'])
                     leaf.backup(real_cost)
@@ -255,6 +233,15 @@ class MCTS:
                 'visit_counts_stats': visit_counts_stats,
                 'priors': {a: p for a, p in enumerate(root.child_priors)},
             }
+            
+            out_str = ""
+            out_str += f"Info {os.getpid()}- "
+            
+            for k, v in visit_counts_stats.items():
+                if v > 0:
+                    out_str += f"#{k}: {v}, {root.child_priors[k]:.3f} "
+
+            print(out_str)
             return action, mcts_run_info
 
     def _run(self, root_node):
