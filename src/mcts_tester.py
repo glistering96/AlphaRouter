@@ -38,6 +38,11 @@ class MCTSTesterModule(RolloutBase):
 
         return test_score, runtime            
             
+    def work(self, mcts, obs):
+        mcts.model.to("cuda")
+        # print(f"id of mcts model: {id(mcts.model)}")
+        # print(f"sum of weights of mcts model: {mcts.model.encoder.input_embedder.weight.sum()}")
+        return mcts.get_action_prob(obs)
 
     def test_one_episode(self, use_mcts):
         self.env.set_test_mode()
@@ -46,13 +51,20 @@ class MCTSTesterModule(RolloutBase):
         self.model.eval()
 
         self.model.encoding = None
-        num_cpu = 4
+        num_cpu = 1
         
         self.mcts_params['num_simulations'] = self.mcts_params['num_simulations'] // num_cpu + 1
+        mcts_lst = [MCTS(self.env, self.model_params, self.env_params, self.mcts_params, self.dir_parser) for _ in range(num_cpu)]
+
+        for mcts in mcts_lst:
+            mcts.model.to('cpu')
+            mcts.model.share_memory()
+
         start = time.time()
         
         if num_cpu > 1:
             pool = mp.Pool(num_cpu)
+
         save_path = Path('./debug/plot/tsp/')
 
         if not save_path.exists():
@@ -72,7 +84,7 @@ class MCTSTesterModule(RolloutBase):
 
                 else:
                     if use_mcts and num_cpu > 1:                    
-                        results = pool.map(MCTS(self.env, self.model_params, self.env_params, self.mcts_params, self.dir_parser, model=self.model).get_action_prob, [obs for _ in range(num_cpu)])
+                        results = pool.starmap(self.work, zip(mcts_lst, [obs for _ in range(num_cpu)]))
                 
                         visit_count_agg = dict()
                         

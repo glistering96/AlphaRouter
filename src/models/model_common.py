@@ -269,6 +269,7 @@ class Decoder(nn.Module):
 
         self.single_head_key = encoding.transpose(1, 2)
         # shape: (batch, embedding, problem)
+        return self.k, self.v, self.single_head_key
 
     def set_q_first_node(self, query):
         B, N, _ = query.shape
