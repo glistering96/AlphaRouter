@@ -49,16 +49,19 @@ class MCTSTesterModule(RolloutBase):
         obs, _ = self.env.reset()
         done = False
         self.model.eval()
-
+        self.model.to("cpu")
+        self.model.share_memory()
         self.model.encoding = None
         num_cpu = 1
         
         self.mcts_params['num_simulations'] = self.mcts_params['num_simulations'] // num_cpu + 1
-        mcts_lst = [MCTS(self.env, self.model_params, self.env_params, self.mcts_params, self.dir_parser) for _ in range(num_cpu)]
+        mcts_lst = [MCTS(self.env, self.model_params, self.env_params, self.mcts_params, self.dir_parser
+                         , model=self.model
+                         ) for _ in range(num_cpu)]
 
-        for mcts in mcts_lst:
-            mcts.model.to('cpu')
-            mcts.model.share_memory()
+        # for mcts in mcts_lst:
+        #     mcts.model.to('cpu')
+        #     mcts.model.share_memory()
 
         start = time.time()
         
@@ -75,6 +78,7 @@ class MCTSTesterModule(RolloutBase):
             #     agent_type = 'mcts'
             # else:
             #     agent_type = 'am'
+            use_mcts = True
 
             while not done:
                 avail = obs['available']
@@ -83,38 +87,50 @@ class MCTSTesterModule(RolloutBase):
                     action = np.where(avail == True)[2][0]
 
                 else:
-                    if use_mcts and num_cpu > 1:                    
-                        results = pool.starmap(self.work, zip(mcts_lst, [obs for _ in range(num_cpu)]))
-                
-                        visit_count_agg = dict()
-                        
-                        # aggregate visit counts from the result's mcts_run_info. 
-                        # result is a list of (action, mcts_run_info) tuples
-                        for _, mcts_run_info in results:
-                            visit_counts = mcts_run_info['visit_counts_stats']
-                            for a, v in visit_counts.items():
-                                if a in visit_count_agg:
-                                    visit_count_agg[a] += v
-                                else:
-                                    visit_count_agg[a] = v
-                        
-                        # visit_counts_stats = {a: v for a, v in zip(actions, visit_counts)}
-                        # get the action with the highest visit count
-                        action = max(visit_count_agg, key=visit_count_agg.get)
-                        
-                    elif use_mcts and num_cpu == 1:
-                        mcts = MCTS(self.env, self.model_params, self.env_params, self.mcts_params, self.dir_parser, model=self.model)
-                        action, mcts_info = mcts.get_action_prob(obs)
-                        node_visit_count = mcts_info['visit_counts_stats']
-                        priors = mcts_info['priors']               
-                        
-                    else:
-                        action_probs, _ = self.model(obs)
+                    # pre_eval and get the difference of probabilities that are the highest and the fifth highest
+                    self.model.to("cuda")
+                    action_probs, _ = self.model(obs)
+                    dist = action_probs.cpu().numpy().reshape(-1)
+                    dist = np.sort(dist)
+                    diff = dist[-1] - dist[-5]
+
+                    if diff > 0.75:
                         action_probs = action_probs.cpu().numpy().reshape(-1)
                         action = int(np.argmax(action_probs, -1))
 
-                        priors = {a: p for a, p in enumerate(action_probs)}
-                        node_visit_count = None
+                    else:
+                        if use_mcts and num_cpu > 1:
+                            results = pool.starmap(self.work, zip(mcts_lst, [obs for _ in range(num_cpu)]))
+
+                            visit_count_agg = dict()
+
+                            # aggregate visit counts from the result's mcts_run_info.
+                            # result is a list of (action, mcts_run_info) tuples
+                            for _, mcts_run_info in results:
+                                visit_counts = mcts_run_info['visit_counts_stats']
+                                for a, v in visit_counts.items():
+                                    if a in visit_count_agg:
+                                        visit_count_agg[a] += v
+                                    else:
+                                        visit_count_agg[a] = v
+
+                            # visit_counts_stats = {a: v for a, v in zip(actions, visit_counts)}
+                            # get the action with the highest visit count
+                            action = max(visit_count_agg, key=visit_count_agg.get)
+
+                        elif use_mcts and num_cpu == 1:
+                            mcts = MCTS(self.env, self.model_params, self.env_params, self.mcts_params, self.dir_parser, model=self.model)
+                            action, mcts_info = mcts.get_action_prob(obs)
+                            node_visit_count = mcts_info['visit_counts_stats']
+                            priors = mcts_info['priors']
+
+                        else:
+                            action_probs, _ = self.model(obs)
+                            action_probs = action_probs.cpu().numpy().reshape(-1)
+                            action = int(np.argmax(action_probs, -1))
+
+                            priors = {a: p for a, p in enumerate(action_probs)}
+                            node_visit_count = None
 
                 next_state, reward, done, _, _ = self.env.step(obs, action)
 
