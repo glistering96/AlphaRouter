@@ -81,7 +81,6 @@ def run_parallel_test(param_ranges, num_proc=5):
                     input_params['result_dir'] = result_dir
 
                     pool.apply_async(run_test, kwds=input_params, callback=__callback)
-                
 
         pool.close()
         pool.join()
@@ -98,13 +97,12 @@ def run_parallel_test(param_ranges, num_proc=5):
 
             result_dir = get_result_dir(params, mcts=True)
 
-            ckpt = all_checkpoints[-1]
-            
-            input_params = deepcopy(params)
-            input_params['load_epoch'] = ckpt
-            input_params['result_dir'] = result_dir
-
-            async_result.put(run_test(**input_params))
+            for ckpt in all_checkpoints:
+                input_params = deepcopy(params)
+                input_params['load_epoch'] = ckpt
+                input_params['result_dir'] = result_dir
+                result = run_test(**input_params)
+                async_result.put(result)
 
     if async_result.empty():
         return
@@ -190,14 +188,14 @@ def main():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['cvrp'],
+        'env_type': ['tsp', 'cvrp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
         'activation': ['swiglu', 'relu'],
         'baseline': ['mean', 'val'],
-        'encoder_layer_num': [4],
+        'encoder_layer_num': [4, 6],
         'qkv_dim': [32],
         'num_heads': [4],
         'embedding_dim': [128],
@@ -210,7 +208,7 @@ def main():
     for num_nodes in [20, 50, 100]:
         run_param_dict['num_nodes'] = [num_nodes]
 
-        result = run_parallel_test(run_param_dict, 6)
+        result = run_parallel_test(run_param_dict, 1)
 
         path_format = "./result_summary/mcts"
         
@@ -252,11 +250,11 @@ def debug():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'num_simulations': [100, 250, 500, 1000],
+        'num_simulations': [1000],
         'cpuct': [1.1]
     }
 
-    for num_nodes in [100]:
+    for num_nodes in [50]:
         run_param_dict['num_nodes'] = [num_nodes]
 
         result = run_parallel_test(run_param_dict, 1)
@@ -280,12 +278,13 @@ def debug():
             save_json(all_result, f"{path}/all_result_avg.json")
 
 if __name__ == '__main__':
-    debug()
-    # main()
+    # debug()
+    main()
 
 
 """
-Done! Loaded from :./pretrained_result//tsp/N_100-B_64/shared_mha-128-4-32-4-relu-10-0.0001/1562-1-val/ns_1000-temp_5-cpuct_1.1-norm_True-rollout_False-
-ec_0.0100/epoch=49-train_score=8.01927. Tested on: 99. Scored: 8.75224 in 202.64 seconds.
+Done! Loaded from :./pretrained_result//cvrp/N_50-B_64/shared_mha-128-6-32-4-relu-10-0.0001/1562-1-mean/ns_1000-temp_5-cpuct_1.1-norm_True-rollout_False-ec_0.0100/
+epoch=199-train_score=10.88664. Tested on: 0. Scored: 10.53372 in 0.14 seconds.
+
 
 """

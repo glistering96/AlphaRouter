@@ -88,6 +88,8 @@ def run_parallel_test(param_ranges, num_proc=5):
         for load_epoch, epoch_result in dir_result.items():
             organized_result[result_dir][load_epoch] = cal_average_std(epoch_result)
 
+    async_result.close()
+    
     return organized_result
 
 
@@ -104,7 +106,7 @@ def main():
         'data_path': ['./data'],
         'activation': ['relu', 'swiglu'],
         'baseline': ['val', 'mean'],
-        'encoder_layer_num': [4],
+        'encoder_layer_num': [4, 6],
         'qkv_dim': [32],
         'num_heads': [4],
         'embedding_dim': [128],
@@ -114,7 +116,7 @@ def main():
 
     for num_nodes in [20, 50, 100]:
         run_param_dict['num_nodes'] = [num_nodes]
-        result = run_parallel_test(run_param_dict, 8)
+        result = run_parallel_test(run_param_dict, 6)
 
         path_format = "./result_summary/am"
 
