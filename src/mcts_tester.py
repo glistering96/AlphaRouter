@@ -93,6 +93,8 @@ class MCTSTesterModule(RolloutBase):
             
         elif use_mcts and num_cpu == 1:
             self.mcts = MCTS(self.env, self.model_params, self.env_params, self.mcts_params, self.dir_parser, model=self.model)
+            pool = None
+            mcts_lst = None
         
         start = time.time()
         
