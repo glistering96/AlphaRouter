@@ -120,7 +120,15 @@ def run_parallel_test(param_ranges, num_proc=5):
             result_dict[result_dir][load_epoch][test_data_idx] = {}
 
         result_dict[result_dir][load_epoch][test_data_idx] = {'score': score, 'runtime': runtime}
-
+        
+    while not async_result.empty(): #_q is a multiprocess.Queue object used to communicate inter-process
+        try:
+            async_result.get(timeout=0.001)
+        except:
+            pass
+        
+    async_result.close()
+    
     organized_result = {}
 
     # average of score and runtime for load_epochs should be calculated for each result_dir and average of score and runtime

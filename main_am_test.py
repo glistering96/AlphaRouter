@@ -77,6 +77,14 @@ def run_parallel_test(param_ranges, num_proc=5):
 
         result_dict[result_dir][load_epoch][test_data_idx] = {'score': score, 'runtime': runtime}
 
+    while not async_result.empty(): #_q is a multiprocess.Queue object used to communicate inter-process
+        try:
+            async_result.get(timeout=0.001)
+        except:
+            pass
+        
+    async_result.close()
+    
     organized_result = {}
 
     # average of score and runtime for load_epochs should be calculated for each result_dir and average of score and runtime
@@ -87,8 +95,6 @@ def run_parallel_test(param_ranges, num_proc=5):
 
         for load_epoch, epoch_result in dir_result.items():
             organized_result[result_dir][load_epoch] = cal_average_std(epoch_result)
-
-    async_result.close()
     
     return organized_result
 
@@ -99,7 +105,7 @@ def main():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp', 'cvrp'],
+        'env_type': ['tsp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -111,30 +117,37 @@ def main():
         'num_heads': [4],
         'embedding_dim': [128],
         'grad_acc': [1],
-        'num_steps_in_epoch': [100 * 1000 // num_env]
+        'num_steps_in_epoch': [100 * 1000 // num_env],
+        'name_prefix': ['no_pomo']
     }
 
     for num_nodes in [20, 50, 100]:
-        run_param_dict['num_nodes'] = [num_nodes]
-        result = run_parallel_test(run_param_dict, 6)
+        for encoder_layer_num in [6]:
+            run_param_dict['num_nodes'] = [num_nodes]
+            run_param_dict['encoder_layer_num'] = [encoder_layer_num]
+            result = run_parallel_test(run_param_dict, 6)
 
-        path_format = "./result_summary/am"
+            if 'name_prefix' in run_param_dict.keys():
+                path_format = "./result_summary/am/no_pomo"
+                
+            else:
+                path_format = "./result_summary/am"
 
-        for result_dir in result.keys():
-            all_result = {}
-            path = f"{path_format}/{result_dir}"
+            for result_dir in result.keys():
+                all_result = {}
+                path = f"{path_format}/{result_dir}"
 
-            if not Path(path).exists():
-                Path(path).mkdir(parents=True, exist_ok=False)
+                if not Path(path).exists():
+                    Path(path).mkdir(parents=True, exist_ok=False)
 
-            for load_epoch in result[result_dir].keys():
-                # write the result_dict to a json file
-                save_json(result[result_dir][load_epoch], f"{path}/{load_epoch}.json")
+                for load_epoch in result[result_dir].keys():
+                    # write the result_dict to a json file
+                    save_json(result[result_dir][load_epoch], f"{path}/{load_epoch}.json")
 
-                all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'],
-                                          'result_std': result[result_dir][load_epoch]['std']}
+                    all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'],
+                                            'result_std': result[result_dir][load_epoch]['std']}
 
-            save_json(all_result, f"{path}/all_result_avg.json")
+                save_json(all_result, f"{path}/all_result_avg.json")
 
 
 def debug():
