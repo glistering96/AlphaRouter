@@ -123,12 +123,14 @@ class MCTSTesterModule(RolloutBase):
                     dist = np.sort(dist)
                     diff = dist[-1] - dist[-5]
 
+                    # if the probability difference is greater than 0.75, use the action with the highest probability
                     if diff > 0.75 or use_mcts is False:
                         action_probs = action_probs.cpu().numpy().reshape(-1)
                         action = int(np.argmax(action_probs, -1))
                         priors = {a: p for a, p in enumerate(action_probs)}
                         node_visit_count = None
 
+                    # if the probability difference is less than 0.75, use mcts to search further
                     else:
                         action, node_visit_count, priors = self.test_with_mcts(obs, num_cpu=num_cpu, pool=pool, mcts_lst=mcts_lst)
 
