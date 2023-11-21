@@ -81,12 +81,12 @@ class MCTSTesterModule(RolloutBase):
         obs, _ = self.env.reset()
         done = False
         self.model.eval()
-        self.model.to("cpu")
-        self.model.share_memory()
         self.model.encoding = None
         num_cpu = 1
         
         if use_mcts and num_cpu > 1:
+            self.model.to("cpu")
+            self.model.share_memory()
             self.mcts_params["num_simulations"] = self.mcts_params['num_simulations'] // num_cpu + 1
             pool = mp.Pool(num_cpu)
             mcts_lst = [MCTS(self.env, self.model_params, self.env_params, self.mcts_params, self.dir_parser, model=self.model) for _ in range(num_cpu)]
@@ -96,19 +96,19 @@ class MCTSTesterModule(RolloutBase):
             pool = None
             mcts_lst = None
         
+        if use_mcts:
+            agent_type = 'mcts'
+        else:
+            agent_type = 'am'
+                
         start = time.time()
         
-        save_path = Path('./debug/plot/tsp/')
+        save_path = Path(f'./debug/plot/{self.env.env_type}/{self.env.test_num}/{self.env._load_data_idx}/{agent_type}/')
 
         if not save_path.exists():
             save_path.mkdir(parents=True)
             
         with torch.no_grad():
-            # if use_mcts:
-            #     agent_type = 'mcts'
-            # else:
-            #     agent_type = 'am'
-
             while not done:
                 avail = obs['available']
 
@@ -136,8 +136,8 @@ class MCTSTesterModule(RolloutBase):
 
                 next_state, reward, done, _, _ = self.env.step(obs, action)
 
-                # env.plot(obs, node_visit_count=node_visit_count, priors=priors,
-                #          iteration=obs['t'], agent_type=agent_type, save_path=save_path)
+                # self.env.plot(obs, agent_type, node_visit_count=node_visit_count, priors=priors,
+                #          iteration=obs['t'], save_path=save_path)
 
                 obs = next_state
 
@@ -145,4 +145,8 @@ class MCTSTesterModule(RolloutBase):
                     if num_cpu > 1:
                         pool.close()
                         pool.join()
+                                            
+                    # self.env.plot(obs, agent_type, node_visit_count=node_visit_count, priors=priors,
+                    #      iteration=obs['t'], save_path=save_path)
+                    
                     return reward, time.time() - start

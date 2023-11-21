@@ -24,7 +24,7 @@ def parse_args():
                              "reward in the last transition will be returned")
     parser.add_argument("--test_data_type", type=str, default='npz', help="extension for test data file")
     parser.add_argument("--test_data_idx", type=int, default=0, help="index for loading data for pkl datasets")
-    parser.add_argument("--num_parallel_env", type=int, default=512, help="number of parallel episodes to run or collect")
+    parser.add_argument("--num_parallel_env", type=int, default=64, help="number of parallel episodes to run or collect")
     parser.add_argument("--data_path", type=str, default='./data', help="Test data file locations")
     parser.add_argument("--test_num", type=int, default=None, help="Number of nodes to test on")
 
@@ -54,8 +54,8 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate of ADAM optimizer")
     parser.add_argument("--ent_coef", type=float, default=0.01, help="Coefficient for entropy regularizer")
     parser.add_argument("--gpu_id", type=int, default=0, help="Id of gpu to use")
-    parser.add_argument("--grad_acc", type=int, default=0, help="Accumulations of gradients")
-    parser.add_argument("--num_steps_in_epoch", type=int, default=4, help="num_steps_in_epoch")
+    parser.add_argument("--grad_acc", type=int, default=1, help="Accumulations of gradients")
+    parser.add_argument("--num_steps_in_epoch", type=int, default=100 * 1000 // 64, help="num_steps_in_epoch")
     parser.add_argument("--warm_up", type=int, default=1000, help="lr scheduler warm up steps")
     parser.add_argument("--baseline", type=str, default='val', help="baseline function for policy update")
 

@@ -22,6 +22,30 @@ def run_test(**kwargs):
     return score, runtime, args.test_data_idx, kwargs['load_epoch'], kwargs['result_dir']
 
 
+def get_ckpt_path(params, pivot=None):
+    all_files, ckpt_root = collect_all_checkpoints(params)
+    all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
+
+    if pivot is not None:
+        if pivot == 'train_score':
+            all_checkpoints.sort(
+                key=lambda x: float(x.split('-')[1].split('=')[-1])
+            )
+            ckpt = all_checkpoints[0]
+            # minimum score ckpt
+            
+        elif pivot == 'epoch':
+            all_checkpoints.sort(
+                key=lambda x: float(x.split('-')[0].split('=')[-1])
+            )
+            ckpt = all_checkpoints[-1]
+            
+    else:
+        ckpt = all_checkpoints
+            
+    return ckpt
+
+
 def run_parallel_test(param_ranges, num_proc=5):
     """
     Parallel test with multiprocessing
@@ -33,35 +57,55 @@ def run_parallel_test(param_ranges, num_proc=5):
 
     def __callback(val):
         async_result.put(val)
+    
+    pivot = 'epoch'
 
-    pool = mp.Pool(num_proc)
+    
+    if num_proc > 1:
+        pool = mp.Pool(num_proc)
 
-    for params in dict_product(param_ranges):
-        all_files, ckpt_root = collect_all_checkpoints(params)
-        
-        all_checkpoints = [x.split('/')[-1].split('\\')[-1].split('.ckpt')[0] for x in all_files]
+        for params in dict_product(param_ranges):
+            result_dir = get_result_dir(params, mcts=True)
+            ckpt = get_ckpt_path(params, pivot=pivot)
+            
+            if pivot is not None:
+                input_params = deepcopy(params)
+                input_params['load_epoch'] = ckpt
+                input_params['result_dir'] = result_dir
 
-        if len(all_checkpoints) == 0:
-            continue
-        
-        all_checkpoints.sort(
-            key=lambda x: float(x.split('-')[0].split('=')[-1])
-        )
+                pool.apply_async(run_test, kwds=input_params, callback=__callback)
+                
+            else:
+                for _ckpt in ckpt:
+                    input_params = deepcopy(params)
+                    input_params['load_epoch'] = _ckpt
+                    input_params['result_dir'] = result_dir
 
-        result_dir = get_result_dir(params, mcts=False)
+                    pool.apply_async(run_test, kwds=input_params, callback=__callback)
 
-        for ckpt in all_checkpoints:
-            input_params = deepcopy(params)
-            input_params['load_epoch'] = ckpt
-            input_params['result_dir'] = result_dir
+        pool.close()
+        pool.join()
 
-            pool.apply_async(run_test, kwds=input_params, callback=__callback)
+    else:
+        for params in dict_product(param_ranges):
+            result_dir = get_result_dir(params, mcts=True)
+            ckpt = get_ckpt_path(params, pivot=pivot)
+            
+            if pivot is not None:
+                input_params = deepcopy(params)
+                input_params['load_epoch'] = ckpt
+                input_params['result_dir'] = result_dir
 
-    pool.close()
-    pool.join()
+                result = run_test(**input_params)
+                async_result.put(result)
 
-    if async_result.empty():
-        return
+            else:
+                for _ckpt in ckpt:
+                    input_params = deepcopy(params)
+                    input_params['load_epoch'] = _ckpt
+                    input_params['result_dir'] = result_dir
+                    result = run_test(**input_params)
+                    async_result.put(result)
 
     while not async_result.empty():
         score, runtime, test_data_idx, load_epoch, result_dir = async_result.get()
@@ -76,13 +120,7 @@ def run_parallel_test(param_ranges, num_proc=5):
             result_dict[result_dir][load_epoch][test_data_idx] = {}
 
         result_dict[result_dir][load_epoch][test_data_idx] = {'score': score, 'runtime': runtime}
-
-    while not async_result.empty(): #_q is a multiprocess.Queue object used to communicate inter-process
-        try:
-            async_result.get(timeout=0.001)
-        except:
-            pass
-        
+    
     async_result.close()
     
     organized_result = {}
@@ -95,8 +133,9 @@ def run_parallel_test(param_ranges, num_proc=5):
 
         for load_epoch, epoch_result in dir_result.items():
             organized_result[result_dir][load_epoch] = cal_average_std(epoch_result)
-    
+
     return organized_result
+
 
 
 def main():
@@ -105,7 +144,7 @@ def main():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp'],
+        'env_type': ['cvrp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
@@ -118,17 +157,17 @@ def main():
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'name_prefix': ['no_pomo']
+        'name_prefix': ['']
     }
 
     for num_nodes in [20, 50, 100]:
         for encoder_layer_num in [6]:
             run_param_dict['num_nodes'] = [num_nodes]
             run_param_dict['encoder_layer_num'] = [encoder_layer_num]
-            result = run_parallel_test(run_param_dict, 6)
+            result = run_parallel_test(run_param_dict, 1)
 
             if 'name_prefix' in run_param_dict.keys():
-                path_format = "./result_summary/am/no_pomo"
+                path_format = "./result_summary/am"
                 
             else:
                 path_format = "./result_summary/am"
@@ -152,51 +191,52 @@ def main():
 
 def debug():
     num_env = 64
-    num_problems = 10
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['cvrp'],
+        'env_type': ['tsp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
-        'test_data_idx': list(range(num_problems)),
+        'test_data_idx': [51, 71, 77, 78, 90, 98],
         'data_path': ['./data'],
-        'activation': ['swiglu', 'relu'],
-        'baseline': ['val', 'mean'],
+        'activation': ['swiglu'],
+        'baseline': ['val'],
         'encoder_layer_num': [6],
         'qkv_dim': [32],
         'num_heads': [4],
         'embedding_dim': [128],
         'grad_acc': [1],
-        'num_steps_in_epoch': [100 * 1000 // num_env]
+        'num_steps_in_epoch': [100 * 1000 // num_env],
+        'num_simulations': [1000],
+        'cpuct': [1.1]
     }
 
-    for num_nodes in [20]:
+    for num_nodes in [50]:
         run_param_dict['num_nodes'] = [num_nodes]
-        result = run_parallel_test(run_param_dict, 1)
+        result = run_parallel_test(run_param_dict, 6)
 
-        path_format = "./result_summary/debug/am"
+        # path_format = "./result_summary/debug/am"
 
-        for result_dir in result.keys():
-            all_result = {}
-            path = f"{path_format}/{result_dir}"
+        # for result_dir in result.keys():
+        #     all_result = {}
+        #     path = f"{path_format}/{result_dir}"
 
-            if not Path(path).exists():
-                Path(path).mkdir(parents=True, exist_ok=False)
+        #     if not Path(path).exists():
+        #         Path(path).mkdir(parents=True, exist_ok=False)
 
-            for load_epoch in result[result_dir].keys():
-                # write the result_dict to a json file
-                save_json(result[result_dir][load_epoch], f"{path}/{load_epoch}.json")
+        #     for load_epoch in result[result_dir].keys():
+        #         # write the result_dict to a json file
+        #         save_json(result[result_dir][load_epoch], f"{path}/{load_epoch}.json")
 
-                all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'],
-                                          'result_std': result[result_dir][load_epoch]['std']}
+        #         all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'],
+        #                                   'result_std': result[result_dir][load_epoch]['std']}
 
-            save_json(all_result, f"{path}/all_result_avg.json")
+        #     save_json(all_result, f"{path}/all_result_avg.json")
 
 
 if __name__ == '__main__':
-    main()
-    # debug()
+    # main()
+    debug()
 
     # problem_size = 20
     # num_problems = 100

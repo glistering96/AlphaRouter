@@ -167,9 +167,9 @@ class TSPEnv:
     def set_test_mode(self):
         self.training = False
 
-    def plot(self, obs, node_visit_count=None, priors=None, iteration=None, agent_type=None, save_path=None):
+    def plot(self, obs, agent_type, node_visit_count=None, priors=None, iteration=None, save_path=None):
         # set the figure size
-        plt.figure(figsize=(10, 10))
+        plt.figure(figsize=(10, 10), dpi=300)
 
         # plot problem with black point and plot the visiting sequence with red line
         visiting_seq = obs['visiting_seq']
@@ -193,8 +193,13 @@ class TSPEnv:
                 plt.text(self.xy[0, node_id, 0], self.xy[0, node_id, 1], f"vc: {visit_count}, p: {priors[node_id]:.2f}")
 
         if node_visit_count is None and priors is not None:
-            for node_id, visit_count in priors.items():
-                plt.text(self.xy[0, node_id, 0], self.xy[0, node_id, 1], f"p: {priors[node_id]:.2f}")
-
-        plt.savefig(f"{save_path}/{self.test_num}-{iteration}-{agent_type}.png")
-        plt.show()
+            for node_id, p in priors.items():
+                if p > 0:
+                    plt.text(self.xy[0, node_id, 0], self.xy[0, node_id, 1], f"p: {p:.2f}")
+                
+        # name the title of the plot by the distance 
+        plt.title(f"{agent_type} distance: {self.get_reward(obs['visited'], obs['visiting_seq']):.4f}", fontsize = 30)
+        
+        plt.savefig(f"{save_path}/{self.test_num}-{iteration}.png", )
+        plt.close()
+        # plt.show()
