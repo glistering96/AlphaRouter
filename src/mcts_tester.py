@@ -29,14 +29,14 @@ class MCTSTesterModule(RolloutBase):
     def run(self, use_mcts):
         self.time_estimator.reset(self.epochs)
         global hparam_writer
-        test_score, runtime = self.test_one_episode(use_mcts=use_mcts)
+        test_score, runtime, entropy = self.test_one_episode(use_mcts=use_mcts)
 
         # self.logger.info(f"Test score: {test_score: .5f}")
         # self.logger.info(" *** Testing Done *** ")
 
         # self.record_video()
 
-        return test_score, runtime            
+        return test_score, runtime, entropy          
             
     def work(self, mcts, obs):
         mcts.model.to("cuda")
@@ -83,6 +83,7 @@ class MCTSTesterModule(RolloutBase):
         self.model.eval()
         self.model.encoding = None
         num_cpu = 1
+        entropy = []
         
         if use_mcts and num_cpu > 1:
             self.model.to("cpu")
@@ -122,6 +123,8 @@ class MCTSTesterModule(RolloutBase):
                     dist = action_probs.cpu().numpy().reshape(-1)
                     dist = np.sort(dist)
                     diff = dist[-1] - dist[-5]
+                    ent = -np.sum(action_probs.cpu().numpy() * np.log(action_probs.cpu().numpy() + 1e-8))
+                    entropy.append(float(ent))
 
                     # if the probability difference is greater than 0.75, use the action with the highest probability
                     if diff > 0.75 or use_mcts is False:
@@ -149,4 +152,4 @@ class MCTSTesterModule(RolloutBase):
                     # self.env.plot(obs, agent_type, node_visit_count=node_visit_count, priors=priors,
                     #      iteration=obs['t'], save_path=save_path)
                     
-                    return reward, time.time() - start
+                    return reward, time.time() - start, entropy

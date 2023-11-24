@@ -81,6 +81,7 @@ class AMTrainer(pl.LightningModule):
         if self.baseline == 'val':
             baseline = val_tensor
             advantage = reward_broadcasted - baseline.detach()
+            # advantage: (batch, pomo, T)
             p_loss = advantage * log_prob.expand_as(advantage)
 
         else:

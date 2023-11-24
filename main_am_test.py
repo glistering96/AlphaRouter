@@ -14,12 +14,12 @@ def run_test(**kwargs):
 
     for k, v in kwargs.items():
         setattr(args, k, v)
-    score, runtime = run_am_test(args)
+    score, runtime, entropy = run_am_test(args)
 
     print(f"Done! Loaded from :{kwargs['result_dir']}/{kwargs['load_epoch']}. "
           f"Tested on: {kwargs['test_data_idx']}. Scored: {score:.5f} in {runtime:.2f} seconds.")
 
-    return score, runtime, args.test_data_idx, kwargs['load_epoch'], kwargs['result_dir']
+    return score, runtime, args.test_data_idx, kwargs['load_epoch'], kwargs['result_dir'], entropy
 
 
 def get_ckpt_path(params, pivot=None):
@@ -106,9 +106,11 @@ def run_parallel_test(param_ranges, num_proc=5):
                     input_params['result_dir'] = result_dir
                     result = run_test(**input_params)
                     async_result.put(result)
-
+    
+    all_entropies = []
+    
     while not async_result.empty():
-        score, runtime, test_data_idx, load_epoch, result_dir = async_result.get()
+        score, runtime, test_data_idx, load_epoch, result_dir, entropy = async_result.get()
 
         if result_dir not in result_dict.keys():
             result_dict[result_dir] = {}
@@ -120,9 +122,9 @@ def run_parallel_test(param_ranges, num_proc=5):
             result_dict[result_dir][load_epoch][test_data_idx] = {}
 
         result_dict[result_dir][load_epoch][test_data_idx] = {'score': score, 'runtime': runtime}
-    
-    async_result.close()
-    
+        
+        all_entropies += entropy
+        
     organized_result = {}
 
     # average of score and runtime for load_epochs should be calculated for each result_dir and average of score and runtime
@@ -134,7 +136,7 @@ def run_parallel_test(param_ranges, num_proc=5):
         for load_epoch, epoch_result in dir_result.items():
             organized_result[result_dir][load_epoch] = cal_average_std(epoch_result)
 
-    return organized_result
+    return organized_result, all_entropies
 
 
 
@@ -160,11 +162,11 @@ def main():
         'name_prefix': ['']
     }
 
-    for num_nodes in [20, 50, 100]:
+    for num_nodes in [100]:
         for encoder_layer_num in [6]:
             run_param_dict['num_nodes'] = [num_nodes]
             run_param_dict['encoder_layer_num'] = [encoder_layer_num]
-            result = run_parallel_test(run_param_dict, 1)
+            result, all_entropies = run_parallel_test(run_param_dict, 1)
 
             if 'name_prefix' in run_param_dict.keys():
                 path_format = "./result_summary/am"
@@ -191,13 +193,14 @@ def main():
 
 def debug():
     num_env = 64
-
+    num_problems = 100
+    
     run_param_dict = {
         'test_data_type': ['pkl'],
         'env_type': ['tsp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
-        'test_data_idx': [51, 71, 77, 78, 90, 98],
+        'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
         'activation': ['swiglu'],
         'baseline': ['val'],
@@ -210,10 +213,27 @@ def debug():
         'num_simulations': [1000],
         'cpuct': [1.1]
     }
-
-    for num_nodes in [50]:
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    
+    for num_nodes in [100]:
         run_param_dict['num_nodes'] = [num_nodes]
-        result = run_parallel_test(run_param_dict, 6)
+        result, all_entropies = run_parallel_test(run_param_dict, 6)
+    
+
+    sns.set_theme(style='whitegrid', 
+              rc={'figure.dpi': 300}
+              )
+    sns.histplot(all_entropies, bins=7, common_norm=True)
+    plt.xlabel('Entropy')
+    plt.savefig('./debug/entropy.png')
+    
+    # calculate the portion of entropies that are under 0.1
+    print(f"Portion of entropies under 0.1: {sum([1 for x in all_entropies if x < 0.1]) / len(all_entropies)}")
+    print(f"max entropy: {max(all_entropies)}, min entropy: {min(all_entropies)}")
+    
+        
+        
 
         # path_format = "./result_summary/debug/am"
 
