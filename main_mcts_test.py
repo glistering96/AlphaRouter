@@ -82,7 +82,8 @@ def run_parallel_test(param_ranges, num_proc=5):
                 input_params['load_epoch'] = ckpt
                 input_params['result_dir'] = result_dir
 
-                pool.apply_async(run_test, kwds=input_params, callback=__callback)
+                result = pool.apply(run_test, kwds=input_params)
+                async_result.put(result)
                 
             else:
                 for _ckpt in ckpt:
@@ -90,7 +91,8 @@ def run_parallel_test(param_ranges, num_proc=5):
                     input_params['load_epoch'] = _ckpt
                     input_params['result_dir'] = result_dir
 
-                    pool.apply_async(run_test, kwds=input_params, callback=__callback)
+                result = pool.apply(run_test, kwds=input_params)
+                async_result.put(result)
 
         pool.close()
         pool.join()
@@ -129,9 +131,7 @@ def run_parallel_test(param_ranges, num_proc=5):
             result_dict[result_dir][load_epoch][test_data_idx] = {}
 
         result_dict[result_dir][load_epoch][test_data_idx] = {'score': score, 'runtime': runtime}
-    
-    async_result.close()
-    
+        
     organized_result = {}
 
     # average of score and runtime for load_epochs should be calculated for each result_dir and average of score and runtime
@@ -180,7 +180,7 @@ def run_cross_test():
                 run_param_dict['num_nodes'] = [load_from]
                 run_param_dict['test_num'] = [test_num]
                 run_param_dict['env_type'] = [env_type]
-                result = run_parallel_test(run_param_dict, 4)
+                result = run_parallel_test(run_param_dict, 6)
         
                 path_format = f"./result_summary/cross_test_result/mcts/diff-0.75/trained_on-{load_from}-test_on-{test_num}"
                 for result_dir in result.keys():            
