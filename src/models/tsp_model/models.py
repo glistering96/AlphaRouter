@@ -1,10 +1,8 @@
-import math
-
 import torch
+import torch.nn as nn
 from torch.distributions import Categorical
 
 from src.models.model_common import get_encoding, _to_tensor, Encoder, Decoder, Value, Policy
-import torch.nn as nn
 
 
 class TSPModel(nn.Module):
@@ -83,16 +81,4 @@ class TSPModel(nn.Module):
             val = val.reshape(batch_size, pomo_size, 1)
             
         return probs, val
-
-    def predict(self, obs, deterministic=False):
-        probs, _, = self.forward(obs)
-
-        if deterministic:
-            action = probs.argmax(-1).item()
-
-        else:
-            action = Categorical(probs=probs).sample().item()
-
-        return action, None
-
 

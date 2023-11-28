@@ -2,7 +2,6 @@
 A factory class for creating routing models for the given type of environmen (cvrp or tsp).
 
 """
-from copy import deepcopy
 
 from src.models.cvrp_model.models import CVRPModel
 from src.models.tsp_model.models import TSPModel

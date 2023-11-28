@@ -1,9 +1,9 @@
 import math
 
+import numpy as np
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch
-import numpy as np
 
 
 def get_encoding(encoded_nodes, node_index_to_pick):
@@ -269,6 +269,7 @@ class Decoder(nn.Module):
 
         self.single_head_key = encoding.transpose(1, 2)
         # shape: (batch, embedding, problem)
+        return self.k, self.v, self.single_head_key
 
     def set_q_first_node(self, query):
         B, N, _ = query.shape

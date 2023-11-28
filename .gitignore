@@ -16,3 +16,13 @@
 /debug_pretrain.py
 *.pyc
 log_archive/
+/result_summary.backup/
+<<<<<<< HEAD
+*.txt
+*.ckpt
+/.venv/
+=======
+/backup/
+/pretrained_result*/
+/result_summary/*
+>>>>>>> 4fa4a2c (gitignore update)

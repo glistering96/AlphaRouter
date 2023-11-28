@@ -35,16 +35,16 @@ class AMTesterModule(RolloutBase):
 
         # close the environment and the video recorder
         env.close()
-        return -reward
+        return reward
 
     def run(self):
         self.time_estimator.reset(self.epochs)
 
         test_score, runtime = test_one_episode(self.env, self.model)
 
-        self.logger.info(f"Test score: {test_score: .5f}")
-
-        self.logger.info(" *** Testing Done *** ")
+        # self.logger.info(f"Test score: {test_score: .5f}")
+        #
+        # self.logger.info(" *** Testing Done *** ")
         return test_score, runtime
 
 
@@ -70,4 +70,4 @@ def test_one_episode(env, agent):
 
             if done:
                 runtime = time.time() - start
-                return -reward, runtime
+                return reward, runtime

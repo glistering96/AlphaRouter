@@ -22,9 +22,9 @@
 
 # code from https://github.com/katsura-jp/pytorch-cosine-annealing-with-warmup
 
-import numpy as np
-from torch import optim
 import math
+
+from torch import optim
 
 
 class CosineAnnealingWarmupRestarts(optim.lr_scheduler._LRScheduler):

@@ -1,14 +1,15 @@
 from argparse import ArgumentParser
 
+import lightning.pytorch as pl
 import torch.utils.data
+from lightning.pytorch import loggers as pl_loggers
 
 from src.common.dir_parser import DirParser
 from src.common.utils import get_param_dict
 from src.mcts_tester import MCTSTesterModule
 from src.pretrain_model.pretrain_tester import AMTesterModule
 from src.pretrain_model.pretrainer_module_pl import AMTrainer
-import lightning.pytorch as pl
-from lightning.pytorch import loggers as pl_loggers
+
 
 def parse_args():
     parser = ArgumentParser()
@@ -23,7 +24,7 @@ def parse_args():
                              "reward in the last transition will be returned")
     parser.add_argument("--test_data_type", type=str, default='npz', help="extension for test data file")
     parser.add_argument("--test_data_idx", type=int, default=0, help="index for loading data for pkl datasets")
-    parser.add_argument("--num_parallel_env", type=int, default=512, help="number of parallel episodes to run or collect")
+    parser.add_argument("--num_parallel_env", type=int, default=64, help="number of parallel episodes to run or collect")
     parser.add_argument("--data_path", type=str, default='./data', help="Test data file locations")
     parser.add_argument("--test_num", type=int, default=None, help="Number of nodes to test on")
 
@@ -38,7 +39,7 @@ def parse_args():
     parser.add_argument("--activation", type=str, default='swiglu', choices=['swiglu', 'relu'], help="activation function")
 
     # mcts params
-    parser.add_argument("--num_simulations", type=int, default=50, help="Number of simulations")
+    parser.add_argument("--num_simulations", type=int, default=4000, help="Number of simulations")
     parser.add_argument("--temp_threshold", type=int, default=5, help="Temperature threshold")
     parser.add_argument("--noise_eta", type=float, default=0.25, help="Noise eta param")
     parser.add_argument("--cpuct", type=float, default=1.1, help="cpuct param")
@@ -53,8 +54,8 @@ def parse_args():
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate of ADAM optimizer")
     parser.add_argument("--ent_coef", type=float, default=0.01, help="Coefficient for entropy regularizer")
     parser.add_argument("--gpu_id", type=int, default=0, help="Id of gpu to use")
-    parser.add_argument("--grad_acc", type=int, default=0, help="Accumulations of gradients")
-    parser.add_argument("--num_steps_in_epoch", type=int, default=4, help="num_steps_in_epoch")
+    parser.add_argument("--grad_acc", type=int, default=1, help="Accumulations of gradients")
+    parser.add_argument("--num_steps_in_epoch", type=int, default=100 * 1000 // 64, help="num_steps_in_epoch")
     parser.add_argument("--warm_up", type=int, default=1000, help="lr scheduler warm up steps")
     parser.add_argument("--baseline", type=str, default='val', help="baseline function for policy update")
 
@@ -66,7 +67,6 @@ def parse_args():
     parser.add_argument("--name_prefix", type=str, default='', help="name prefix")
     parser.add_argument("--seed", type=int, default=1, help="values smaller than 1 will not set any seeds")
 
-
     args = parser.parse_args()
 
     if args.test_num is None:
@@ -76,7 +76,7 @@ def parse_args():
 
 
 def run_mcts_test(args):
-    env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args)
+    env_params, mcts_params, model_params, h_params, run_params, optimizer_params, logger_params = get_param_dict(args, return_logger=True)
 
     tester = MCTSTesterModule(env_params=env_params,
                               model_params=model_params,
@@ -86,7 +86,7 @@ def run_mcts_test(args):
                               dir_parser=DirParser(args),
                               )
 
-    return tester.run()
+    return tester.run(use_mcts=True)
 
 
 def run_pretrain(args):
@@ -101,6 +101,7 @@ def run_pretrain(args):
                                optimizer_params=optimizer_params,)
 
     model.save_hyperparameters(h_params)
+            
     default_root_dir = DirParser(args).get_model_root_dir()
     max_epochs = run_params['nn_train_epochs']
 
@@ -110,11 +111,11 @@ def run_pretrain(args):
     score_cp_callback = pl.callbacks.ModelCheckpoint(
         dirpath=default_root_dir,
         monitor="train_score",
-        every_n_epochs=run_params['model_save_interval'],
+        every_n_epochs=50,
         mode="min",
         filename="{epoch}-{train_score:.5f}",
         save_on_train_epoch_end=True,
-        save_top_k=5
+        save_top_k=100
     )
 
     trainer = pl.Trainer(
@@ -125,22 +126,29 @@ def run_pretrain(args):
         default_root_dir=default_root_dir,
         precision="16-mixed",
         callbacks=[score_cp_callback],
-        gradient_clip_val=1.0
+        gradient_clip_val=1.0,
+        
+        
     )
 
     dummy_dl = torch.utils.data.DataLoader(torch.zeros((num_steps_in_epoch, 1, 1, 1)), batch_size=1)
-    trainer.fit(model,
-                train_dataloaders=dummy_dl)
+    
+    if args.load_epoch:
+        trainer.fit(model, train_dataloaders=dummy_dl, ckpt_path=args.load_epoch)
+    
+    else:
+        trainer.fit(model, train_dataloaders=dummy_dl)
 
 
 def run_am_test(args):
-    env_params, mcts_params, model_params, h_params, run_params, logger_params, optimizer_params = get_param_dict(args)
+    env_params, mcts_params, model_params, h_params, run_params, optimizer_params, logger_params = get_param_dict(args, return_logger=True)
 
-    tester = AMTesterModule(env_params=env_params,
-                            model_params=model_params,
-                            logger_params=logger_params,
-                            run_params=run_params,
-                            dir_parser=DirParser(args)
-                            )
+    tester = MCTSTesterModule(env_params=env_params,
+                              model_params=model_params,
+                              logger_params=logger_params,
+                              mcts_params=None,
+                              run_params=run_params,
+                              dir_parser=DirParser(args),
+                              )
 
-    return tester.run()
+    return tester.run(use_mcts=False)

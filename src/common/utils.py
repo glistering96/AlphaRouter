@@ -3,17 +3,18 @@ import json
 import logging
 import os
 import random
-import shutil
 import sys
 import time
 from copy import deepcopy
-from dataclasses import fields
 from datetime import datetime
+from glob import glob
 
 import numpy as np
 import pytz
 import torch
 from torch.utils.tensorboard.summary import hparams
+
+
 
 
 class TimeEstimator:
@@ -189,6 +190,79 @@ def add_hparams(writer, param_dict, metrics_dict, step=None):
             writer.add_scalar(k, v, step)
 
 
+def save_json(data, path):
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
+
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=4)
+
+
+def load_json(path):
+    try:
+        with open(path, 'r') as f:
+            data = json.load(f)
+
+    except:
+        data = {}
+
+    return data
+
+
+def cal_average_std(result_dict):
+    result_dict = deepcopy(result_dict)
+
+    # sort the result_dict by test_data_idx
+    result_dict = dict(sorted(result_dict.items(), key=lambda x: x[0]))
+
+    num_problems = len(result_dict)
+
+    avg_score = sum([result_dict[i]['score'] for i in range(num_problems)]) / num_problems
+    avg_runtime = sum([result_dict[i]['runtime'] for i in range(num_problems)]) / num_problems
+
+    std_score = sum([(result_dict[i]['score'] - avg_score) ** 2 for i in range(num_problems)]) / num_problems
+    std_runtime = sum([(result_dict[i]['runtime'] - avg_runtime) ** 2 for i in range(num_problems)]) / num_problems
+
+    result_dict['average'] = {'score': avg_score, 'runtime': avg_runtime}
+    result_dict['std'] = {'score': std_score, 'runtime': std_runtime}
+
+    return result_dict
+
+
+def collect_all_checkpoints(params):
+    from src.common.dir_parser import DirParser
+    from src.run import parse_args
+
+    args = parse_args()
+
+    for k, v in params.items():
+        setattr(args, k, v)
+
+    ckpt_root = DirParser(args).get_model_checkpoint()
+
+    all_files = glob(ckpt_root + '/*.ckpt')
+
+    # get the checkpoint with minimum train_score from the all_files
+    all_files = list(sorted(all_files, key=lambda x: float(x.split('train_score=')[1].split('.ckpt')[0])))
+
+    return all_files, ckpt_root
+
+
+def get_result_dir(params, mcts=False):
+    from src.common.dir_parser import DirParser
+    from src.run import parse_args
+
+    args = parse_args()
+
+    for k, v in params.items():
+        setattr(args, k, v)
+
+    dir = DirParser(args).get_result_dir(mcts=mcts)
+
+    return dir
+
+
+
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):
@@ -201,7 +275,7 @@ class NpEncoder(json.JSONEncoder):
             return super(NpEncoder, self).default(obj)
 
 
-def get_param_dict(args):
+def get_param_dict(args, return_logger=False):
     # env_params
     num_demand_nodes = args.num_nodes
     num_depots = args.num_depots
@@ -222,7 +296,6 @@ def get_param_dict(args):
         torch.cuda.manual_seed(seed)
         torch.backends.cudnn.deterministic = True  # type: ignore
         torch.backends.cudnn.benchmark = True  # type: ignore
-        # args.num_episode = 2
 
     # allocating hyper-parameters
     env_params = {
@@ -279,6 +352,11 @@ def get_param_dict(args):
         'baseline': args.baseline
     }
 
+    try:
+        run_params['data_path'] = args.data_path
+
+    except:
+        pass
 
     optimizer_params = {
         'lr': args.lr,
@@ -300,11 +378,22 @@ def get_param_dict(args):
         'warm_up': args.warm_up,
     }
 
+    logger_params = {
+        'log_file': {
+            'filename': 'log.txt',
+            'date_prefix': False
+        },
+    }
+
     # TODO: result folder src copy needs to be managed
     # if copy_src:
     #     copy_all_src(result_folder_name)
 
-    return env_params, mcts_params, model_params, h_params, run_params, optimizer_params
+    if return_logger:
+        return env_params, mcts_params, model_params, h_params, run_params, optimizer_params, logger_params
+
+    else:
+        return env_params, mcts_params, model_params, h_params, run_params, optimizer_params
 
 
 def dict_product(dicts):
