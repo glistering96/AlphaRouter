@@ -1,5 +1,13 @@
+from common.utils import check_debug
+
+
 class DirParser:
     def __init__(self, args):
+        if "main_dir" in args:
+            self._main_dir = args.main_dir
+        else:
+            self._main_dir = "./pretrained_result" if not check_debug() else "./debug_result"
+            
         self._env_param_nm = f"{args.env_type}/N_{args.num_nodes}-B_{args.num_parallel_env}"
         self._model_param_nm = f"{args.nn}-{args.embedding_dim}-{args.encoder_layer_num}-{args.qkv_dim}" \
                                f"-{args.head_num}-{args.activation}-{args.C}-{args.lr}"
@@ -17,17 +25,14 @@ class DirParser:
         return f"{self.tb_log_dir}/{model_root_dir_without_dot}"
 
     def get_model_root_dir(self):
-        from src.common.utils import check_debug
-        main_dir = "pretrained_result" if not check_debug() else "debug"
-        return f"./{main_dir}/{self._common_part}"
+        return f"{self._main_dir}/{self._common_part}"
 
     def get_model_checkpoint(self, ckpt_name=None):
-        main_dir = "pretrained_result"
         if ckpt_name is not None:
-            return f"./{main_dir}/{self._common_part}/{ckpt_name}.ckpt"
+            return f"{self._main_dir}/{self._common_part}/{ckpt_name}.ckpt"
 
         else:
-            return f"./{main_dir}/{self._common_part}"
+            return f"{self._main_dir}/{self._common_part}"
 
     def get_result_dir(self, mcts=False):
         if mcts:
