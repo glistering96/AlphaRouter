@@ -52,14 +52,13 @@ def _work(**kwargs):
 if __name__ == '__main__':    
     torch.set_float32_matmul_precision('high')
     params = {
-        'num_nodes' : [50],
-        'result_dir' : ['pretrained_result'],
+        'result_dir' : ['pretrained_result/random_prob'],
         'name_prefix' : [""],
         'render_mode' : [None],
         'qkv_dim' : [32],
         'num_heads': [4],
         'load_from_the_latest' : [False],
-        'env_type' : ['cvrp'],
+        'env_type' : ['tsp'],
         'embedding_dim': [128],
         'encoder_layer_num':[6],
         'nn_train_epochs': [300],
@@ -70,7 +69,9 @@ if __name__ == '__main__':
         'num_steps_in_epoch': [100*1000 // 64],
         'baseline': ['mean', 'val'],
         'activation': ['relu', 'swiglu'],
-        'load_from_the_latest': [True]
+        'load_from_the_latest': [False],
+        'test_num': [1]
+        
     }
     
     if check_debug():

@@ -1,6 +1,7 @@
 class DirParser:
     def __init__(self, args):
-        self._env_param_nm = f"{args.env_type}/N_{args.num_nodes}-B_{args.num_parallel_env}"
+        # self._env_param_nm = f"{args.env_type}/N_{args.num_nodes}-B_{args.num_parallel_env}"
+        self._env_param_nm = f"{args.env_type}/B_{args.num_parallel_env}"
         self._model_param_nm = f"{args.nn}-{args.embedding_dim}-{args.encoder_layer_num}-{args.qkv_dim}" \
                                f"-{args.head_num}-{args.activation}-{args.C}-{args.lr}"
         self._run_confg = f"{args.num_steps_in_epoch}-{args.grad_acc}-{args.baseline}"

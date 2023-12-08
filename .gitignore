@@ -17,12 +17,8 @@
 *.pyc
 log_archive/
 /result_summary.backup/
-<<<<<<< HEAD
-*.txt
-*.ckpt
-/.venv/
-=======
+/result_csv/
 /backup/
 /pretrained_result*/
 /result_summary/*
->>>>>>> 4fa4a2c (gitignore update)
+/.venv/

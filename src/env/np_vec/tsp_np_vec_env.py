@@ -47,6 +47,11 @@ class TSPNpVec:
             return 0
 
     def reset(self):
+        # sample a random integer from 1 to 100
+        target_prob_nodes = np.random.randint(20, 100)
+        self.num_nodes = target_prob_nodes
+        self.pomo_size = self.num_nodes
+        self.action_size = self.num_nodes
         self.xy = self._make_problems(self.num_env, self.num_nodes)
 
         self.pos = None

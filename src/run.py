@@ -90,7 +90,7 @@ def run_mcts_test(args):
 
 
 def run_pretrain(args):
-    env_params, mcts_params, model_params, h_params, run_params, optimizer_params = get_param_dict(args)
+    env_params, _, model_params, h_params, run_params, optimizer_params = get_param_dict(args)
 
     grad_acc = args.grad_acc if args.grad_acc > 1 else 1
     num_steps_in_epoch = args.num_steps_in_epoch
@@ -127,8 +127,7 @@ def run_pretrain(args):
         precision="16-mixed",
         callbacks=[score_cp_callback],
         gradient_clip_val=1.0,
-        
-        
+    
     )
 
     dummy_dl = torch.utils.data.DataLoader(torch.zeros((num_steps_in_epoch, 1, 1, 1)), batch_size=1)

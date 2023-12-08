@@ -66,6 +66,9 @@ def run_parallel_test(param_ranges, num_proc=5):
 
     def __callback(val):
         async_result.put(val)
+        
+    def __error_callback(val):
+        print(f"Error: {val}")
     
     pivot = 'epoch'
 
@@ -82,8 +85,7 @@ def run_parallel_test(param_ranges, num_proc=5):
                 input_params['load_epoch'] = ckpt
                 input_params['result_dir'] = result_dir
 
-                result = pool.apply(run_test, kwds=input_params)
-                async_result.put(result)
+                pool.apply_async(run_test, kwds=input_params, callback=__callback, error_callback=__error_callback)
                 
             else:
                 for _ckpt in ckpt:
@@ -91,8 +93,9 @@ def run_parallel_test(param_ranges, num_proc=5):
                     input_params['load_epoch'] = _ckpt
                     input_params['result_dir'] = result_dir
 
-                result = pool.apply(run_test, kwds=input_params)
-                async_result.put(result)
+
+                    _result = pool.apply(run_test, kwds=input_params)
+                    async_result.put(_result)
 
         pool.close()
         pool.join()
@@ -159,7 +162,7 @@ def run_cross_test():
         'data_path': ['./data'],
         'activation': ['swiglu'],
         'baseline': ['mean', 'val'],
-        'encoder_layer_num': [4, 6],
+        'encoder_layer_num': [6],
         'qkv_dim': [32],
         'num_heads': [4],
         'embedding_dim': [128],
@@ -169,9 +172,9 @@ def run_cross_test():
         'cpuct': [1.1],
         
     }
-    for env_type in ['tsp', 'cvrp']:
-        for load_from in [20, 50, 100]:
-            for test_num in [20, 50, 100]:
+    for env_type in ['cvrp']:
+        for load_from in [50]:
+            for test_num in [100]:
                 
                 if load_from == test_num:
                     continue
@@ -180,7 +183,7 @@ def run_cross_test():
                 run_param_dict['num_nodes'] = [load_from]
                 run_param_dict['test_num'] = [test_num]
                 run_param_dict['env_type'] = [env_type]
-                result = run_parallel_test(run_param_dict, 6)
+                result = run_parallel_test(run_param_dict, 4)
         
                 path_format = f"./result_summary/cross_test_result/mcts/diff-0.75/trained_on-{load_from}-test_on-{test_num}"
                 for result_dir in result.keys():            
