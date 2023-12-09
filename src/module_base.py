@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 
 from src.common.dir_parser import DirParser
-from src.common.utils import TimeEstimator, create_logger
+from src.common.utils import TimeEstimator
 from src.env.gymnasium.cvrp_gymnasium import CVRPEnv
 from src.env.gymnasium.tsp_gymnasium import TSPEnv
 from src.env.routing_env import RoutingEnv

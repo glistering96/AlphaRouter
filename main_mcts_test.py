@@ -1,3 +1,4 @@
+from collections import deque
 import json
 import math
 from copy import deepcopy
@@ -10,6 +11,19 @@ from src.common.utils import (cal_average_std, collect_all_checkpoints,
 from src.run import parse_args, run_mcts_test
 import torch
 
+class user_queue:
+    def __init__(self):
+        self.queue = deque()
+        
+    def empty(self):
+        return len(self.queue) == 0
+    
+    def put(self, val):
+        self.queue.append(val)
+        
+    def get(self):
+        return self.queue.popleft()
+    
 
 def run_test(**kwargs):
     import warnings
@@ -82,8 +96,8 @@ def run_parallel_test(param_ranges, num_proc=5):
                 input_params['load_epoch'] = ckpt
                 input_params['result_dir'] = result_dir
 
-                result = pool.apply(run_test, kwds=input_params)
-                async_result.put(result)
+                _result = pool.apply(run_test, kwds=input_params)
+                async_result.put(_result)
                 
             else:
                 for _ckpt in ckpt:
@@ -91,13 +105,15 @@ def run_parallel_test(param_ranges, num_proc=5):
                     input_params['load_epoch'] = _ckpt
                     input_params['result_dir'] = result_dir
 
-                result = pool.apply(run_test, kwds=input_params)
-                async_result.put(result)
+
+                    _result = pool.apply(run_test, kwds=input_params)
+                    async_result.put(_result)
 
         pool.close()
         pool.join()
 
     else:
+        async_result = user_queue()
         for params in dict_product(param_ranges):
             result_dir = get_result_dir(params, mcts=True)
             ckpt = get_ckpt_path(params, pivot=pivot)
@@ -159,7 +175,7 @@ def run_cross_test():
         'data_path': ['./data'],
         'activation': ['swiglu'],
         'baseline': ['mean', 'val'],
-        'encoder_layer_num': [4, 6],
+        'encoder_layer_num': [6],
         'qkv_dim': [32],
         'num_heads': [4],
         'embedding_dim': [128],
@@ -169,7 +185,7 @@ def run_cross_test():
         'cpuct': [1.1],
         
     }
-    for env_type in ['tsp', 'cvrp']:
+    for env_type in ['cvrp']:
         for load_from in [20, 50, 100]:
             for test_num in [20, 50, 100]:
                 
@@ -182,7 +198,7 @@ def run_cross_test():
                 run_param_dict['env_type'] = [env_type]
                 result = run_parallel_test(run_param_dict, 6)
         
-                path_format = f"./result_summary/cross_test_result/mcts/diff-0.75/trained_on-{load_from}-test_on-{test_num}"
+                path_format = f"./result_summary/cross_test_result/mcts/ent-0.1/trained_on-{load_from}-test_on-{test_num}"
                 for result_dir in result.keys():            
                     path = f"{path_format}/{result_dir}"
                     
@@ -209,33 +225,34 @@ def main():
 
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['tsp', 'cvrp'],
+        'env_type': ['cvrp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
-        'activation': ['swiglu', 'relu'],
+        'activation': ['swiglu'],
         'baseline': ['mean', 'val'],
-        'encoder_layer_num': [4, 6],
+        'encoder_layer_num': [6],
         'qkv_dim': [32],
         'num_heads': [4],
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
         'num_simulations': [100, 500, 1000],
+        'selection_coef': [0.5],
         'cpuct': [1.1]
     }
 
-    for env_type in ['tsp']:
-        for num_nodes in [100]:                
-            for encoder_layer_num in [6]:
+    for env_type in ['tsp', 'cvrp']:
+        for num_nodes in [100]:             
+            for selection_coef in [0.1, 0.25, 0.5, 0.75]:
                 run_param_dict['env_type'] = [env_type]
                 run_param_dict['num_nodes'] = [num_nodes]
-                run_param_dict['encoder_layer_num'] = [encoder_layer_num]
+                run_param_dict['selection_coef'] = [selection_coef]
 
                 result = run_parallel_test(run_param_dict, 1)
 
-                path_format = "./result_summary/mcts/diff-0.75"
+                path_format = f"./result_summary/mcts/diff-{selection_coef}"
                 
                 for result_dir in result.keys():            
                     path = f"{path_format}/{result_dir}"
@@ -304,6 +321,6 @@ def debug():
 
 if __name__ == '__main__':
     # debug()
-    # main()
+    main()
     
-    run_cross_test()
+    # run_cross_test()

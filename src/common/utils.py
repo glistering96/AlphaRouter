@@ -53,78 +53,6 @@ class TimeEstimator:
             count, total, elapsed_time_str, remain_time_str))
 
 
-
-def get_result_folder(desc, result_dir, date_prefix=True):
-    process_start_time = datetime.now(pytz.timezone("Asia/Seoul"))
-
-    if date_prefix is True:
-        _date_prefix = process_start_time.strftime("%Y%m%d_%H%M%S")
-        result_folder = f'{result_dir}/{_date_prefix}-{desc}'
-
-    else:
-        result_folder = f'{result_dir}/{desc}'
-
-    return result_folder
-
-
-def set_result_folder(folder):
-    global result_folder
-    result_folder = folder
-
-
-def create_logger(filepath):
-    filename = filepath + '/log.txt'
-
-    if not os.path.exists(filepath):
-        os.makedirs(filepath)
-
-    file_mode = 'a' if os.path.isfile(filename) else 'w'
-
-    root_logger = logging.getLogger()
-    root_logger.setLevel(level=logging.INFO)
-    formatter = logging.Formatter("[%(asctime)s] %(filename)s(%(lineno)d) : %(message)s", "%Y-%m-%d %H:%M:%S")
-
-    for hdlr in root_logger.handlers[:]:
-        root_logger.removeHandler(hdlr)
-
-    # write to file
-    fileout = logging.FileHandler(filename, mode=file_mode)
-    fileout.setLevel(logging.INFO)
-    fileout.setFormatter(formatter)
-    root_logger.addHandler(fileout)
-
-    # write to console
-    console = logging.StreamHandler(sys.stdout)
-    console.setLevel(logging.INFO)
-    console.setFormatter(formatter)
-    root_logger.addHandler(console)
-
-
-def explained_variance(y_pred: np.ndarray, y_true: np.ndarray) -> np.ndarray:
-    """
-    Computes fraction of variance that ypred explains about y.
-    Returns 1 - Var[y-ypred] / Var[y]
-
-    interpretation:
-        ev=0  =>  might as well have predicted zero
-        ev=1  =>  perfect prediction
-        ev<0  =>  worse than just predicting zero
-
-    :param y_pred: the prediction
-    :param y_true: the expected value
-    :return: explained variance of ypred and y
-    """
-    if isinstance(y_pred, list):
-        y_pred = np.array(y_pred)
-
-    if isinstance(y_true, list):
-        y_true = np.array(y_true)
-
-    assert y_true.ndim == 1 and y_pred.ndim == 1
-    var_y = np.var(y_true)
-    return np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
-
-
 def cal_distance(xy, visiting_seq, axis=1):
     """
     :param xy: coordinates of nodes, (batch, N, 2)
@@ -162,32 +90,6 @@ def check_debug():
         return True
     else:
         return False
-
-
-def concat_key_val(*args):
-    result = deepcopy(args[0])
-
-    for param_group in args[1:]:
-
-        for k, v in param_group.items():
-            result[k] = v
-
-    if 'device' in result:
-        del result['device']
-
-    return result
-
-
-def add_hparams(writer, param_dict, metrics_dict, step=None):
-    exp, ssi, sei = hparams(param_dict, metrics_dict)
-
-    writer.file_writer.add_summary(exp)
-    writer.file_writer.add_summary(ssi)
-    writer.file_writer.add_summary(sei)
-
-    if step is not None:
-        for k, v in metrics_dict.items():
-            writer.add_scalar(k, v, step)
 
 
 def save_json(data, path):
@@ -320,7 +222,8 @@ def get_param_dict(args, return_logger=False):
         'cpuct': args.cpuct,
         'action_space': action_space,
         'normalize_value': args.normalize_value,
-        'rollout_game': args.rollout_game
+        'rollout_game': args.rollout_game,
+        'selection_coef': args.selection_coef,
     }
 
     model_params = {
