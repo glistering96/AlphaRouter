@@ -25,6 +25,20 @@ class user_queue:
         return self.queue.popleft()
     
 
+class user_queue:
+    def __init__(self):
+        self.queue = deque()
+        
+    def empty(self):
+        return len(self.queue) == 0
+    
+    def put(self, val):
+        self.queue.append(val)
+        
+    def get(self):
+        return self.queue.popleft()
+    
+
 def run_test(**kwargs):
     import warnings
     warnings.simplefilter("ignore", UserWarning)
