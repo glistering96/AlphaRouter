@@ -121,14 +121,14 @@ class MCTSTesterModule(RolloutBase):
                     self.model.to("cuda")
                     action_probs, _ = self.model(obs)
                     dist = action_probs.cpu().numpy().reshape(-1)
-                    entropy = -np.sum(dist * np.log(dist + 1e-10))
+                    # entropy = -np.sum(dist * np.log(dist + 1e-10))
                     dist = np.sort(dist)
                     diff = dist[-1] - dist[-5]
                     
-                    pivot = diff
+                    target_val = diff
 
                     # if the probability difference is greater than selection_coef, use the action with the highest probability
-                    if pivot > selection_coef or use_mcts is False:
+                    if use_mcts is False or target_val > selection_coef:
                         action_probs = action_probs.cpu().numpy().reshape(-1)
                         action = int(np.argmax(action_probs, -1))
                         priors = {a: p for a, p in enumerate(action_probs)}

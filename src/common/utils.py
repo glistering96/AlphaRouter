@@ -212,6 +212,7 @@ def get_param_dict(args, return_logger=False):
         'test_num': args.test_num,
         'num_parallel_env': args.num_parallel_env,
         'data_path': args.data_path,
+        'test_data_seed': args.test_data_seed,
 
     }
 

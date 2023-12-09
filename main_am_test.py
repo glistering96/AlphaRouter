@@ -65,7 +65,7 @@ def run_parallel_test(param_ranges, num_proc=5):
         pool = mp.Pool(num_proc)
 
         for params in dict_product(param_ranges):
-            result_dir = get_result_dir(params, mcts=True)
+            result_dir = get_result_dir(params, mcts=False)
             ckpt = get_ckpt_path(params, pivot=pivot)
             
             if pivot is not None:
@@ -88,7 +88,7 @@ def run_parallel_test(param_ranges, num_proc=5):
 
     else:
         for params in dict_product(param_ranges):
-            result_dir = get_result_dir(params, mcts=True)
+            result_dir = get_result_dir(params, mcts=False)
             ckpt = get_ckpt_path(params, pivot=pivot)
             
             if pivot is not None:
@@ -97,6 +97,7 @@ def run_parallel_test(param_ranges, num_proc=5):
                 input_params['result_dir'] = result_dir
 
                 result = run_test(**input_params)
+                print("run finished")
                 async_result.put(result)
 
             else:
@@ -140,8 +141,8 @@ def run_parallel_test(param_ranges, num_proc=5):
 
 def main():
     num_env = 64
-    num_problems = 100
-
+    num_problems = 1000
+    test_seed = 5678
     run_param_dict = {
         'test_data_type': ['pkl'],
         'env_type': ['cvrp'],
@@ -149,28 +150,26 @@ def main():
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
-        'activation': ['relu', 'swiglu'],
+        'activation': ['swiglu'],
         'baseline': ['val', 'mean'],
-        'encoder_layer_num': [4, 6],
         'qkv_dim': [32],
         'num_heads': [4],
         'embedding_dim': [128],
         'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
-        'name_prefix': ['']
+        'test_data_seed': [test_seed]
     }
 
-    for num_nodes in [20, 50, 100]:
+    print("run_param_dict: ", run_param_dict)
+    for num_nodes in [100]:
         for encoder_layer_num in [6]:
             run_param_dict['num_nodes'] = [num_nodes]
             run_param_dict['encoder_layer_num'] = [encoder_layer_num]
+            
+            print("run_param_dict: ", run_param_dict)
             result = run_parallel_test(run_param_dict, 1)
 
-            if 'name_prefix' in run_param_dict.keys():
-                path_format = "./result_summary/am"
-                
-            else:
-                path_format = "./result_summary/am"
+            path_format = f"./result_summary_{test_seed}/am"
 
             for result_dir in result.keys():
                 all_result = {}
@@ -235,8 +234,8 @@ def debug():
 
 
 if __name__ == '__main__':
-    # main()
-    debug()
+    main()
+    # debug()
 
     # problem_size = 20
     # num_problems = 100

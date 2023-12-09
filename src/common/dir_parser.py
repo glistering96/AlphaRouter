@@ -1,4 +1,4 @@
-from common.utils import check_debug
+from src.common.utils import check_debug
 
 
 class DirParser:
@@ -26,13 +26,17 @@ class DirParser:
 
     def get_model_root_dir(self):
         return f"{self._main_dir}/{self._common_part}"
-
-    def get_model_checkpoint(self, ckpt_name=None):
+    
+    def get_model_checkpoint(self, ckpt_name=None):        
+        ckpt_root_dir = f"{self._main_dir}/{self._common_part}"
+        
+        ckpt_root_dir = ckpt_root_dir.replace("//", "/")
+        
         if ckpt_name is not None:
-            return f"{self._main_dir}/{self._common_part}/{ckpt_name}.ckpt"
+            return f"{ckpt_root_dir}/{ckpt_name}.ckpt"
 
         else:
-            return f"{self._main_dir}/{self._common_part}"
+            return f"{ckpt_root_dir}"
 
     def get_result_dir(self, mcts=False):
         if mcts:

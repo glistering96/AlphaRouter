@@ -33,6 +33,7 @@ class TSPEnv:
 
         self.test_data_type = kwargs.get('test_data_type')
         self._load_data_idx = kwargs.get('test_data_idx')
+        self._test_data_seed = kwargs.get('test_data_seed')
 
     def _make_problems(self, num_rollouts, num_nodes):
         xy = make_cord(num_rollouts, 0, num_nodes)
@@ -68,7 +69,7 @@ class TSPEnv:
             file_path = f"{self.data_path}/tsp/N_{self.test_num}.npz"
 
         else:
-            file_path = f"{self.data_path}/tsp/tsp{self.test_num}_test_seed1234.pkl"
+            file_path = f"{self.data_path}/tsp/tsp{self.test_num}_test_seed{self._test_data_seed}.pkl"
 
         if os.path.isfile(file_path):
             xy = self._load_data(file_path)

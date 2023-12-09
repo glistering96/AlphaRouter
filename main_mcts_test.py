@@ -178,7 +178,7 @@ def run_parallel_test(param_ranges, num_proc=5):
 
 def run_cross_test():
     num_env = 64
-    num_problems = 100
+    num_problems = 1000
     
     run_param_dict = {
         'test_data_type': ['pkl'],
@@ -199,7 +199,7 @@ def run_cross_test():
         'cpuct': [1.1],
         
     }
-    for env_type in ['cvrp']:
+    for env_type in ['tsp']:
         for load_from in [20, 50, 100]:
             for test_num in [20, 50, 100]:
                 
@@ -236,7 +236,8 @@ def run_cross_test():
 def main():
     num_env = 64
     num_problems = 100
-
+    test_seed = 1234
+    
     run_param_dict = {
         'test_data_type': ['pkl'],
         'env_type': ['cvrp'],
@@ -245,28 +246,26 @@ def main():
         'test_data_idx': list(range(num_problems)),
         'data_path': ['./data'],
         'activation': ['swiglu'],
-        'baseline': ['mean', 'val'],
+        'baseline': ['val'],
         'encoder_layer_num': [6],
         'qkv_dim': [32],
         'num_heads': [4],
         'embedding_dim': [128],
-        'grad_acc': [1],
         'num_steps_in_epoch': [100 * 1000 // num_env],
         'num_simulations': [100, 500, 1000],
-        'selection_coef': [0.5],
-        'cpuct': [1.1]
+        'test_data_seed': [test_seed]
     }
 
-    for env_type in ['tsp', 'cvrp']:
-        for num_nodes in [100]:             
-            for selection_coef in [0.1, 0.25, 0.5, 0.75]:
+    for env_type in ['cvrp']:
+        for num_nodes in [100]:        
+            for selection_coef in [0.75]:
                 run_param_dict['env_type'] = [env_type]
                 run_param_dict['num_nodes'] = [num_nodes]
                 run_param_dict['selection_coef'] = [selection_coef]
 
                 result = run_parallel_test(run_param_dict, 1)
 
-                path_format = f"./result_summary/mcts/diff-{selection_coef}"
+                path_format = f"./result_summary_{test_seed}/mcts/diff-{selection_coef}"
                 
                 for result_dir in result.keys():            
                     path = f"{path_format}/{result_dir}"
@@ -287,54 +286,7 @@ def main():
 
     print("Done!")
 
-def debug():
-    num_env = 64
-
-    run_param_dict = {
-        'test_data_type': ['pkl'],
-        'env_type': ['tsp'],
-        'num_nodes': [20],
-        'num_parallel_env': [num_env],
-        'test_data_idx': [51, 71, 77, 78, 90, 98],
-        'data_path': ['./data'],
-        'activation': ['swiglu'],
-        'baseline': ['val'],
-        'encoder_layer_num': [6],
-        'qkv_dim': [32],
-        'num_heads': [4],
-        'embedding_dim': [128],
-        'grad_acc': [1],
-        'num_steps_in_epoch': [100 * 1000 // num_env],
-        'num_simulations': [1000],
-        'cpuct': [1.1]
-    }
-
-    for num_nodes in [50]:
-        run_param_dict['num_nodes'] = [num_nodes]
-
-        result = run_parallel_test(run_param_dict, 6)
-        
-        # path_format = "./result_summary/debug/mcts"
-
-        # for result_dir in result.keys():
-        #     path = f"{path_format}/{result_dir}"
-            
-        #     all_result = load_json(f"{path}/all_result_avg.json")
-            
-        #     if not Path(path).exists():
-        #         Path(path).mkdir(parents=True, exist_ok=False)
-
-        #     for load_epoch in result[result_dir].keys():
-        #         # write the result_dict to a json file
-        #         save_json(result[result_dir][load_epoch], f"{path}/{load_epoch}.json")
-
-        #         all_result[load_epoch] = {'result_avg': result[result_dir][load_epoch]['average'],
-        #                                   'result_std': result[result_dir][load_epoch]['std']}
-
-        #     save_json(all_result, f"{path}/all_result_avg.json")
-
 if __name__ == '__main__':
-    # debug()
     main()
     
     # run_cross_test()
