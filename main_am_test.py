@@ -98,6 +98,7 @@ def run_parallel_test(param_ranges, num_proc=5):
 
                 result = run_test(**input_params)
                 print("run finished")
+                print("run finished")
                 async_result.put(result)
 
             else:
@@ -145,7 +146,7 @@ def main():
     test_seed = 5678
     run_param_dict = {
         'test_data_type': ['pkl'],
-        'env_type': ['cvrp'],
+        'env_type': ['tsp'],
         'num_nodes': [20],
         'num_parallel_env': [num_env],
         'test_data_idx': list(range(num_problems)),
