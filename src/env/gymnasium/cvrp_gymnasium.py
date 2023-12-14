@@ -39,15 +39,13 @@ class CVRPEnv:
         self._load_data_idx = kwargs.get('test_data_idx')
         self._test_data_seed = kwargs.get('test_data_seed')
         
+        self.random_capacities = [np.random.uniform(0.5, 1) for _ in range(100)]
+        
         self.num_env = 1
         self.pomo_size = 1
 
     def seed(self, seed):
         self._np_random, self._seed = seeding.np_random(seed)
-
-    def _get_obs(self, load, pos, visited, visiting_seq, available, t):
-        return {"xy": self.xy, "demands": self.demand, "load": load, "pos": pos, "visited": visited,
-                "visiting_seq": visiting_seq, "available": available, "t": t}
 
     def _make_problems(self, num_rollouts, num_depots, num_nodes):
         xy = make_cord(num_rollouts, num_depots, num_nodes)
@@ -133,8 +131,7 @@ class CVRPEnv:
 
         else:
             self.xy, self.demand = self._load_problem()
-
-        load = np.ones((self.num_env, self.pomo_size, 1), dtype=np.float16)  # all vehicles start with full load
+        load = np.random.uniform(0.5, 1, size=(self.num_env, self.pomo_size, 1)).astype(np.float16)  # all vehicles start with full loadd
         pos = None
         visited = np.zeros((self.num_env, self.pomo_size, self.action_size), dtype=bool)
         # visiting_seq = [pos[None, :, :]]
@@ -146,19 +143,23 @@ class CVRPEnv:
         # np.put_along_axis(available, pos[None, :, :], False, axis=2)  # set the current pos to unavailable
         # np.put_along_axis(visited, pos[None, :, :], True, axis=2)  # set the current pos to visited
 
-        obs = self._get_obs(load, pos, visited, visiting_seq, available, t)  # this must come after resetting all the fields
+        obs = self._get_obs(load, pos, visited, visiting_seq, available, t, 0)  # this must come after resetting all the fields
 
         return obs, {}
 
     def _is_on_depot(self, pos):
         return (pos == 0).squeeze(-1)
+    
+    def _get_obs(self, load, pos, visited, visiting_seq, available, t, capa_idx):
+        return {"xy": self.xy, "demands": self.demand, "load": load, "pos": pos, "visited": visited, "capa_index": capa_idx,
+                "visiting_seq": visiting_seq, "available": available, "t": t}
 
     @staticmethod
     def extract_obs(obs):
-        return obs["load"], obs["pos"], obs["visited"], obs["visiting_seq"], obs["available"], obs["t"]
-
+        return obs["load"], obs["pos"], obs["visited"], obs["visiting_seq"], obs["available"], obs["t"], obs["capa_index"]
+        
     def step(self, prev_obs, action):
-        load, pos, visited, visiting_seq, available, t = self.extract_obs(prev_obs)
+        load, pos, visited, visiting_seq, available, t, capa_idx = self.extract_obs(prev_obs)
 
         # action: int
         action = np.array([[[action]]]).astype(np.int64)
@@ -183,7 +184,9 @@ class CVRPEnv:
         # reload the vehicles that are o
         # depot
         # self.load = np.where(on_depot[:, :, None], self.load, 1)
-        load[on_depot] = 1
+        if on_depot.any():
+            load[on_depot] = self.random_capacities[capa_idx]
+            capa_idx += 1
 
         # update visited nodes
         # self.visited[action] = True
@@ -203,7 +206,7 @@ class CVRPEnv:
 
         t += 1
 
-        obs = self._get_obs(load, pos, visited, visiting_seq, available, t)
+        obs = self._get_obs(load, pos, visited, visiting_seq, available, t, capa_idx)
 
         return obs, reward, done, False, info
 
