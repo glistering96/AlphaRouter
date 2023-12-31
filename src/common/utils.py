@@ -16,43 +16,6 @@ from torch.utils.tensorboard.summary import hparams
 
 
 
-
-class TimeEstimator:
-    def __init__(self):
-        self.logger = logging.getLogger('TimeEstimator')
-        self.start_time = time.time()
-        self.count_zero = 0
-
-    def reset(self, count=1):
-        self.start_time = time.time()
-        self.count_zero = count - 1
-
-    def get_est(self, count, total):
-        curr_time = time.time()
-        elapsed_time = curr_time - self.start_time
-        remain = total - count
-        remain_time = elapsed_time * remain / (count - self.count_zero)
-
-        elapsed_time /= 3600.0
-        remain_time /= 3600.0
-
-        return elapsed_time, remain_time
-
-    def get_est_string(self, count, total):
-        elapsed_time, remain_time = self.get_est(count, total)
-
-        elapsed_time_str = "{:.2f}h".format(elapsed_time) if elapsed_time > 1.0 else "{:.2f}m".format(elapsed_time * 60)
-        remain_time_str = "{:.2f}h".format(remain_time) if remain_time > 1.0 else "{:.2f}m".format(remain_time * 60)
-
-        return elapsed_time_str, remain_time_str
-
-    def print_est_time(self, count, total):
-        elapsed_time_str, remain_time_str = self.get_est_string(count, total)
-
-        self.logger.info("Epoch {:3d}/{:3d}: Time Est.: Elapsed[{}], Remain[{}]".format(
-            count, total, elapsed_time_str, remain_time_str))
-
-
 def cal_distance(xy, visiting_seq, axis=1):
     """
     :param xy: coordinates of nodes, (batch, N, 2)
@@ -162,19 +125,6 @@ def get_result_dir(params, mcts=False):
     dir = DirParser(args).get_result_dir(mcts=mcts)
 
     return dir
-
-
-
-class NpEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        else:
-            return super(NpEncoder, self).default(obj)
 
 
 def get_param_dict(args, return_logger=False):
