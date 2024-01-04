@@ -98,6 +98,7 @@ class MCTSTesterModule(RolloutBase):
         
         if use_mcts:
             agent_type = 'mcts'
+            selection_coef = self.mcts_params['selection_coef']
         else:
             agent_type = 'am'
                 
@@ -120,17 +121,20 @@ class MCTSTesterModule(RolloutBase):
                     self.model.to("cuda")
                     action_probs, _ = self.model(obs)
                     dist = action_probs.cpu().numpy().reshape(-1)
+                    # entropy = -np.sum(dist * np.log(dist + 1e-10))
                     dist = np.sort(dist)
                     diff = dist[-1] - dist[-5]
+                    
+                    target_val = diff
 
-                    # if the probability difference is greater than 0.75, use the action with the highest probability
-                    if diff > 0.75 or use_mcts is False:
+                    # if the probability difference is greater than selection_coef, use the action with the highest probability
+                    if use_mcts is False or target_val > selection_coef:
                         action_probs = action_probs.cpu().numpy().reshape(-1)
                         action = int(np.argmax(action_probs, -1))
                         priors = {a: p for a, p in enumerate(action_probs)}
                         node_visit_count = None
 
-                    # if the probability difference is less than 0.75, use mcts to search further
+                    # if the probability difference is less than selection_coef, use mcts to search further
                     else:
                         action, node_visit_count, priors = self.test_with_mcts(obs, num_cpu=num_cpu, pool=pool, mcts_lst=mcts_lst)
 

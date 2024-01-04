@@ -16,115 +16,6 @@ from torch.utils.tensorboard.summary import hparams
 
 
 
-
-class TimeEstimator:
-    def __init__(self):
-        self.logger = logging.getLogger('TimeEstimator')
-        self.start_time = time.time()
-        self.count_zero = 0
-
-    def reset(self, count=1):
-        self.start_time = time.time()
-        self.count_zero = count - 1
-
-    def get_est(self, count, total):
-        curr_time = time.time()
-        elapsed_time = curr_time - self.start_time
-        remain = total - count
-        remain_time = elapsed_time * remain / (count - self.count_zero)
-
-        elapsed_time /= 3600.0
-        remain_time /= 3600.0
-
-        return elapsed_time, remain_time
-
-    def get_est_string(self, count, total):
-        elapsed_time, remain_time = self.get_est(count, total)
-
-        elapsed_time_str = "{:.2f}h".format(elapsed_time) if elapsed_time > 1.0 else "{:.2f}m".format(elapsed_time * 60)
-        remain_time_str = "{:.2f}h".format(remain_time) if remain_time > 1.0 else "{:.2f}m".format(remain_time * 60)
-
-        return elapsed_time_str, remain_time_str
-
-    def print_est_time(self, count, total):
-        elapsed_time_str, remain_time_str = self.get_est_string(count, total)
-
-        self.logger.info("Epoch {:3d}/{:3d}: Time Est.: Elapsed[{}], Remain[{}]".format(
-            count, total, elapsed_time_str, remain_time_str))
-
-
-
-def get_result_folder(desc, result_dir, date_prefix=True):
-    process_start_time = datetime.now(pytz.timezone("Asia/Seoul"))
-
-    if date_prefix is True:
-        _date_prefix = process_start_time.strftime("%Y%m%d_%H%M%S")
-        result_folder = f'{result_dir}/{_date_prefix}-{desc}'
-
-    else:
-        result_folder = f'{result_dir}/{desc}'
-
-    return result_folder
-
-
-def set_result_folder(folder):
-    global result_folder
-    result_folder = folder
-
-
-def create_logger(filepath):
-    filename = filepath + '/log.txt'
-
-    if not os.path.exists(filepath):
-        os.makedirs(filepath)
-
-    file_mode = 'a' if os.path.isfile(filename) else 'w'
-
-    root_logger = logging.getLogger()
-    root_logger.setLevel(level=logging.INFO)
-    formatter = logging.Formatter("[%(asctime)s] %(filename)s(%(lineno)d) : %(message)s", "%Y-%m-%d %H:%M:%S")
-
-    for hdlr in root_logger.handlers[:]:
-        root_logger.removeHandler(hdlr)
-
-    # write to file
-    fileout = logging.FileHandler(filename, mode=file_mode)
-    fileout.setLevel(logging.INFO)
-    fileout.setFormatter(formatter)
-    root_logger.addHandler(fileout)
-
-    # write to console
-    console = logging.StreamHandler(sys.stdout)
-    console.setLevel(logging.INFO)
-    console.setFormatter(formatter)
-    root_logger.addHandler(console)
-
-
-def explained_variance(y_pred: np.ndarray, y_true: np.ndarray) -> np.ndarray:
-    """
-    Computes fraction of variance that ypred explains about y.
-    Returns 1 - Var[y-ypred] / Var[y]
-
-    interpretation:
-        ev=0  =>  might as well have predicted zero
-        ev=1  =>  perfect prediction
-        ev<0  =>  worse than just predicting zero
-
-    :param y_pred: the prediction
-    :param y_true: the expected value
-    :return: explained variance of ypred and y
-    """
-    if isinstance(y_pred, list):
-        y_pred = np.array(y_pred)
-
-    if isinstance(y_true, list):
-        y_true = np.array(y_true)
-
-    assert y_true.ndim == 1 and y_pred.ndim == 1
-    var_y = np.var(y_true)
-    return np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
-
-
 def cal_distance(xy, visiting_seq, axis=1):
     """
     :param xy: coordinates of nodes, (batch, N, 2)
@@ -162,32 +53,6 @@ def check_debug():
         return True
     else:
         return False
-
-
-def concat_key_val(*args):
-    result = deepcopy(args[0])
-
-    for param_group in args[1:]:
-
-        for k, v in param_group.items():
-            result[k] = v
-
-    if 'device' in result:
-        del result['device']
-
-    return result
-
-
-def add_hparams(writer, param_dict, metrics_dict, step=None):
-    exp, ssi, sei = hparams(param_dict, metrics_dict)
-
-    writer.file_writer.add_summary(exp)
-    writer.file_writer.add_summary(ssi)
-    writer.file_writer.add_summary(sei)
-
-    if step is not None:
-        for k, v in metrics_dict.items():
-            writer.add_scalar(k, v, step)
 
 
 def save_json(data, path):
@@ -262,19 +127,6 @@ def get_result_dir(params, mcts=False):
     return dir
 
 
-
-class NpEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.floating):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        else:
-            return super(NpEncoder, self).default(obj)
-
-
 def get_param_dict(args, return_logger=False):
     # env_params
     num_demand_nodes = args.num_nodes
@@ -310,6 +162,7 @@ def get_param_dict(args, return_logger=False):
         'test_num': args.test_num,
         'num_parallel_env': args.num_parallel_env,
         'data_path': args.data_path,
+        'test_data_seed': args.test_data_seed,
 
     }
 
@@ -320,7 +173,8 @@ def get_param_dict(args, return_logger=False):
         'cpuct': args.cpuct,
         'action_space': action_space,
         'normalize_value': args.normalize_value,
-        'rollout_game': args.rollout_game
+        'rollout_game': args.rollout_game,
+        'selection_coef': args.selection_coef,
     }
 
     model_params = {

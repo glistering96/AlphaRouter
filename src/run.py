@@ -24,6 +24,7 @@ def parse_args():
                              "reward in the last transition will be returned")
     parser.add_argument("--test_data_type", type=str, default='npz', help="extension for test data file")
     parser.add_argument("--test_data_idx", type=int, default=0, help="index for loading data for pkl datasets")
+    parser.add_argument("--test_data_seed", type=int, default=1234, help="seed number for test dataset")
     parser.add_argument("--num_parallel_env", type=int, default=64, help="number of parallel episodes to run or collect")
     parser.add_argument("--data_path", type=str, default='./data', help="Test data file locations")
     parser.add_argument("--test_num", type=int, default=None, help="Number of nodes to test on")
@@ -45,6 +46,7 @@ def parse_args():
     parser.add_argument("--cpuct", type=float, default=1.1, help="cpuct param")
     parser.add_argument("--normalize_value", type=bool, default=True, help="Normalize q values in mcts search")
     parser.add_argument("--rollout_game", type=bool, default=False, help="whether to rollout to the terminal episode")
+    parser.add_argument("--selection_coef", type=float, default=0.75, help="whether to rollout to the terminal episode")
 
     # run params
     parser.add_argument("--mini_batch_size", type=int, default=2048, help="mini-batch size")

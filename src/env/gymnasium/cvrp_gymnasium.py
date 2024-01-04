@@ -37,7 +37,8 @@ class CVRPEnv:
 
         self.test_data_type = kwargs.get('test_data_type')
         self._load_data_idx = kwargs.get('test_data_idx')
-
+        self._test_data_seed = kwargs.get('test_data_seed')
+        
         self.num_env = 1
         self.pomo_size = 1
 
@@ -101,7 +102,7 @@ class CVRPEnv:
             file_path = f"{self.data_path}/cvrp/N_{self.test_num}.npz"
 
         else:
-            file_path = f"{self.data_path}/cvrp/vrp{self.test_num}_test_seed1234.pkl"
+            file_path = f"{self.data_path}/cvrp/vrp{self.test_num}_test_seed{self._test_data_seed}.pkl"
 
         if os.path.isfile(file_path):
             xy, demands = self._load_data(file_path)
