@@ -1,105 +1,98 @@
-import numpy as np
+#include <iostream>
+#include <vector>
+#include <random>
+#include <algorithm>
+#include <cmath>
 
-from src.common.data_manipulator import make_cord
-from src.common.utils import cal_distance
+// Define a structure to represent a node in the TSP problem
+struct Node {
+    double x;
+    double y;
+};
 
+// Function to calculate the Euclidean distance between two nodes
+double calculateDistance(const Node& node1, const Node& node2) {
+    return std::sqrt(std::pow(node1.x - node2.x, 2) + std::pow(node1.y - node2.y, 2));
+}
 
-class TSPNpVec:
-    def __init__(self, num_nodes,
-                 step_reward=False, num_env=128, seed=None, data_path='./data', **kwargs):
-        self.action_size = num_nodes
-        self.num_nodes = num_nodes
-        self.step_reward = step_reward
-        self.training = True
-        self.seed = seed
-        self.data_path = data_path
-        self.env_type = 'tsp'
-        self.num_env = num_env
+// Function to generate a random TSP instance
+std::vector<Node> generateTSPInstance(int numNodes) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dist(0.0, 1.0);
 
-        # observation fields
-        self.xy, self.pos, self.visited = None, None, None
-        self.visiting_seq = None
-        self.available = None
-        self.t = 0
-        
-        self.pomo_size = self.num_nodes
+    std::vector<Node> nodes(numNodes);
+    for (int i = 0; i < numNodes; ++i) {
+        nodes[i].x = dist(gen);
+        nodes[i].y = dist(gen);
+    }
 
-    def _get_obs(self):
-        return {"xy": self.xy, "pos": self.pos, "available": self.available, "t": self.t}
+    return nodes;
+}
 
-    def _make_problems(self, num_rollouts, num_nodes):
-        xy = make_cord(num_rollouts, 0, num_nodes)
+// Function to calculate the total distance of a given tour
+double calculateTourDistance(const std::vector<Node>& nodes, const std::vector<int>& tour) {
+    double totalDistance = 0.0;
+    for (int i = 0; i < tour.size() - 1; ++i) {
+        totalDistance += calculateDistance(nodes[tour[i]], nodes[tour[i + 1]]);
+    }
+    totalDistance += calculateDistance(nodes[tour.back()], nodes[tour.front()]);
+    return totalDistance;
+}
 
-        if num_rollouts == 1:
-            xy = xy.squeeze(0)
+// Function to implement the nearest neighbor heuristic
+std::vector<int> nearestNeighborHeuristic(const std::vector<Node>& nodes) {
+    int numNodes = nodes.size();
+    std::vector<int> tour(numNodes);
+    std::vector<bool> visited(numNodes, false);
 
-        return xy
+    // Start at a random node
+    int current = rand() % numNodes;
+    tour[0] = current;
+    visited[current] = true;
 
-    def get_reward(self):
-        if self._is_done().all() or self.step_reward:
-            batch_size, pomo_size = self.pos.shape
-            visitng_idx = np.concatenate(self.visiting_seq, axis=2)
-            # (num_env, pomo_size, num_nodes): 
-            dist = cal_distance(self.xy, visitng_idx, axis=2)
-            return dist
+    for (int i = 1; i < numNodes; ++i) {
+        double minDistance = std::numeric_limits<double>::max();
+        int nearest = -1;
 
-        else:
-            return 0
+        // Find the nearest unvisited node
+        for (int j = 0; j < numNodes; ++j) {
+            if (!visited[j]) {
+                double distance = calculateDistance(nodes[current], nodes[j]);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearest = j;
+                }
+            }
+        }
 
-    def reset(self):
-        self.xy = self._make_problems(self.num_env, self.num_nodes)
+        // Add the nearest node to the tour
+        tour[i] = nearest;
+        visited[nearest] = true;
+        current = nearest;
+    }
 
-        self.pos = None
-        self.visited = np.zeros((self.num_env, self.pomo_size, self.action_size), dtype=bool)
+    return tour;
+}
 
-        self.visiting_seq = []
+int main() {
+    // Generate a TSP instance with 10 nodes
+    int numNodes = 10;
+    std::vector<Node> nodes = generateTSPInstance(numNodes);
 
-        self.available = np.ones((self.num_env, self.pomo_size, self.action_size),
-                                 dtype=bool)  # all nodes are available at the beginning
-        
-        self.t = 0
-        obs = self._get_obs()
+    // Solve the TSP using the nearest neighbor heuristic
+    std::vector<int> tour = nearestNeighborHeuristic(nodes);
 
-        return obs, {}
+    // Calculate the total distance of the tour
+    double tourDistance = calculateTourDistance(nodes, tour);
 
-    def step(self, action):
-        action = action[:, :, None]
-        # action: (num_env, pomo_size, 1)
-        self.t += 1
+    // Print the tour and its distance
+    std::cout << "Tour: ";
+    for (int node : tour) {
+        std::cout << node << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "Distance: " << tourDistance << std::endl;
 
-        # update the current pos
-        self.pos = action.reshape(self.num_env, self.pomo_size)
-
-        # append the visited node idx
-        self.visiting_seq.append(action)
-
-        # update visited nodes
-        np.put_along_axis(self.visited, action, True, axis=2)
-
-        # assign avail to field
-        self.available, done = self.get_avail_mask()
-
-        reward = self.get_reward()
-
-        info = {}
-
-        obs = self._get_obs()
-
-        return obs, reward, done, False, info
-
-    def _is_done(self):
-        done_flag = (self.visited == True).all()
-        return done_flag
-
-    def get_avail_mask(self):
-        # get a copy of avail
-        avail = ~self.visited.copy()
-
-        done = self._is_done()
-
-        return avail, done
-
-
-if __name__ == '__main__':
-    tsp = TSPNpVec(20)
-    
+    return 0;
+}
